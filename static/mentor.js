@@ -1,4 +1,4 @@
-/* DataForge Academy — in-browser AI mentor.
+/* Datalith — in-browser AI mentor.
    A faithful port of the offline tutor (app/assistant.py): it finds the most
    relevant lessons by IDF-weighted keyword overlap and explains them. Runs fully
    client-side, so it needs no server. */

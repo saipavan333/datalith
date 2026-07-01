@@ -1,4 +1,4 @@
-/* DataForge Academy — in-browser SQL playground.
+/* Datalith — in-browser SQL playground.
    Runs the same sample shop database as the local app, but entirely client-side
    using SQLite compiled to WebAssembly (sql.js). Each run uses a FRESH database,
    so any query is safe. The engine is loaded lazily the first time you run a query. */

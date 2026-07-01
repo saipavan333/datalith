@@ -38,13 +38,13 @@ c.greeting()     # 'Hi, Ava'   (method)
 
 ```python
 class Account:
-    bank = "DataForge Bank"      # CLASS attribute — shared by all instances
+    bank = "Datalith Bank"      # CLASS attribute — shared by all instances
     def __init__(self, owner):
         self.owner = owner       # INSTANCE attribute — per object
 
 a = Account("Ava")
 a.owner    # 'Ava'  (its own)
-a.bank     # 'DataForge Bank' (shared)
+a.bank     # 'Datalith Bank' (shared)
 ```
 
 ## 4. Dunder ("magic") methods

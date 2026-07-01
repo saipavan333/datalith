@@ -1,4 +1,4 @@
-/* DataForge Academy — diagram add-on pack 14 (Foundations gold-standard set).
+/* Datalith — diagram add-on pack 14 (Foundations gold-standard set).
    Self-contained, inline-styled figures; merges into window.DIAGRAMS.
    Directional arrowheads (tri=right, triL=left, triU=up, triD=down) defined up front. */
 (function () {

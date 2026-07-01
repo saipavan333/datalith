@@ -1,6 +1,6 @@
-# The DataForge Academy Gold Standard
+# The Datalith Gold Standard
 
-This is the definition of "done" for every lesson, track, and diagram in DataForge Academy.
+This is the definition of "done" for every lesson, track, and diagram in Datalith.
 The goal is simple and ambitious: a motivated learner who finishes this curriculum should be able
 to do the job of a strong, working data engineer. Nothing here is decoration — every element earns
 its place by making a concept **clearer, more memorable, or more job-ready**.

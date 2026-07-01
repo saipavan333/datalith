@@ -1,4 +1,4 @@
-# DataForge Academy
+# Datalith
 
 **Zero to world-class Data Engineer — in plain English.**
 
@@ -120,7 +120,7 @@ automatically.
 ## Project layout
 
 ```
-dataforge-academy/
+datalith/
   app/
     main.py        FastAPI app + API routes
     sampledb.py    sample SQLite DB for the SQL playground
@@ -134,5 +134,5 @@ dataforge-academy/
   run.py · requirements.txt
 ```
 
-Built as a companion to **SparkQuest** (the hands-on Spark coding app) — DataForge
+Built as a companion to **SparkQuest** (the hands-on Spark coding app) — Datalith
 is the broad, plain-English academy across *all* of data engineering.

@@ -1,4 +1,4 @@
-# DataForge Academy — Capstone Starter Projects
+# Datalith — Capstone Starter Projects
 
 Fourteen **runnable** starter projects, one per capstone in the course. Each is self-contained: it **generates its own
 synthetic data** and runs end-to-end on a laptop with `pip install -r requirements.txt && python run.py` — no cloud

@@ -1,4 +1,4 @@
-/* DataForge Academy — diagram pack 63 (GCP deep-dive vol. 4: Dataproc, Composer, Dataform, Dataplex). */
+/* Datalith — diagram pack 63 (GCP deep-dive vol. 4: Dataproc, Composer, Dataform, Dataplex). */
 (function () {
   const C = { card:"#161b26", tx:"#e8edf5", dim:"#aab4c4", box:"#222a38", boxS:"#3b4760",
     acc:"#27406e", accS:"#5b9bff", accT:"#8fb6ff", good:"#173d31", goodS:"#36c98a", goodT:"#5fd6a4",

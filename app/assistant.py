@@ -1,4 +1,4 @@
-"""DataForge Academy — the AI mentor.
+"""Datalith — the AI mentor.
 
 Works out of the box with NO setup: a built-in tutor answers from the course
 content itself (it finds the most relevant lessons and explains them in plain
@@ -152,7 +152,7 @@ def _context_block(question: str, lesson_id: str) -> str:
 
 
 SYSTEM_PROMPT = (
-    "You are the AI mentor inside 'DataForge Academy', a course that teaches data "
+    "You are the AI mentor inside 'Datalith', a course that teaches data "
     "engineering in plain English. Answer the student's question clearly and simply, "
     "assuming little background and defining any jargon you use. Prefer short paragraphs "
     "and concrete examples. Ground your answer in the provided course excerpts when they "

@@ -1,4 +1,4 @@
-/* DataForge Academy — diagram add-on pack (merges into window.DIAGRAMS).
+/* Datalith — diagram add-on pack (merges into window.DIAGRAMS).
    Same self-contained inline-styled figure style as diagrams.js. */
 (function () {
   const C = { card:"#161b26", tx:"#e8edf5", dim:"#aab4c4", box:"#222a38", boxS:"#3b4760",

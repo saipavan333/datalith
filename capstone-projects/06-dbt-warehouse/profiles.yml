@@ -1,4 +1,4 @@
-dataforge:
+datalith:
   target: dev
   outputs:
     dev:

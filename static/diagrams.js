@@ -1,4 +1,4 @@
-/* ===================== DataForge Academy — diagram library =====================
+/* ===================== Datalith — diagram library =====================
    Self-contained inline-styled SVGs (fixed dark "figure card" palette) so they
    render identically in every browser and renderer. Each diagram is a string keyed
    by name; a lesson's `diagram` field selects one and app.js injects it. */
@@ -352,4 +352,4 @@ window.DIAGRAMS = (function () {
 
   return D;
 })();
-/* DataForge diagram library — 28 figures, inline-styled, self-contained. */
+/* Datalith diagram library — 28 figures, inline-styled, self-contained. */

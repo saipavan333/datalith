@@ -1,4 +1,4 @@
-# DataForge Academy is a pure static site — no build step.
+# Datalith is a pure static site — no build step.
 # Netlify (and Cloudflare Pages) just publish the project folder as-is.
 [build]
   publish = "."

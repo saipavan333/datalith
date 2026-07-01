@@ -1,4 +1,4 @@
-# Auto-publish DataForge Academy to GitHub Pages on every push to main.
+# Auto-publish Datalith to GitHub Pages on every push to main.
 # No build step — the repo IS the website (a static site).
 name: Deploy to GitHub Pages
 

@@ -1,4 +1,4 @@
-# DataForge Academy — Full Syllabus
+# Datalith — Full Syllabus
 
 _17 tracks · 250 lessons · 155 deep-dive tutorials · 958 practice problems · 705 quiz questions · 191 lessons with diagrams_
 

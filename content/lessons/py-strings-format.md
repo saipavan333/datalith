@@ -19,13 +19,13 @@ raw = r"C:\Users"       # r"" = no escaping (great for regex)
 ## 2. Indexing & slicing (like lists)
 
 ```python
-s = "DataForge"
+s = "Datalith"
 s[0]      # 'D'
-s[-1]     # 'e'
+s[-1]     # 'h'
 s[0:4]    # 'Data'   (start inclusive, stop exclusive)
-s[4:]     # 'Forge'
-s[::-1]   # 'egroFataD'  (reversed)
-len(s)    # 9
+s[4:]     # 'lith'
+s[::-1]   # 'htilataD'  (reversed)
+len(s)    # 8
 ```
 
 ## 3. Immutability

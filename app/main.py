@@ -1,4 +1,4 @@
-"""DataForge Academy — FastAPI backend.
+"""Datalith — FastAPI backend.
 
 Serves the single-page app and a small API:
   GET  /api/curriculum      the full roadmap (tracks -> modules -> lessons)
@@ -40,7 +40,7 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
-app = FastAPI(title="DataForge Academy", version=__version__)
+app = FastAPI(title="Datalith", version=__version__)
 
 
 @app.middleware("http")

@@ -1,7 +1,7 @@
-name: dataforge
+name: datalith
 version: "1.0"
 config-version: 2
-profile: dataforge
+profile: datalith
 
 model-paths: ["models"]
 seed-paths: ["seeds"]
@@ -9,7 +9,7 @@ target-path: "out/target"
 clean-targets: ["out/target", "dbt_packages"]
 
 models:
-  dataforge:
+  datalith:
     staging:
       +materialized: view
     marts:

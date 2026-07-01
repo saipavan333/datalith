@@ -1,4 +1,4 @@
-/* ===================== DataForge Academy — frontend ===================== */
+/* ===================== Datalith — frontend ===================== */
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 const PROGRESS_KEY = "dfa-progress-v1";

@@ -1,4 +1,4 @@
-"""Run DataForge Academy locally — exactly how it runs when deployed (a static site).
+"""Run Datalith locally — exactly how it runs when deployed (a static site).
 
     python run.py     ->     http://localhost:8000
 
@@ -34,7 +34,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     os.chdir(ROOT)
     url = f"http://localhost:{PORT}"
-    print("\n  DataForge Academy is running (static mode).")
+    print("\n  Datalith is running (static mode).")
     print(f"  Open your browser at:  {url}\n  (Ctrl+C to stop.)\n")
     try:
         webbrowser.open(url)

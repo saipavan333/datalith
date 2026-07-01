@@ -1,4 +1,4 @@
-/* DataForge Academy — diagram add-on pack 15 (Databases & SQL gold-standard set).
+/* Datalith — diagram add-on pack 15 (Databases & SQL gold-standard set).
    Self-contained, inline-styled; directional arrowheads up front. */
 (function () {
   const C = { card:"#161b26", tx:"#e8edf5", dim:"#aab4c4", box:"#222a38", boxS:"#3b4760",
@@ -119,10 +119,10 @@
   /* ---------- sql-string-funcs ---------- */
   D["string-funcs"] = (() => {
     let b = t(320, 20, "String functions transform & test text", { bold: true });
-    b += box(150, 44, 340, 30, { r: 8, fill: C.acc, stroke: C.accS }) + t(320, 64, "x = '  DataForge  '", { bold: true, fill: C.accT, size: 12, mono: true });
+    b += box(150, 44, 340, 30, { r: 8, fill: C.acc, stroke: C.accS }) + t(320, 64, "x = '  Datalith  '", { bold: true, fill: C.accT, size: 12, mono: true });
     const ops = [
-      ["TRIM(x)", "'DataForge'"], ["UPPER(x)", "'  DATAFORGE  '"], ["LENGTH(TRIM(x))", "9"],
-      ["SUBSTRING(TRIM(x),1,4)", "'Data'"], ["REPLACE(x,'Forge','Lake')", "'  DataLake  '"], ["TRIM(x) LIKE '%Forge'", "true"]];
+      ["TRIM(x)", "'Datalith'"], ["UPPER(x)", "'  DATALITH  '"], ["LENGTH(TRIM(x))", "8"],
+      ["SUBSTRING(TRIM(x),1,4)", "'Data'"], ["REPLACE(x,'lith','Lake')", "'  DataLake  '"], ["TRIM(x) LIKE '%lith'", "true"]];
     ops.forEach((o, i) => {
       const col = i % 2, row = (i / 2) | 0, x = 30 + col * 305, y = 92 + row * 36;
       b += box(x, y, 290, 28, { r: 6 });
