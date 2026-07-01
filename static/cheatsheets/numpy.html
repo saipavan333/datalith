@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NumPy Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🔢</span> NumPy <span class="brand">Cheat Sheet</span></h1>
+      <p>Numerical computing — n-dimensional arrays, vectorized math, broadcasting, aggregations and linear algebra. The engine under pandas.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Create &amp; inspect</div>
+
+    <div class="card">
+      <h2><span class="ic">🧱</span> Create arrays</h2>
+      <pre><b>import</b> numpy <b>as</b> np
+
+np.array([1, 2, 3])            <i># from list</i>
+np.array([[1,2],[3,4]])        <i># 2-D</i>
+np.zeros((2,3))   np.ones(4)   np.full((2,2), 7)
+np.arange(0, 10, 2)            <i># 0 2 4 6 8</i>
+np.linspace(0, 1, 5)          <i># 5 evenly spaced</i>
+np.eye(3)                      <i># identity</i>
+np.random.default_rng(0).random((2,2))</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔍</span> Attributes &amp; dtype</h2>
+      <pre>a.shape      <i># (rows, cols)</i>
+a.ndim       <i># number of dims</i>
+a.size       <i># total elements</i>
+a.dtype      <i># int64, float64, ...</i>
+a.astype(np.float32)          <i># cast</i>
+a.nbytes     <i># memory used</i>
+np.array([1,2], dtype=np.int32)</pre>
+      <p class="note">A NumPy array is <b>homogeneous</b> (one dtype) and contiguous → C-speed vectorized ops.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> Index &amp; slice</h2>
+      <pre>a[0]        a[-1]        a[1:4]
+a[2, 3]                  <i># 2-D element (row, col)</i>
+a[1, :]     a[:, 0]      <i># row / column</i>
+a[a &gt; 5]                 <i># boolean mask</i>
+a[[0, 2, 4]]             <i># fancy indexing</i>
+a[a % 2 == 0] = 0        <i># masked assignment</i></pre>
+      <p class="note">Slices are <b>views</b> (share memory); fancy/boolean indexing returns <b>copies</b>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔄</span> Reshape &amp; combine</h2>
+      <pre>a.reshape(3, 4)     a.reshape(-1, 2)   <i># -1 = infer</i>
+a.ravel()   a.flatten()      <i># to 1-D</i>
+a.T                          <i># transpose</i>
+np.concatenate([a, b], axis=0)
+np.vstack([a, b])   np.hstack([a, b])
+np.stack([a, b])    np.split(a, 3)</pre>
+    </div>
+
+    <div class="sec">Compute</div>
+
+    <div class="card">
+      <h2><span class="ic">➗</span> Vectorized math</h2>
+      <pre>a + b   a * 2   a ** 2   a / b     <i># elementwise</i>
+np.sqrt(a)  np.exp(a)  np.log(a)
+np.sin(a)   np.abs(a)  np.round(a, 2)
+np.maximum(a, b)   np.clip(a, 0, 100)
+a @ b        <i># matrix multiply (dot)</i></pre>
+      <p class="note">Always vectorize — no Python <code>for</code> loops over elements. That's the whole point of NumPy.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📡</span> Broadcasting</h2>
+      <pre>a = np.ones((3, 4))
+a + np.array([1, 2, 3, 4])   <i># row added to each row</i>
+a * np.array([[1],[2],[3]])  <i># column scales each row</i>
+<i># rule: dims align from the right; size 1 stretches</i>
+(3,4) + (4,)   -&gt; ok
+(3,4) + (3,1)  -&gt; ok
+(3,4) + (3,)   -&gt; error</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">Σ</span> Aggregations (axis)</h2>
+      <pre>a.sum()   a.mean()   a.std()   a.min()  a.max()
+a.sum(axis=0)   <i># down columns -&gt; per-column</i>
+a.sum(axis=1)   <i># across rows -&gt; per-row</i>
+a.cumsum()      a.argmax()   a.argmin()
+np.median(a)    np.percentile(a, 95)
+np.nanmean(a)   <i># ignore NaN</i></pre>
+      <p class="note"><b>axis=0</b> collapses rows (result per column); <b>axis=1</b> collapses columns (result per row).</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧭</span> Logic &amp; where</h2>
+      <pre>np.where(a &gt; 0, <span class="s">"pos"</span>, <span class="s">"neg"</span>)   <i># vectorized if/else</i>
+np.select([a&lt;0, a&gt;0], [<span class="s">"n"</span>, <span class="s">"p"</span>], default=<span class="s">"z"</span>)
+np.any(a &gt; 5)    np.all(a &gt; 0)
+np.unique(a, return_counts=True)
+np.isnan(a)     np.isin(a, [1,2,3])</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧮</span> Linear algebra &amp; random</h2>
+      <pre>np.dot(a, b)     a @ b
+np.linalg.inv(m)     np.linalg.det(m)
+np.linalg.solve(A, b)                 <i># Ax = b</i>
+np.linalg.eig(m)     np.linalg.norm(v)
+
+rng = np.random.default_rng(42)
+rng.random(5)   rng.integers(0, 10, 5)
+rng.normal(0, 1, (3,3))   rng.choice(a, 3)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> Sort &amp; set</h2>
+      <pre>np.sort(a)          np.argsort(a)   <i># indices</i>
+a[np.argsort(a)]                    <i># sort by key</i>
+np.unique(a)        np.intersect1d(a, b)
+np.union1d(a, b)    np.setdiff1d(a, b)
+np.searchsorted(sorted_a, v)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Performance</h2>
+      <ul>
+        <li>Vectorize; avoid Python loops &amp; <code>np.append</code> in a loop (reallocates).</li>
+        <li>Preallocate with <code>np.empty/zeros</code>, then fill.</li>
+        <li>Use <b>views</b> (slices) to avoid copies; be aware they alias memory.</li>
+        <li>Pick the smallest dtype that fits (<code>float32</code>, <code>int32</code>) to cut memory/bandwidth.</li>
+        <li>Interops zero-copy with pandas/Arrow/PyTorch via the buffer protocol.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · NumPy Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

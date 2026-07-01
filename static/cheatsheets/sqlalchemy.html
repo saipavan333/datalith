@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SQLAlchemy Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🧬</span> SQLAlchemy <span class="brand">Cheat Sheet</span></h1>
+      <p>Python's DB toolkit (2.0 style) — engines &amp; connections, raw SQL, the Core expression API, the ORM, sessions and pandas integration.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Connect</div>
+
+    <div class="card">
+      <h2><span class="ic">🔌</span> Engine &amp; connection</h2>
+      <pre><b>from</b> sqlalchemy <b>import</b> create_engine, text
+
+engine = create_engine(
+    <span class="s">"postgresql+psycopg://user:pw@host:5432/db"</span>,
+    pool_size=5, max_overflow=10, pool_pre_ping=True)
+
+<b>with</b> engine.connect() <b>as</b> conn:      <i># auto-close</i>
+    conn.execute(text(<span class="s">"SELECT 1"</span>))
+<b>with</b> engine.begin() <b>as</b> conn:        <i># transaction (commit/rollback)</i>
+    conn.execute(text(<span class="s">"INSERT ..."</span>))</pre>
+      <p class="note">URLs: <code>postgresql+psycopg</code>, <code>mysql+pymysql</code>, <code>sqlite:///file.db</code>, <code>snowflake://...</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📝</span> Raw SQL (parametrized)</h2>
+      <pre><b>with</b> engine.connect() <b>as</b> conn:
+    rows = conn.execute(
+        text(<span class="s">"SELECT * FROM t WHERE dept = :d"</span>),
+        {<span class="s">"d"</span>: <span class="s">"eng"</span>}).fetchall()
+    <b>for</b> r <b>in</b> rows:
+        r.id, r.name        <i># Row objects, attr access</i>
+        r._mapping           <i># -&gt; dict</i>
+<i># executemany: pass a list of dicts</i>
+conn.execute(text(<span class="s">"INSERT INTO t (a) VALUES (:a)"</span>),
+             [{<span class="s">"a"</span>:1}, {<span class="s">"a"</span>:2}])</pre>
+      <p class="note">Always bind with <code>:param</code> — never f-string values into SQL.</p>
+    </div>
+
+    <div class="sec">Core (expression API)</div>
+
+    <div class="card">
+      <h2><span class="ic">🏗️</span> Define tables (metadata)</h2>
+      <pre><b>from</b> sqlalchemy <b>import</b> (MetaData, Table, Column,
+    Integer, String, Numeric, DateTime, ForeignKey)
+
+md = MetaData()
+users = Table(<span class="s">"users"</span>, md,
+    Column(<span class="s">"id"</span>, Integer, primary_key=True),
+    Column(<span class="s">"name"</span>, String(100), nullable=False),
+    Column(<span class="s">"dept_id"</span>, ForeignKey(<span class="s">"dept.id"</span>)))
+md.create_all(engine)      <i># CREATE TABLE if not exists</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> Core select / insert</h2>
+      <pre><b>from</b> sqlalchemy <b>import</b> select, insert, update, delete, func
+
+stmt = (select(users.c.name, func.count().label(<span class="s">"n"</span>))
+        .where(users.c.dept_id == 1)
+        .group_by(users.c.name)
+        .order_by(users.c.name))
+conn.execute(stmt).all()
+
+conn.execute(insert(users), [{<span class="s">"name"</span>:<span class="s">"Ada"</span>}])
+conn.execute(update(users).where(users.c.id==1)
+             .values(name=<span class="s">"Bo"</span>))
+conn.execute(delete(users).where(users.c.id==1))</pre>
+    </div>
+
+    <div class="sec">ORM</div>
+
+    <div class="card">
+      <h2><span class="ic">🧱</span> Declarative models</h2>
+      <pre><b>from</b> sqlalchemy.orm <b>import</b> (DeclarativeBase,
+    Mapped, mapped_column, relationship)
+
+<b>class</b> Base(DeclarativeBase): <b>pass</b>
+
+<b>class</b> User(Base):
+    __tablename__ = <span class="s">"users"</span>
+    id:   Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    dept_id: Mapped[int] = mapped_column(ForeignKey(<span class="s">"dept.id"</span>))
+    dept: Mapped[<span class="s">"Dept"</span>] = relationship(back_populates=<span class="s">"users"</span>)
+
+Base.metadata.create_all(engine)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💾</span> Session &amp; CRUD</h2>
+      <pre><b>from</b> sqlalchemy.orm <b>import</b> Session
+
+<b>with</b> Session(engine) <b>as</b> s:
+    u = User(name=<span class="s">"Ada"</span>, dept_id=1)
+    s.add(u)                 <i># INSERT (on flush)</i>
+    s.commit()
+
+    u = s.get(User, 1)       <i># by PK</i>
+    u.name = <span class="s">"Bo"</span>            <i># UPDATE on commit</i>
+    s.delete(u)              <i># DELETE</i>
+    s.commit()</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔍</span> ORM queries</h2>
+      <pre>stmt = (select(User)
+        .where(User.name.like(<span class="s">"A%"</span>))
+        .order_by(User.name).limit(10))
+users = s.scalars(stmt).all()      <i># list[User]</i>
+one   = s.scalars(stmt).first()
+
+<i># join + aggregate</i>
+select(Dept.name, func.count(User.id)) \
+  .join(User).group_by(Dept.name)
+User.name.in_([<span class="s">"Ada"</span>,<span class="s">"Bo"</span>])   User.id == 1</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🐼</span> pandas &amp; tips</h2>
+      <pre><b>import</b> pandas <b>as</b> pd
+df = pd.read_sql(select(User), engine)
+df = pd.read_sql(<span class="s">"SELECT * FROM users"</span>, engine)
+df.to_sql(<span class="s">"users"</span>, engine, if_exists=<span class="s">"append"</span>,
+          index=False, chunksize=10_000, method=<span class="s">"multi"</span>)</pre>
+      <ul>
+        <li>Use <code>engine.begin()</code> for write transactions (auto commit/rollback).</li>
+        <li><code>pool_pre_ping=True</code> avoids stale-connection errors.</li>
+        <li>One <b>Session</b> per unit of work; don't share across threads.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · SQLAlchemy Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

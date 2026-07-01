@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PyArrow &amp; Parquet Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🏹</span> PyArrow &amp; Parquet <span class="brand">Cheat Sheet</span></h1>
+      <p>Apache Arrow in Python — the columnar in-memory standard, Parquet IO, partitioned datasets, compute and zero-copy interop with pandas/Polars.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Arrow basics</div>
+
+    <div class="card">
+      <h2><span class="ic">🧠</span> What Arrow is</h2>
+      <ul>
+        <li>A language-agnostic <b>columnar in-memory</b> format — the standard many tools share.</li>
+        <li>Lets pandas, Polars, DuckDB, Spark exchange data <b>zero-copy</b> (no serialize/parse).</li>
+        <li><b>Parquet</b> = the on-disk columnar format; Arrow is its in-memory counterpart.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧱</span> Arrays &amp; tables</h2>
+      <pre><b>import</b> pyarrow <b>as</b> pa
+
+arr = pa.array([1, 2, 3], type=pa.int64())
+tbl = pa.table({<span class="s">"id"</span>: [1,2], <span class="s">"name"</span>: [<span class="s">"a"</span>,<span class="s">"b"</span>]})
+tbl.schema        tbl.num_rows    tbl.column_names
+tbl.column(<span class="s">"id"</span>)   tbl.slice(0, 100)
+tbl.select([<span class="s">"id"</span>])   tbl.filter(pa.array([True, False]))
+tbl.combine_chunks()</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🏷️</span> Schema &amp; types</h2>
+      <pre>schema = pa.schema([
+    (<span class="s">"id"</span>, pa.int64()),
+    (<span class="s">"ts"</span>, pa.timestamp(<span class="s">"us"</span>, tz=<span class="s">"UTC"</span>)),
+    (<span class="s">"tags"</span>, pa.list_(pa.string())),
+    (<span class="s">"cust"</span>, pa.struct([(<span class="s">"id"</span>, pa.int64())])),
+])
+tbl.cast(schema)
+<i># int8/16/32/64, float32/64, string, bool,
+#   date32, timestamp, decimal128, list_, struct, dictionary</i></pre>
+      <p class="note"><b>dictionary</b> type = Arrow's categorical (dedups repeated strings → big memory win).</p>
+    </div>
+
+    <div class="sec">Parquet IO</div>
+
+    <div class="card">
+      <h2><span class="ic">💾</span> Read &amp; write Parquet</h2>
+      <pre><b>import</b> pyarrow.parquet <b>as</b> pq
+
+tbl = pq.read_table(<span class="s">"f.parquet"</span>)
+tbl = pq.read_table(<span class="s">"f.parquet"</span>,
+        columns=[<span class="s">"id"</span>, <span class="s">"amt"</span>],           <i># projection</i>
+        filters=[(<span class="s">"dt"</span>, <span class="s">"="</span>, <span class="s">"2026-01-01"</span>)])  <i># predicate pushdown</i>
+
+pq.write_table(tbl, <span class="s">"out.parquet"</span>,
+        compression=<span class="s">"zstd"</span>, row_group_size=128_000)
+
+pq.read_metadata(<span class="s">"f.parquet"</span>)   <i># rows, row groups, schema</i>
+pq.read_schema(<span class="s">"f.parquet"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗂️</span> Datasets (partitioned)</h2>
+      <pre><b>import</b> pyarrow.dataset <b>as</b> ds
+
+dset = ds.dataset(<span class="s">"lake/"</span>, format=<span class="s">"parquet"</span>,
+                  partitioning=<span class="s">"hive"</span>)   <i># dt=.../region=...</i>
+dset.to_table(
+    columns=[<span class="s">"id"</span>, <span class="s">"amt"</span>],
+    filter=(ds.field(<span class="s">"dt"</span>) &gt;= <span class="s">"2026-01-01"</span>))
+
+<i># write a partitioned dataset</i>
+ds.write_dataset(tbl, <span class="s">"out/"</span>, format=<span class="s">"parquet"</span>,
+    partitioning=[<span class="s">"dt"</span>], existing_data_behavior=<span class="s">"overwrite_or_ignore"</span>)</pre>
+      <p class="note">Datasets prune partitions &amp; push filters → scan only the files you need across a whole folder tree.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧮</span> Compute</h2>
+      <pre><b>import</b> pyarrow.compute <b>as</b> pc
+
+pc.sum(tbl[<span class="s">"amt"</span>])      pc.mean(tbl[<span class="s">"amt"</span>])
+pc.greater(tbl[<span class="s">"amt"</span>], 100)      <i># boolean mask</i>
+pc.utf8_upper(tbl[<span class="s">"name"</span>])
+tbl.group_by(<span class="s">"dept"</span>).aggregate([(<span class="s">"amt"</span>, <span class="s">"sum"</span>)])
+tbl.sort_by([(<span class="s">"amt"</span>, <span class="s">"descending"</span>)])</pre>
+    </div>
+
+    <div class="sec">Interop &amp; storage</div>
+
+    <div class="card">
+      <h2><span class="ic">🔄</span> Zero-copy interop</h2>
+      <pre>tbl.to_pandas()             <i># Arrow -&gt; pandas</i>
+pa.Table.from_pandas(pdf)   <i># pandas -&gt; Arrow</i>
+pl.from_arrow(tbl)          <i># -&gt; Polars</i>
+duckdb.sql(<span class="s">"SELECT * FROM tbl"</span>)   <i># DuckDB reads Arrow directly</i>
+<i># pandas backed by Arrow (less memory, real nulls)</i>
+pdf = tbl.to_pandas(types_mapper=pd.ArrowDtype)</pre>
+      <p class="note">These conversions are (mostly) <b>zero-copy</b> — the same buffers, no re-serialization.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">☁️</span> Filesystems</h2>
+      <pre><b>from</b> pyarrow <b>import</b> fs
+
+s3 = fs.S3FileSystem(region=<span class="s">"us-east-1"</span>)
+pq.read_table(<span class="s">"bucket/f.parquet"</span>, filesystem=s3)
+ds.dataset(<span class="s">"bucket/lake/"</span>, filesystem=s3, format=<span class="s">"parquet"</span>)
+gcs = fs.GcsFileSystem()
+local = fs.LocalFileSystem()</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Tips</h2>
+      <ul>
+        <li>Always pass <b>columns</b> + <b>filters</b> to read only what you need.</li>
+        <li>Tune <code>row_group_size</code> &amp; use <code>zstd</code>/<code>snappy</code> compression.</li>
+        <li>Use <b>datasets</b> for partitioned lakes; use <b>dictionary</b> encoding for repeated strings.</li>
+        <li>Arrow is the glue — prefer it to move data between pandas, Polars, DuckDB, Spark.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · PyArrow &amp; Parquet Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

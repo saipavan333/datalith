@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Polars Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🐻</span> Polars <span class="brand">Cheat Sheet</span></h1>
+      <p>Fast, multi-threaded DataFrames in Rust — the expression API, lazy execution, groupby, joins and windows. A modern pandas alternative.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Load &amp; core idea</div>
+
+    <div class="card">
+      <h2><span class="ic">📥</span> Read &amp; write</h2>
+      <pre><b>import</b> polars <b>as</b> pl
+
+df = pl.read_parquet(<span class="s">"f.parquet"</span>)   <i># eager</i>
+df = pl.read_csv(<span class="s">"f.csv"</span>)
+lf = pl.scan_parquet(<span class="s">"*.parquet"</span>)    <i># lazy (preferred)</i>
+lf = pl.scan_csv(<span class="s">"f.csv"</span>)
+
+df.write_parquet(<span class="s">"out.parquet"</span>)
+df.write_csv(<span class="s">"out.csv"</span>)
+df.to_pandas()   pl.from_pandas(pdf)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> The expression API</h2>
+      <pre><i># everything is an expression on pl.col(...)</i>
+df.select(
+    pl.col(<span class="s">"a"</span>),
+    (pl.col(<span class="s">"amt"</span>) - pl.col(<span class="s">"fee"</span>)).alias(<span class="s">"net"</span>),
+    pl.col(<span class="s">"amt"</span>).sum().alias(<span class="s">"total"</span>),
+)
+df.with_columns(
+    (pl.col(<span class="s">"amt"</span>) * 1.1).alias(<span class="s">"gross"</span>),
+    pl.col(<span class="s">"name"</span>).str.to_uppercase(),
+)</pre>
+      <p class="note">Expressions run in <b>parallel</b> and compose — the core of Polars. <code>select</code> = pick/derive, <code>with_columns</code> = add/replace.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔍</span> Inspect</h2>
+      <pre>df.head()   df.glimpse()   df.describe()
+df.shape    df.columns     df.schema
+df.dtypes   df.null_count()
+df.estimated_size(<span class="s">"mb"</span>)</pre>
+    </div>
+
+    <div class="sec">Transform</div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> Filter &amp; select</h2>
+      <pre>df.filter(pl.col(<span class="s">"amt"</span>) &gt; 100)
+df.filter((pl.col(<span class="s">"amt"</span>) &gt; 100) &amp; (pl.col(<span class="s">"dept"</span>) == <span class="s">"eng"</span>))
+df.filter(pl.col(<span class="s">"dept"</span>).is_in([<span class="s">"eng"</span>, <span class="s">"ops"</span>]))
+df.select([<span class="s">"a"</span>, <span class="s">"b"</span>])
+df.select(pl.exclude(<span class="s">"c"</span>))
+df.rename({<span class="s">"a"</span>: <span class="s">"amount"</span>})   df.drop(<span class="s">"c"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">Σ</span> GroupBy &amp; aggregate</h2>
+      <pre>(df.group_by(<span class="s">"dept"</span>)
+   .agg(
+       pl.col(<span class="s">"amt"</span>).sum().alias(<span class="s">"total"</span>),
+       pl.col(<span class="s">"uid"</span>).n_unique().alias(<span class="s">"users"</span>),
+       pl.col(<span class="s">"amt"</span>).mean(),
+       pl.len().alias(<span class="s">"rows"</span>),
+   ))
+df.group_by([<span class="s">"dept"</span>, <span class="s">"month"</span>]).agg(pl.col(<span class="s">"amt"</span>).sum())</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> Joins &amp; concat</h2>
+      <pre>a.join(b, on=<span class="s">"id"</span>, how=<span class="s">"left"</span>)   <i># inner|left|outer|semi|anti|cross</i>
+a.join(b, left_on=<span class="s">"aid"</span>, right_on=<span class="s">"id"</span>)
+pl.concat([a, b])                <i># stack rows</i>
+pl.concat([a, b], how=<span class="s">"horizontal"</span>)
+a.join_asof(b, on=<span class="s">"ts"</span>, by=<span class="s">"id"</span>)   <i># time-series join</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🪟</span> Window (over)</h2>
+      <pre>df.with_columns(
+   pl.col(<span class="s">"amt"</span>).sum().over(<span class="s">"dept"</span>).alias(<span class="s">"dept_total"</span>),
+   pl.col(<span class="s">"amt"</span>).rank(<span class="s">"dense"</span>, descending=True)
+     .over(<span class="s">"dept"</span>).alias(<span class="s">"rk"</span>),
+   pl.col(<span class="s">"amt"</span>).shift(1).over(<span class="s">"dept"</span>).alias(<span class="s">"prev"</span>),
+)
+<i># dedup: keep first per group</i>
+df.unique(subset=[<span class="s">"id"</span>], keep=<span class="s">"first"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔤</span> Strings &amp; dates</h2>
+      <pre>pl.col(<span class="s">"s"</span>).str.to_lowercase()
+pl.col(<span class="s">"s"</span>).str.contains(<span class="s">"foo"</span>)
+pl.col(<span class="s">"s"</span>).str.replace(<span class="s">"a"</span>, <span class="s">"b"</span>)
+pl.col(<span class="s">"s"</span>).str.split(<span class="s">"@"</span>).list.get(1)
+
+pl.col(<span class="s">"ts"</span>).str.to_datetime()
+pl.col(<span class="s">"ts"</span>).dt.year()   .dt.truncate(<span class="s">"1mo"</span>)
+pl.col(<span class="s">"ts"</span>).dt.weekday()</pre>
+    </div>
+
+    <div class="sec">Lazy &amp; scale</div>
+
+    <div class="card">
+      <h2><span class="ic">⚙️</span> Lazy execution</h2>
+      <pre>result = (
+  pl.scan_parquet(<span class="s">"data/*.parquet"</span>)   <i># don't read yet</i>
+    .filter(pl.col(<span class="s">"amt"</span>) &gt; 0)
+    .group_by(<span class="s">"dept"</span>)
+    .agg(pl.col(<span class="s">"amt"</span>).sum())
+    .collect()                       <i># run optimized plan</i>
+)
+lf.explain()          <i># see the query plan</i>
+lf.collect(streaming=True)   <i># larger-than-RAM</i></pre>
+      <p class="note">Lazy = Polars pushes filters/projections into the scan (reads fewer bytes) and parallelizes. Prefer <code>scan_*</code> + <code>collect()</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🐼</span> pandas → Polars</h2>
+      <ul>
+        <li>No index; use columns &amp; <code>.filter()</code> instead of boolean <code>[]</code>.</li>
+        <li><code>assign/apply</code> → <code>with_columns(pl.col(...))</code> expressions.</li>
+        <li><code>groupby().agg()</code> → <code>group_by().agg(pl.col(...))</code>.</li>
+        <li>Multi-threaded &amp; Arrow-backed by default → often 5–30× faster, lower memory.</li>
+        <li>Reach for Polars/DuckDB when pandas is slow or data nears RAM limits.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Tips</h2>
+      <ul>
+        <li>Chain in one lazy pipeline; call <code>collect()</code> once at the end.</li>
+        <li>Select only needed columns early (projection pushdown does this for you).</li>
+        <li>Use native expressions over Python <code>map_elements</code> (slow, single-thread).</li>
+        <li>Read/write <b>Parquet</b>; it's Arrow-native and fast.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Polars Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

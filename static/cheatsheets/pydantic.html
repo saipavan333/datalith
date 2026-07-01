@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pydantic Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🛡️</span> Pydantic <span class="brand">Cheat Sheet</span></h1>
+      <p>Data validation with Pydantic v2 — models, field constraints, validators, nested types, serialization and settings. Validate data at the boundary.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Models</div>
+
+    <div class="card">
+      <h2><span class="ic">🧱</span> Basic model</h2>
+      <pre><b>from</b> pydantic <b>import</b> BaseModel
+<b>from</b> datetime <b>import</b> datetime
+
+<b>class</b> User(BaseModel):
+    id: int
+    name: str
+    email: str
+    active: bool = True            <i># default</i>
+    created: datetime | None = None <i># optional</i>
+
+u = User(id=<span class="s">"1"</span>, name=<span class="s">"Ada"</span>, email=<span class="s">"a@x.com"</span>)
+u.id        <i># 1  (coerced str -&gt; int)</i>
+u.model_dump()   <i># -&gt; dict</i></pre>
+      <p class="note">Pydantic <b>coerces &amp; validates</b> on construction — bad types raise <code>ValidationError</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🏷️</span> Field types</h2>
+      <pre><b>from</b> typing <b>import</b> Optional, Literal
+<b>from</b> pydantic <b>import</b> EmailStr, HttpUrl, Field
+
+<b>class</b> Order(BaseModel):
+    id: int
+    tags: list[str] = []
+    meta: dict[str, str] = {}
+    status: Literal[<span class="s">"new"</span>, <span class="s">"paid"</span>] = <span class="s">"new"</span>
+    email: EmailStr
+    url: HttpUrl | None = None
+    amount: float</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📐</span> Field constraints</h2>
+      <pre><b>from</b> pydantic <b>import</b> Field
+
+<b>class</b> Product(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    price: float = Field(gt=0)              <i># &gt; 0</i>
+    qty: int = Field(ge=0, le=1000)         <i># 0..1000</i>
+    sku: str = Field(pattern=r<span class="s">"^[A-Z]{3}-\d+$"</span>)
+    note: str = Field(default=<span class="s">""</span>, alias=<span class="s">"comment"</span>)</pre>
+      <p class="note"><code>gt/ge/lt/le</code> numbers · <code>min_length/max_length</code> strings/lists · <code>pattern</code> regex · <code>alias</code> for source key names.</p>
+    </div>
+
+    <div class="sec">Validation</div>
+
+    <div class="card">
+      <h2><span class="ic">✅</span> Validators</h2>
+      <pre><b>from</b> pydantic <b>import</b> field_validator, model_validator
+
+<b>class</b> Signup(BaseModel):
+    email: str
+    pw: str
+    pw2: str
+
+    <b>@field_validator</b>(<span class="s">"email"</span>)
+    <b>@classmethod</b>
+    <b>def</b> lower(cls, v): <b>return</b> v.strip().lower()
+
+    <b>@model_validator</b>(mode=<span class="s">"after"</span>)
+    <b>def</b> match(self):
+        <b>if</b> self.pw != self.pw2:
+            <b>raise</b> ValueError(<span class="s">"passwords differ"</span>)
+        <b>return</b> self</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🪆</span> Nested models</h2>
+      <pre><b>class</b> Address(BaseModel):
+    city: str
+    zip: str
+
+<b>class</b> Customer(BaseModel):
+    name: str
+    address: Address              <i># nested</i>
+    orders: list[Order] = []
+
+c = Customer.model_validate({
+    <span class="s">"name"</span>: <span class="s">"Ada"</span>,
+    <span class="s">"address"</span>: {<span class="s">"city"</span>: <span class="s">"NYC"</span>, <span class="s">"zip"</span>: <span class="s">"10001"</span>}})
+c.address.city      <i># "NYC"</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔄</span> Parse &amp; serialize</h2>
+      <pre>User.model_validate(some_dict)      <i># dict -&gt; model</i>
+User.model_validate_json(raw_json)  <i># json str -&gt; model</i>
+
+u.model_dump()                     <i># -&gt; dict</i>
+u.model_dump(exclude_none=True, by_alias=True)
+u.model_dump_json(indent=2)        <i># -&gt; json str</i>
+
+<b>from</b> pydantic <b>import</b> TypeAdapter
+TypeAdapter(list[User]).validate_python(rows)  <i># bulk</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🛠️</span> Error handling</h2>
+      <pre><b>from</b> pydantic <b>import</b> ValidationError
+
+<b>try</b>:
+    User(id=<span class="s">"x"</span>, name=1, email=<span class="s">""</span>)
+<b>except</b> ValidationError <b>as</b> e:
+    print(e.errors())    <i># list of {loc, msg, type}</i>
+    print(e.json())</pre>
+      <p class="note">Catch <code>ValidationError</code> at ingestion; route bad records to a dead-letter/quarantine table.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚙️</span> Config &amp; settings</h2>
+      <pre><b>from</b> pydantic <b>import</b> ConfigDict
+
+<b>class</b> Strict(BaseModel):
+    model_config = ConfigDict(
+        extra=<span class="s">"forbid"</span>,      <i># reject unknown fields</i>
+        frozen=True,          <i># immutable</i>
+        str_strip_whitespace=True)
+
+<i># app config from env (pip install pydantic-settings)</i>
+<b>from</b> pydantic_settings <b>import</b> BaseSettings
+<b>class</b> Settings(BaseSettings):
+    db_url: str
+    workers: int = 4
+cfg = Settings()   <i># reads env vars / .env</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Where it fits</h2>
+      <ul>
+        <li>Validate API responses, file rows &amp; configs at the <b>boundary</b> before they enter pipelines.</li>
+        <li>Coercion turns messy strings into typed values; constraints catch bad data early.</li>
+        <li>Pairs with <b>FastAPI</b> (request/response models) &amp; <b>pydantic-settings</b> (config).</li>
+        <li>For big tabular data, validate with frameworks like <b>Pandera</b>/<b>Great Expectations</b> instead.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Pydantic Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

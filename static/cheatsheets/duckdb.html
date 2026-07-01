@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DuckDB Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🦆</span> DuckDB <span class="brand">Cheat Sheet</span></h1>
+      <p>In-process OLAP SQL — query Parquet/CSV files and pandas/Polars DataFrames directly, no server. "SQLite for analytics."</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Connect &amp; query</div>
+
+    <div class="card">
+      <h2><span class="ic">🔌</span> Connect</h2>
+      <pre><b>import</b> duckdb
+
+duckdb.sql(<span class="s">"SELECT 42"</span>)              <i># in-memory, one-off</i>
+con = duckdb.connect(<span class="s">"my.db"</span>)          <i># persistent file</i>
+con = duckdb.connect()                  <i># in-memory session</i>
+con.sql(<span class="s">"SELECT * FROM t"</span>).show()
+con.execute(<span class="s">"INSERT INTO t VALUES (?)"</span>, [1])</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📂</span> Query files directly</h2>
+      <pre><i>-- no load step; SQL straight over files</i>
+duckdb.sql(<span class="s">"SELECT * FROM 'data/*.parquet'"</span>)
+duckdb.sql(<span class="s">"SELECT * FROM read_csv_auto('f.csv')"</span>)
+duckdb.sql(<span class="s">"""
+  SELECT dept, sum(amt) t
+  FROM read_parquet('s3://bucket/*.parquet')
+  GROUP BY dept
+"""</span>)
+duckdb.sql(<span class="s">"SELECT * FROM read_json_auto('f.json')"</span>)</pre>
+      <p class="note">Reads only the columns/row-groups it needs from Parquet — fast &amp; cheap on big files.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🐼</span> SQL on DataFrames</h2>
+      <pre><b>import</b> pandas <b>as</b> pd, polars <b>as</b> pl
+orders = pd.read_parquet(<span class="s">"orders.parquet"</span>)
+
+<i># reference the Python variable by name in SQL</i>
+duckdb.sql(<span class="s">"SELECT dept, count(*) FROM orders GROUP BY dept"</span>)
+
+<i># works with Polars &amp; Arrow too, zero-copy</i>
+res = duckdb.sql(<span class="s">"SELECT * FROM orders WHERE amt &gt; 100"</span>)
+res.df()      <i># -&gt; pandas</i>
+res.pl()      <i># -&gt; polars</i>
+res.arrow()   res.fetchall()</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🏗️</span> Tables &amp; DML</h2>
+      <pre>con.sql(<span class="s">"CREATE TABLE t AS SELECT * FROM 'f.parquet'"</span>)
+con.sql(<span class="s">"CREATE OR REPLACE TABLE t (id INT, amt DOUBLE)"</span>)
+con.sql(<span class="s">"INSERT INTO t SELECT * FROM read_csv_auto('f.csv')"</span>)
+con.sql(<span class="s">"CREATE VIEW v AS SELECT ..."</span>)
+<i>-- persist a query to a file</i>
+con.sql(<span class="s">"COPY (SELECT * FROM t) TO 'out.parquet' (FORMAT PARQUET)"</span>)
+con.sql(<span class="s">"EXPORT DATABASE 'dir' (FORMAT PARQUET)"</span>)</pre>
+    </div>
+
+    <div class="sec">SQL power &amp; ecosystem</div>
+
+    <div class="card">
+      <h2><span class="ic">🧠</span> Analytics SQL</h2>
+      <pre><i>-- full window functions, CTEs, QUALIFY</i>
+SELECT *, row_number() OVER (PARTITION BY dept
+         ORDER BY amt DESC) rn
+FROM t QUALIFY rn = 1;             <i>-- dedup</i>
+
+SELECT list(name), sum(amt) FROM t GROUP BY dept;
+SELECT * FROM t SAMPLE 10%;
+PIVOT t ON month USING sum(amt);
+FROM t SELECT dept, sum(amt);      <i>-- FROM-first syntax</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧩</span> Extensions</h2>
+      <pre>INSTALL httpfs; LOAD httpfs;      <i>-- read s3/http</i>
+SET s3_region='us-east-1';
+SET s3_access_key_id='...'; SET s3_secret_access_key='...';
+
+INSTALL json; INSTALL parquet; INSTALL iceberg;
+<i>-- query remote Parquet directly</i>
+SELECT * FROM 's3://bucket/data/*.parquet';</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⌨️</span> CLI</h2>
+      <pre>duckdb my.db            <i># open a shell</i>
+duckdb -c <span class="s">"SELECT * FROM 'f.parquet' LIMIT 5"</span>
+<i>-- inside the shell</i>
+.mode csv     .headers on
+.read script.sql
+.tables       .schema t
+.timer on
+COPY (SELECT * FROM t) TO 'out.csv';</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> Why DuckDB</h2>
+      <ul>
+        <li><b>Embedded</b> (a library, no server) + <b>columnar/vectorized</b> → fast analytics locally.</li>
+        <li>Query Parquet/CSV/JSON &amp; DataFrames <b>in place</b> — often replaces a pandas ETL step.</li>
+        <li>Great for local dev, tests, notebooks, and lightweight pipelines.</li>
+        <li>Full SQL: window functions, CTEs, PIVOT, list/struct types.</li>
+        <li>Pairs with <b>dbt-duckdb</b> for local transformations.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Tips</h2>
+      <ul>
+        <li>Push work into one SQL statement — the optimizer + parallelism beat row-by-row Python.</li>
+        <li>Use <code>read_parquet</code> globs; DuckDB prunes columns &amp; row groups automatically.</li>
+        <li>Set a memory limit: <code>SET memory_limit='4GB'</code>; spills to disk when needed.</li>
+        <li>Round-trip to pandas/Polars/Arrow with <code>.df()/.pl()/.arrow()</code> (zero-copy).</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · DuckDB Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

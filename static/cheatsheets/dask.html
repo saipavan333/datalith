@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dask Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">⚙️</span> Dask <span class="brand">Cheat Sheet</span></h1>
+      <p>Parallel &amp; out-of-core Python — scale pandas/NumPy across cores or a cluster with a familiar API, plus custom task graphs with delayed.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Core idea</div>
+
+    <div class="card">
+      <h2><span class="ic">🧠</span> Mental model</h2>
+      <ul>
+        <li>A Dask DataFrame = <b>many pandas DataFrames</b> (partitions) with the same API.</li>
+        <li>Operations are <b>lazy</b> — they build a task graph; <code>.compute()</code> runs it in parallel.</li>
+        <li>Use it when data is <b>bigger than RAM</b> or work is embarrassingly parallel.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📥</span> Read (partitioned)</h2>
+      <pre><b>import</b> dask.dataframe <b>as</b> dd
+
+df = dd.read_parquet(<span class="s">"data/*.parquet"</span>)
+df = dd.read_csv(<span class="s">"data/*.csv"</span>, blocksize=<span class="s">"128MB"</span>)
+df.npartitions          <i># number of chunks</i>
+df = df.repartition(partition_size=<span class="s">"128MB"</span>)
+df.to_parquet(<span class="s">"out/"</span>, write_index=False)</pre>
+      <p class="note">Aim for ~100–256 MB per partition. Many tiny partitions = scheduler overhead; few huge ones = no parallelism / OOM.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🐼</span> Transform (pandas API)</h2>
+      <pre>df[df.amt &gt; 100]
+df.assign(net=df.amt - df.fee)
+df.groupby(<span class="s">"dept"</span>).amt.sum()
+dd.merge(a, b, on=<span class="s">"id"</span>, how=<span class="s">"left"</span>)
+df.amt.mean()
+df[<span class="s">"dept"</span>].value_counts()
+<i># most pandas methods work unchanged</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">▶️</span> Lazy → compute</h2>
+      <pre>result = df.groupby(<span class="s">"dept"</span>).amt.sum()   <i># lazy graph</i>
+result.compute()          <i># run -&gt; pandas result</i>
+result.visualize()        <i># draw the task graph</i>
+
+df = df.persist()         <i># compute + keep in cluster memory</i>
+df.head()                 <i># small peek (reads 1 partition)</i></pre>
+      <p class="note"><code>compute()</code> returns a concrete pandas/NumPy object — only call it on results that fit in memory (aggregates), not the whole big frame.</p>
+    </div>
+
+    <div class="sec">Beyond DataFrames</div>
+
+    <div class="card">
+      <h2><span class="ic">🧩</span> dask.delayed</h2>
+      <pre><b>from</b> dask <b>import</b> delayed
+
+<b>@delayed</b>
+<b>def</b> load(f): <b>return</b> read(f)
+<b>@delayed</b>
+<b>def</b> process(x): <b>return</b> transform(x)
+
+tasks = [process(load(f)) <b>for</b> f <b>in</b> files]
+results = delayed(sum)(tasks).compute()   <i># parallel graph</i></pre>
+      <p class="note">Wrap arbitrary Python functions to parallelize custom pipelines that don't fit the DataFrame API.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔢</span> dask.array &amp; bag</h2>
+      <pre><b>import</b> dask.array <b>as</b> da
+x = da.random.random((100_000, 1000), chunks=(10_000, 1000))
+x.mean(axis=0).compute()      <i># chunked NumPy</i>
+
+<b>import</b> dask.bag <b>as</b> db
+b = db.read_text(<span class="s">"logs/*.json"</span>).map(json.loads)
+b.filter(<b>lambda</b> r: r[<span class="s">"ok"</span>]).count().compute()</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🖥️</span> Cluster / scheduler</h2>
+      <pre><b>from</b> dask.distributed <b>import</b> Client, LocalCluster
+
+client = Client()                 <i># local cluster, all cores</i>
+client = Client(LocalCluster(n_workers=4,
+                threads_per_worker=2))
+<i># dashboard at http://localhost:8787</i>
+print(client.dashboard_link)
+client.close()
+<i># scale out: dask-kubernetes, YARN, coiled, etc.</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚠️</span> Gotchas &amp; when to use</h2>
+      <ul>
+        <li>Don't <code>.compute()</code> a huge DataFrame — it pulls everything to one machine.</li>
+        <li><code>set_index</code> / big shuffles are expensive (repartition) — minimize them.</li>
+        <li>Watch partition count &amp; sizes on the <b>dashboard</b>; repartition when skewed.</li>
+        <li>If it fits in RAM, plain <b>pandas/Polars/DuckDB</b> is simpler &amp; faster — reach for Dask when it doesn't, or you need a cluster.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Dask Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>
