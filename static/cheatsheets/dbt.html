@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dbt Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🧱</span> dbt <span class="brand">Cheat Sheet</span></h1>
+      <p>Analytics engineering with dbt — models, ref/source, materializations, tests, snapshots, incremental models, macros and the CLI.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Project &amp; models</div>
+
+    <div class="card">
+      <h2><span class="ic">📁</span> Project layout</h2>
+      <pre>my_project/
+  dbt_project.yml     <i># project config</i>
+  models/
+    staging/  stg_orders.sql
+    marts/    fct_orders.sql
+    _schema.yml       <i># sources, tests, docs</i>
+  snapshots/   seeds/   macros/   tests/
+~/.dbt/profiles.yml   <i># connection creds</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> Models &amp; ref</h2>
+      <pre><i>-- models/marts/fct_orders.sql</i>
+{{ config(materialized=<span class="s">'table'</span>) }}
+
+<b>select</b>
+  o.id, o.amt, c.name
+<b>from</b> {{ ref(<span class="s">'stg_orders'</span>) }} o        <i>-- model dep</i>
+<b>join</b> {{ source(<span class="s">'shop'</span>, <span class="s">'customers'</span>) }} c  <i>-- raw source</i>
+  <b>on</b> o.cid = c.id</pre>
+      <p class="note"><code>ref()</code>/<code>source()</code> build the DAG &amp; lineage automatically — never hard-code table names.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧱</span> Materializations</h2>
+      <pre>{{ config(materialized=<span class="s">'view'</span>) }}        <i>-- default</i>
+{{ config(materialized=<span class="s">'table'</span>) }}
+{{ config(materialized=<span class="s">'ephemeral'</span>) }}    <i>-- inlined CTE</i>
+{{ config(materialized=<span class="s">'incremental'</span>) }}
+
+<i># or set in dbt_project.yml per folder</i>
+models:
+  my_project:
+    marts:
+      +materialized: table</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">➕</span> Incremental models</h2>
+      <pre>{{ config(materialized=<span class="s">'incremental'</span>,
+          unique_key=<span class="s">'id'</span>,
+          incremental_strategy=<span class="s">'merge'</span>) }}
+
+<b>select</b> * <b>from</b> {{ ref(<span class="s">'stg_orders'</span>) }}
+{% <b>if</b> is_incremental() %}
+  <b>where</b> updated_at &gt; (<b>select</b> max(updated_at) <b>from</b> {{ this }})
+{% <b>endif</b> %}</pre>
+      <p class="note">Only processes new/changed rows; <code>{{ this }}</code> = the model's own table. Full refresh: <code>dbt run --full-refresh</code>.</p>
+    </div>
+
+    <div class="sec">Sources, tests &amp; snapshots</div>
+
+    <div class="card">
+      <h2><span class="ic">📇</span> Sources &amp; freshness</h2>
+      <pre><i># models/_schema.yml</i>
+sources:
+  - name: shop
+    schema: raw
+    tables:
+      - name: customers
+        freshness:
+          warn_after: {count: 12, period: hour}
+          error_after: {count: 24, period: hour}
+        loaded_at_field: _loaded_at</pre>
+      <pre>dbt source freshness</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">✅</span> Tests</h2>
+      <pre><i># _schema.yml — generic tests</i>
+models:
+  - name: fct_orders
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: cid
+        tests:
+          - relationships:
+              to: ref(<span class="s">'dim_customer'</span>)
+              field: id
+      - name: status
+        tests:
+          - accepted_values: {values: [<span class="s">'new'</span>,<span class="s">'paid'</span>]}</pre>
+      <p class="note">Singular tests = any <code>.sql</code> in <code>tests/</code> that returns failing rows. Run: <code>dbt test</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📸</span> Snapshots (SCD2)</h2>
+      <pre>{% snapshot cust_snap %}
+{{ config(target_schema=<span class="s">'snapshots'</span>,
+   unique_key=<span class="s">'id'</span>,
+   strategy=<span class="s">'timestamp'</span>,
+   updated_at=<span class="s">'updated_at'</span>) }}
+  <b>select</b> * <b>from</b> {{ source(<span class="s">'shop'</span>,<span class="s">'customers'</span>) }}
+{% endsnapshot %}</pre>
+      <p class="note">Captures history (valid_from/valid_to) — SCD2 without hand-writing it. Run: <code>dbt snapshot</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🌱</span> Seeds &amp; macros</h2>
+      <pre><i># seeds/country_codes.csv -&gt; a table</i>
+dbt seed
+
+<i># macros/cents_to_dollars.sql</i>
+{% macro cents_to_dollars(col) %}
+  ({{ col }} / 100.0)
+{% endmacro %}
+<i>-- use in a model</i>
+<b>select</b> {{ cents_to_dollars(<span class="s">'amt_cents'</span>) }} <b>as</b> amt</pre>
+    </div>
+
+    <div class="sec">CLI &amp; docs</div>
+
+    <div class="card">
+      <h2><span class="ic">⌨️</span> CLI commands</h2>
+      <pre>dbt debug            <i># check connection</i>
+dbt run              <i># build all models</i>
+dbt run -s fct_orders+     <i># model + downstream</i>
+dbt run -s tag:daily       <i># by selector/tag</i>
+dbt build            <i># run + test + snapshot + seed</i>
+dbt test             dbt snapshot     dbt seed
+dbt run --full-refresh
+dbt docs generate &amp;&amp; dbt docs serve</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> Node selection</h2>
+      <pre>-s model_name        <i># just this model</i>
+-s model+            <i># + all downstream</i>
+-s +model            <i># + all upstream</i>
+-s +model+           <i># full lineage</i>
+-s staging.*         <i># a folder/package</i>
+-s tag:nightly       <i># by tag</i>
+--exclude model_x    <i># skip some</i>
+-s state:modified    <i># CI: changed only</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📖</span> Jinja &amp; vars</h2>
+      <pre>{{ var(<span class="s">'start_date'</span>, <span class="s">'2020-01-01'</span>) }}   <i>-- --vars</i>
+{{ env_var(<span class="s">'DBT_SCHEMA'</span>) }}
+{{ target.name }}   {{ target.schema }}
+{% <b>set</b> depts = [<span class="s">'eng'</span>,<span class="s">'ops'</span>] %}
+{% <b>for</b> d <b>in</b> depts %} ... {% <b>endfor</b> %}
+{{ dbt_utils.star(ref(<span class="s">'x'</span>)) }}   <i>-- package macro</i></pre>
+      <p class="note">Add packages in <code>packages.yml</code> then <code>dbt deps</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Best practice</h2>
+      <ul>
+        <li><b>Staging</b> (1:1 cleanup) → <b>marts</b> (business models). One folder per layer.</li>
+        <li>Everything via <code>ref()</code>/<code>source()</code> — never hard-code names.</li>
+        <li>Test keys (unique + not_null) &amp; relationships; block merges on failures in CI.</li>
+        <li>Runs in-warehouse = <b>ELT</b>; dbt owns transforms, an orchestrator triggers it.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · dbt Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

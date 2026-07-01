@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Regex Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">✳️</span> Regex <span class="brand">Cheat Sheet</span></h1>
+      <p>Regular expressions for parsing &amp; validation — metacharacters, classes, quantifiers, groups, lookarounds, and use in Python, grep and sed.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Building blocks</div>
+
+    <div class="card">
+      <h2><span class="ic">⚓</span> Anchors &amp; boundaries</h2>
+      <pre>^        <i># start of string/line</i>
+$        <i># end of string/line</i>
+\b       <i># word boundary</i>
+\B       <i># non-boundary</i>
+\A  \Z   <i># start / end of whole string</i>
+
+^\d+$    <i># entire string is digits</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔡</span> Character classes</h2>
+      <pre>.        <i># any char (except newline)</i>
+\d \D    <i># digit / non-digit</i>
+\w \W    <i># word [A-Za-z0-9_] / non-word</i>
+\s \S    <i># whitespace / non-whitespace</i>
+[abc]    <i># a, b, or c</i>
+[^abc]   <i># NOT a, b, c</i>
+[a-z0-9] <i># ranges</i>
+\.  \*   <i># escape a literal metachar</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔢</span> Quantifiers</h2>
+      <pre>*        <i># 0 or more</i>
++        <i># 1 or more</i>
+?        <i># 0 or 1 (optional)</i>
+{3}      <i># exactly 3</i>
+{2,5}    <i># 2 to 5</i>
+{2,}     <i># 2 or more</i>
+
+*?  +?  ??   <i># lazy (fewest) vs greedy default</i></pre>
+      <p class="note">Greedy <code>.*</code> grabs as much as possible; add <code>?</code> for lazy <code>.*?</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">( )</span> Groups &amp; alternation</h2>
+      <pre>(abc)      <i># capture group 1</i>
+(?:abc)    <i># group, no capture</i>
+(?P&lt;year&gt;\d{4})  <i># named group (Python)</i>
+a|b        <i># a OR b</i>
+(cat|dog)s <i># cats or dogs</i>
+\1         <i># backreference to group 1</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">👀</span> Lookaround</h2>
+      <pre>(?=foo)    <i># lookahead: followed by foo</i>
+(?!foo)    <i># negative lookahead</i>
+(?&lt;=foo)   <i># lookbehind: preceded by foo</i>
+(?&lt;!foo)   <i># negative lookbehind</i>
+
+\d+(?= USD)   <i># number before " USD"</i>
+(?&lt;=\$)\d+    <i># number after "$"</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🚩</span> Flags</h2>
+      <pre>i   <i># ignore case</i>
+m   <i># multiline (^ $ per line)</i>
+s   <i># dotall (. matches newline)</i>
+x   <i># verbose (ignore whitespace)</i>
+g   <i># global (all matches - tool-level)</i>
+
+<i># inline: (?i) at start, or re.IGNORECASE</i></pre>
+    </div>
+
+    <div class="sec">Patterns &amp; usage</div>
+
+    <div class="card">
+      <h2><span class="ic">📋</span> Common patterns</h2>
+      <pre><i># email (pragmatic)</i>
+[\w.+-]+@[\w-]+\.[\w.-]+
+
+<i># ISO date YYYY-MM-DD</i>
+\d{4}-\d{2}-\d{2}
+
+<i># IPv4 (loose)</i>
+(\d{1,3}\.){3}\d{1,3}
+
+<i># price / integer with commas</i>
+\d{1,3}(,\d{3})*(\.\d+)?
+
+<i># whitespace collapse</i>
+\s+</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🐍</span> Python <code>re</code></h2>
+      <pre><b>import</b> re
+
+re.search(p, s)        <i># first match anywhere</i>
+re.match(p, s)         <i># match at start</i>
+re.findall(p, s)       <i># list of matches</i>
+re.finditer(p, s)      <i># iterator of match objs</i>
+re.sub(p, repl, s)     <i># replace all</i>
+re.split(p, s)
+
+m = re.search(r<span class="s">"(?P&lt;y&gt;\d{4})"</span>, s)
+m.group(<span class="s">"y"</span>)   m.group(1)   m.start()
+pat = re.compile(p, re.I)   <i># reuse compiled</i></pre>
+      <p class="note">Use <b>raw strings</b> <code>r"\d+"</code> so <code>\</code> isn't eaten by Python.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🐚</span> grep &amp; sed</h2>
+      <pre><i># extended regex</i>
+grep -E <span class="s">"[0-9]{3}-[0-9]{4}"</span> f
+grep -oE <span class="s">"\w+@\w+"</span> f     <i># only matches</i>
+grep -P <span class="s">"(?&lt;=id=)\d+"</span> f  <i># Perl (lookbehind)</i>
+
+<i># sed capture + backref</i>
+sed -E <span class="s">"s/(\w+)@(\w+)/\2-\1/"</span> f</pre>
+      <p class="note">Basic grep needs <code>\( \)</code>; <code>-E</code> uses plain <code>( )</code> <code>{ }</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗄️</span> Regex in SQL</h2>
+      <pre><i># Postgres / Snowflake / BigQuery</i>
+s ~ <span class="s">'^A.*z$'</span>                 <i># PG match</i>
+REGEXP_LIKE(s, <span class="s">'\\d+'</span>)         <i># Snowflake</i>
+REGEXP_REPLACE(s, <span class="s">'\\s+'</span>, <span class="s">' '</span>)
+REGEXP_EXTRACT(s, <span class="s">r'(\d{4})'</span>)   <i># BigQuery</i>
+REGEXP_SUBSTR(s, <span class="s">'[0-9]+'</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚠️</span> Gotchas</h2>
+      <ul>
+        <li>Escape literals: <code>. * + ? ( ) [ ] { } ^ $ | \</code>.</li>
+        <li><code>.</code> excludes newline unless the <b>s</b> (dotall) flag is set.</li>
+        <li>Greedy by default — <code>&lt;.*&gt;</code> over-matches; use <code>&lt;.*?&gt;</code>.</li>
+        <li>Catastrophic backtracking: avoid nested quantifiers like <code>(a+)+</code>.</li>
+        <li>Validate hard formats (emails, phones) with a library when you can.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Regex Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

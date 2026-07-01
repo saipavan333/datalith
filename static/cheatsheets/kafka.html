@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kafka Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">📨</span> Kafka <span class="brand">Cheat Sheet</span></h1>
+      <p>Apache Kafka — topics, partitions &amp; offsets, consumer groups, the CLI, producer/consumer code, delivery guarantees, Connect and Schema Registry.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Concepts</div>
+
+    <div class="card">
+      <h2><span class="ic">🧠</span> Mental model</h2>
+      <ul>
+        <li><b>Topic</b> = named log, split into <b>partitions</b> (the unit of parallelism &amp; ordering).</li>
+        <li><b>Offset</b> = a message's position in a partition; consumers commit offsets.</li>
+        <li><b>Order</b> is guaranteed <b>within a partition</b> only — key routes related messages to the same partition.</li>
+        <li><b>Broker</b> = a server; <b>replication factor</b> copies partitions for durability.</li>
+        <li><b>Consumer group</b>: each partition is read by exactly one consumer in the group (scale = up to # partitions).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗂️</span> Topics CLI</h2>
+      <pre>kafka-topics.sh --bootstrap-server localhost:9092 \
+  --create --topic orders \
+  --partitions 6 --replication-factor 3
+
+kafka-topics.sh --bootstrap-server ... --list
+kafka-topics.sh --bootstrap-server ... \
+  --describe --topic orders
+kafka-topics.sh --bootstrap-server ... \
+  --alter --topic orders --partitions 12   <i># only increase</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⌨️</span> Produce &amp; consume (CLI)</h2>
+      <pre><i># produce (type messages, Ctrl-D to end)</i>
+kafka-console-producer.sh --bootstrap-server ... \
+  --topic orders --property parse.key=true \
+  --property key.separator=:
+
+<i># consume from the beginning</i>
+kafka-console-consumer.sh --bootstrap-server ... \
+  --topic orders --from-beginning \
+  --property print.key=true</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">👥</span> Consumer groups</h2>
+      <pre>kafka-consumer-groups.sh --bootstrap-server ... --list
+kafka-consumer-groups.sh --bootstrap-server ... \
+  --describe --group etl        <i># shows LAG per partition</i>
+<i># reset offsets (reprocess)</i>
+kafka-consumer-groups.sh --bootstrap-server ... \
+  --group etl --topic orders \
+  --reset-offsets --to-earliest --execute</pre>
+      <p class="note"><b>Consumer lag</b> = how far behind a group is — the key health metric to alarm on.</p>
+    </div>
+
+    <div class="sec">Client code</div>
+
+    <div class="card">
+      <h2><span class="ic">📤</span> Producer (Python)</h2>
+      <pre><b>from</b> confluent_kafka <b>import</b> Producer
+p = Producer({<span class="s">"bootstrap.servers"</span>: <span class="s">"localhost:9092"</span>,
+              <span class="s">"acks"</span>: <span class="s">"all"</span>,        <i># wait for replicas</i>
+              <span class="s">"enable.idempotence"</span>: True})
+
+<b>def</b> cb(err, msg):
+    <b>if</b> err: print(<span class="s">"fail"</span>, err)
+
+p.produce(<span class="s">"orders"</span>, key=<span class="s">"c1"</span>, value=<span class="s">"{...}"</span>, callback=cb)
+p.flush()</pre>
+      <p class="note"><code>acks=all</code> + <code>enable.idempotence</code> = no loss, no duplicates from the producer.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📥</span> Consumer (Python)</h2>
+      <pre><b>from</b> confluent_kafka <b>import</b> Consumer
+c = Consumer({<span class="s">"bootstrap.servers"</span>: <span class="s">"localhost:9092"</span>,
+              <span class="s">"group.id"</span>: <span class="s">"etl"</span>,
+              <span class="s">"auto.offset.reset"</span>: <span class="s">"earliest"</span>,
+              <span class="s">"enable.auto.commit"</span>: False})
+c.subscribe([<span class="s">"orders"</span>])
+<b>while</b> True:
+    msg = c.poll(1.0)
+    <b>if</b> msg <b>and not</b> msg.error():
+        handle(msg.value())
+        c.commit(msg)      <i># commit AFTER processing</i></pre>
+      <p class="note">Commit <b>after</b> processing → at-least-once. Make handling idempotent to dedupe.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> Delivery guarantees</h2>
+      <ul>
+        <li><b>At-most-once</b> — commit before processing (may lose on crash).</li>
+        <li><b>At-least-once</b> — commit after processing (may duplicate). Common default.</li>
+        <li><b>Exactly-once</b> — idempotent producer + <b>transactions</b> (<code>transactional.id</code>), or an idempotent sink keyed by id.</li>
+      </ul>
+      <pre>producer.init_transactions()
+producer.begin_transaction(); ...; producer.commit_transaction()</pre>
+    </div>
+
+    <div class="sec">Ecosystem</div>
+
+    <div class="card">
+      <h2><span class="ic">🔌</span> Kafka Connect</h2>
+      <pre><i># source/sink connectors move data w/o code</i>
+POST /connectors  {
+  <span class="s">"name"</span>: <span class="s">"s3-sink"</span>,
+  <span class="s">"config"</span>: {
+    <span class="s">"connector.class"</span>: <span class="s">"io.confluent...S3SinkConnector"</span>,
+    <span class="s">"topics"</span>: <span class="s">"orders"</span>,
+    <span class="s">"flush.size"</span>: <span class="s">"1000"</span> }}
+<i># Debezium source = CDC from a database -&gt; Kafka</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📐</span> Schema Registry</h2>
+      <ul>
+        <li>Stores <b>Avro/Protobuf/JSON</b> schemas; messages carry a schema id.</li>
+        <li>Enforces <b>compatibility</b> (backward/forward) so producers &amp; consumers evolve safely.</li>
+        <li>Register a schema before producing; consumers fetch it to deserialize.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Design &amp; tuning</h2>
+      <ul>
+        <li>Choose the <b>key</b> so related events share a partition (ordering) but spread evenly (no hot partition).</li>
+        <li>Partitions = max consumer parallelism — size for peak throughput.</li>
+        <li><b>Retention</b> by time/size; <b>compacted</b> topics keep the latest value per key (changelogs).</li>
+        <li>Processors: <b>Flink</b> / <b>Spark Structured Streaming</b> / <b>Kafka Streams</b> for stateful transforms.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Kafka Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

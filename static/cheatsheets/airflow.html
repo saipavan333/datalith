@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Airflow Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🗺️</span> Airflow <span class="brand">Cheat Sheet</span></h1>
+      <p>Apache Airflow orchestration — DAGs, operators, dependencies, scheduling, the TaskFlow API, XCom, sensors, retries and the CLI.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">DAGs &amp; tasks</div>
+
+    <div class="card">
+      <h2><span class="ic">📅</span> Define a DAG</h2>
+      <pre><b>from</b> airflow <b>import</b> DAG
+<b>from</b> airflow.operators.bash <b>import</b> BashOperator
+<b>from</b> datetime <b>import</b> datetime
+
+<b>with</b> DAG(
+    dag_id=<span class="s">"daily_etl"</span>,
+    start_date=datetime(2026, 1, 1),
+    schedule=<span class="s">"0 6 * * *"</span>,     <i># cron: 06:00 daily</i>
+    catchup=False,
+    default_args={<span class="s">"retries"</span>: 2},
+    tags=[<span class="s">"etl"</span>],
+) <b>as</b> dag:
+    t1 = BashOperator(task_id=<span class="s">"extract"</span>,
+                      bash_command=<span class="s">"python extract.py"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧩</span> Operators</h2>
+      <pre>BashOperator(bash_command=<span class="s">"..."</span>)
+PythonOperator(python_callable=fn, op_kwargs={...})
+EmptyOperator(task_id=<span class="s">"start"</span>)   <i># placeholder</i>
+<i># providers:</i>
+SnowflakeOperator / BigQueryInsertJobOperator
+S3ToRedshiftOperator / SparkSubmitOperator
+KubernetesPodOperator   <i># run any container</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">➡️</span> Dependencies</h2>
+      <pre>t1 &gt;&gt; t2 &gt;&gt; t3            <i># chain</i>
+t1 &gt;&gt; [t2, t3]           <i># fan-out</i>
+[t2, t3] &gt;&gt; t4           <i># fan-in</i>
+t2.set_upstream(t1)      <i># same as t1 &gt;&gt; t2</i>
+
+<b>from</b> airflow.models.baseoperator <b>import</b> chain
+chain(t1, [t2, t3], t4)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🐍</span> TaskFlow API (modern)</h2>
+      <pre><b>from</b> airflow.decorators <b>import</b> dag, task
+
+<b>@dag</b>(schedule=<span class="s">"@daily"</span>, start_date=datetime(2026,1,1),
+     catchup=False)
+<b>def</b> pipeline():
+    <b>@task</b>
+    <b>def</b> extract(): <b>return</b> [1, 2, 3]
+    <b>@task</b>
+    <b>def</b> load(rows): print(sum(rows))
+    load(extract())      <i># deps inferred, XCom auto</i>
+
+pipeline()</pre>
+    </div>
+
+    <div class="sec">Scheduling &amp; data passing</div>
+
+    <div class="card">
+      <h2><span class="ic">⏰</span> Scheduling</h2>
+      <pre>schedule=<span class="s">"0 6 * * *"</span>   <i># cron</i>
+schedule=<span class="s">"@daily"</span>       <i># @hourly @weekly @monthly</i>
+schedule=timedelta(hours=6)
+schedule=None            <i># manual / triggered only</i>
+
+catchup=True   <i># backfill from start_date</i>
+max_active_runs=1   depends_on_past=True</pre>
+      <p class="note">A run for date <code>D</code> starts <b>after</b> the interval ends. Use <code>{{ ds }}</code> (the logical date), not <code>today()</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📦</span> XCom (pass data)</h2>
+      <pre><i># push</i>
+<b>def</b> extract(**ctx):
+    ctx[<span class="s">"ti"</span>].xcom_push(key=<span class="s">"n"</span>, value=42)
+<i># pull</i>
+<b>def</b> load(**ctx):
+    n = ctx[<span class="s">"ti"</span>].xcom_pull(key=<span class="s">"n"</span>, task_ids=<span class="s">"extract"</span>)</pre>
+      <p class="note">XCom is for <b>small</b> values (ids, counts, paths) — pass big data via storage (S3/GCS), not XCom.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🕵️</span> Sensors</h2>
+      <pre><b>from</b> airflow.providers.amazon.aws.sensors.s3 <b>import</b> S3KeySensor
+
+wait = S3KeySensor(
+    task_id=<span class="s">"wait_file"</span>,
+    bucket_key=<span class="s">"s3://bucket/dt={{ ds }}/_SUCCESS"</span>,
+    mode=<span class="s">"reschedule"</span>,   <i># free the worker slot while waiting</i>
+    poke_interval=60, timeout=3600)</pre>
+      <p class="note">Use <code>mode="reschedule"</code> for long waits so a sensor doesn't hog a worker.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔁</span> Retries &amp; SLAs</h2>
+      <pre>default_args = {
+  <span class="s">"retries"</span>: 3,
+  <span class="s">"retry_delay"</span>: timedelta(minutes=5),
+  <span class="s">"retry_exponential_backoff"</span>: True,
+  <span class="s">"sla"</span>: timedelta(hours=1),
+  <span class="s">"on_failure_callback"</span>: alert_fn,
+}
+trigger_rule=<span class="s">"all_done"</span>   <i># all_success|one_failed|none_failed</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔌</span> Connections &amp; variables</h2>
+      <pre><b>from</b> airflow.models <b>import</b> Variable
+Variable.get(<span class="s">"env"</span>, default_var=<span class="s">"dev"</span>)
+
+<b>from</b> airflow.hooks.base <b>import</b> BaseHook
+conn = BaseHook.get_connection(<span class="s">"my_db"</span>)
+
+<i># CLI</i>
+airflow variables set env prod
+airflow connections add my_db --conn-uri postgres://...</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🏷️</span> Templating (Jinja)</h2>
+      <pre>bash_command=<span class="s">"load --date {{ ds }}"</span>
+<i># {{ ds }}       logical date  YYYY-MM-DD
+   {{ ds_nodash }} 20260101
+   {{ prev_ds }}  previous interval
+   {{ params.x }} custom params
+   {{ ti }} {{ dag }} {{ macros.ds_add(ds,7) }}</i></pre>
+    </div>
+
+    <div class="sec">Operate</div>
+
+    <div class="card">
+      <h2><span class="ic">⌨️</span> CLI</h2>
+      <pre>airflow dags list      airflow tasks list dag_id
+airflow dags trigger daily_etl
+airflow dags backfill -s 2026-01-01 -e 2026-01-07 dag_id
+airflow tasks test dag_id task_id 2026-01-01   <i># run one task, no DB</i>
+airflow dags pause / unpause dag_id
+airflow db migrate</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Best practice</h2>
+      <ul>
+        <li>Tasks must be <b>idempotent</b> &amp; keyed by <code>{{ ds }}</code> → safe retries/backfills.</li>
+        <li>Keep DAG files light — no heavy work at parse time (top level).</li>
+        <li>One unit of work per task; make failures small &amp; re-runnable.</li>
+        <li>Airflow <b>orchestrates</b> (triggers &amp; monitors) — do the compute in Spark/warehouse/dbt.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Airflow Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

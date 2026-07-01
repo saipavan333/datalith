@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pandas Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🐼</span> pandas <span class="brand">Cheat Sheet</span></h1>
+      <p>DataFrame wrangling for DE — IO, selection, filtering, groupby, joins, reshaping, dates, strings and the SQL-to-pandas map. Vectorize; avoid row loops.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Load &amp; inspect</div>
+
+    <div class="card">
+      <h2><span class="ic">📥</span> Read &amp; write</h2>
+      <pre><b>import</b> pandas <b>as</b> pd
+
+df = pd.read_csv(<span class="s">"f.csv"</span>, dtype={<span class="s">"id"</span>:<span class="s">"int64"</span>},
+                 parse_dates=[<span class="s">"ts"</span>])
+df = pd.read_parquet(<span class="s">"f.parquet"</span>)      <i># columnar, fast</i>
+df = pd.read_sql(query, conn)
+df = pd.read_json(<span class="s">"f.json"</span>)
+
+df.to_parquet(<span class="s">"out.parquet"</span>, index=False)
+df.to_csv(<span class="s">"out.csv"</span>, index=False)</pre>
+      <p class="note">Prefer <b>Parquet</b> over CSV: typed, columnar, compressed, far faster.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔍</span> Inspect</h2>
+      <pre>df.head()  df.tail()  df.sample(5)
+df.shape          <i># (rows, cols)</i>
+df.info()         <i># dtypes + memory</i>
+df.describe()     <i># stats</i>
+df.dtypes         df.columns   df.index
+df[<span class="s">"c"</span>].nunique()  df[<span class="s">"c"</span>].value_counts()
+df.memory_usage(deep=True)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> Select columns &amp; rows</h2>
+      <pre>df[<span class="s">"col"</span>]              <i># Series</i>
+df[[<span class="s">"a"</span>,<span class="s">"b"</span>]]           <i># DataFrame</i>
+
+<i># label-based / position-based</i>
+df.loc[df.a &gt; 0, [<span class="s">"a"</span>,<span class="s">"b"</span>]]
+df.iloc[0:5, 0:2]
+
+df.set_index(<span class="s">"id"</span>)   df.reset_index()
+df.rename(columns={<span class="s">"a"</span>:<span class="s">"amt"</span>})</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> Filter (= WHERE)</h2>
+      <pre>df[df.amt &gt; 100]
+df[(df.amt &gt; 100) &amp; (df.dept == <span class="s">"eng"</span>)]   <i># &amp; | ~, wrap ()</i>
+df[df.dept.isin([<span class="s">"eng"</span>,<span class="s">"ops"</span>])]
+df[df.name.str.startswith(<span class="s">"A"</span>)]
+df.query(<span class="s">"amt &gt; 100 and dept == 'eng'"</span>)
+df[df.amt.between(10, 100)]</pre>
+    </div>
+
+    <div class="sec">Transform</div>
+
+    <div class="card">
+      <h2><span class="ic">➕</span> New columns</h2>
+      <pre>df[<span class="s">"net"</span>] = df.amt - df.fee          <i># vectorized</i>
+df = df.assign(net=<b>lambda</b> d: d.amt - d.fee)
+
+<b>import</b> numpy <b>as</b> np
+df[<span class="s">"tier"</span>] = np.where(df.amt &gt; 100, <span class="s">"big"</span>, <span class="s">"small"</span>)
+df[<span class="s">"g"</span>] = pd.cut(df.amt, [0,10,100,np.inf],
+               labels=[<span class="s">"s"</span>,<span class="s">"m"</span>,<span class="s">"l"</span>])
+df[<span class="s">"m"</span>] = df.dept.map({<span class="s">"eng"</span>:1})       <i># lookup</i></pre>
+      <p class="note">Vectorize with column ops / <code>np.where</code>; avoid <code>iterrows</code> / <code>apply(axis=1)</code> on big frames.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧹</span> Missing data &amp; dtypes</h2>
+      <pre>df.isna().sum()             <i># nulls per col</i>
+df.dropna(subset=[<span class="s">"amt"</span>])
+df.fillna({<span class="s">"amt"</span>: 0})
+df[<span class="s">"amt"</span>] = df.amt.fillna(df.amt.median())
+
+df[<span class="s">"id"</span>] = df.id.astype(<span class="s">"int64"</span>)
+pd.to_numeric(df.x, errors=<span class="s">"coerce"</span>)   <i># bad -&gt; NaN</i>
+df.drop_duplicates(subset=[<span class="s">"id"</span>], keep=<span class="s">"last"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">Σ</span> GroupBy (= GROUP BY)</h2>
+      <pre>df.groupby(<span class="s">"dept"</span>).amt.sum()
+df.groupby(<span class="s">"dept"</span>).agg(
+    n=(<span class="s">"id"</span>, <span class="s">"count"</span>),
+    total=(<span class="s">"amt"</span>, <span class="s">"sum"</span>),
+    avg=(<span class="s">"amt"</span>, <span class="s">"mean"</span>)).reset_index()
+
+df.groupby([<span class="s">"dept"</span>,<span class="s">"month"</span>]).amt.sum()
+df.groupby(<span class="s">"dept"</span>).amt.transform(<span class="s">"mean"</span>)  <i># broadcast back</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> Merge / join / concat</h2>
+      <pre>pd.merge(a, b, on=<span class="s">"id"</span>, how=<span class="s">"left"</span>)   <i># inner|left|right|outer</i>
+pd.merge(a, b, left_on=<span class="s">"aid"</span>, right_on=<span class="s">"id"</span>)
+a.join(b, on=<span class="s">"id"</span>)                    <i># on index</i>
+
+pd.concat([a, b])              <i># stack rows (UNION ALL)</i>
+pd.concat([a, b], axis=1)      <i># side-by-side</i>
+pd.merge(a, b, on=<span class="s">"id"</span>, indicator=True) <i># _merge col</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔄</span> Reshape: pivot &amp; melt</h2>
+      <pre><i># long -&gt; wide</i>
+df.pivot_table(index=<span class="s">"dept"</span>, columns=<span class="s">"month"</span>,
+    values=<span class="s">"amt"</span>, aggfunc=<span class="s">"sum"</span>, fill_value=0)
+
+<i># wide -&gt; long</i>
+df.melt(id_vars=[<span class="s">"dept"</span>], value_vars=[<span class="s">"jan"</span>,<span class="s">"feb"</span>],
+        var_name=<span class="s">"month"</span>, value_name=<span class="s">"amt"</span>)
+
+df.stack()   df.unstack()   df.explode(<span class="s">"tags"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔤</span> String &amp; datetime accessors</h2>
+      <pre>df.name.str.lower()  .str.strip()  .str.len()
+df.name.str.contains(<span class="s">"foo"</span>)
+df.name.str.replace(<span class="s">"a"</span>,<span class="s">"b"</span>, regex=False)
+df.email.str.split(<span class="s">"@"</span>).str[1]
+
+df.ts = pd.to_datetime(df.ts, utc=True)
+df.ts.dt.year  .dt.month  .dt.day_name()
+df.ts.dt.floor(<span class="s">"D"</span>)   df.ts.dt.tz_convert(<span class="s">"US/Eastern"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🪟</span> Sort, rank &amp; window</h2>
+      <pre>df.sort_values([<span class="s">"dept"</span>,<span class="s">"amt"</span>], ascending=[True,False])
+df.nlargest(10, <span class="s">"amt"</span>)   df.nsmallest(5, <span class="s">"amt"</span>)
+df[<span class="s">"rk"</span>] = df.groupby(<span class="s">"dept"</span>).amt.rank(<span class="s">"dense"</span>, ascending=False)
+
+<i># rolling / cumulative</i>
+df.amt.rolling(7).mean()
+df.groupby(<span class="s">"dept"</span>).amt.cumsum()
+df.amt.shift(1)               <i># LAG</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧭</span> SQL → pandas map</h2>
+      <ul>
+        <li><b>WHERE</b> → boolean mask <code>df[df.x&gt;0]</code></li>
+        <li><b>GROUP BY</b> → <code>df.groupby().agg()</code></li>
+        <li><b>JOIN</b> → <code>pd.merge()</code></li>
+        <li><b>ORDER BY</b> → <code>sort_values()</code></li>
+        <li><b>UNION ALL</b> → <code>pd.concat()</code></li>
+        <li><b>DISTINCT</b> → <code>drop_duplicates()</code></li>
+        <li><b>window</b> → <code>groupby().transform()/rank()/rolling()</code></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Performance &amp; scale</h2>
+      <ul>
+        <li>Set <b>dtypes</b> (category for low-cardinality strings) to cut memory.</li>
+        <li>Read only needed columns: <code>read_parquet(cols=[...])</code>.</li>
+        <li>Process in <b>chunks</b>: <code>pd.read_csv(..., chunksize=100_000)</code>.</li>
+        <li>Too big for RAM? Switch to <b>Polars</b>, <b>DuckDB</b>, or <b>Dask</b>.</li>
+        <li>Method-chain with <code>.pipe()</code> for readable transforms.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · pandas Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

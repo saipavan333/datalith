@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Docker Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🐳</span> Docker <span class="brand">Cheat Sheet</span></h1>
+      <p>Containers for data engineering — images, Dockerfiles, run flags, volumes, Compose, and cleanup. Package pipelines &amp; run them anywhere.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Images &amp; containers</div>
+
+    <div class="card">
+      <h2><span class="ic">📦</span> Core commands</h2>
+      <pre>docker images                 <i># list images</i>
+docker ps          docker ps -a   <i># running / all</i>
+docker pull python:3.12-slim
+docker run --rm hello-world
+docker stop &lt;id&gt;    docker rm &lt;id&gt;
+docker rmi &lt;image&gt;
+docker logs -f &lt;id&gt;
+docker exec -it &lt;id&gt; bash     <i># shell into container</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">▶️</span> docker run flags</h2>
+      <pre>docker run \
+  -d                     <i># detached</i>
+  --name etl             <i># name it</i>
+  -p 8080:80             <i># host:container port</i>
+  -v $(pwd)/data:/data   <i># bind mount</i>
+  -e DB_URL=<span class="s">"..."</span>        <i># env var</i>
+  --env-file .env
+  --rm                   <i># remove on exit</i>
+  myimage:tag  python job.py</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📝</span> Dockerfile</h2>
+      <pre><b>FROM</b> python:3.12-slim
+<b>WORKDIR</b> /app
+<b>COPY</b> requirements.txt .
+<b>RUN</b> pip install --no-cache-dir -r requirements.txt
+<b>COPY</b> . .
+<b>ENV</b> PYTHONUNBUFFERED=1
+<b>EXPOSE</b> 8000
+<b>ENTRYPOINT</b> [<span class="s">"python"</span>]
+<b>CMD</b> [<span class="s">"job.py"</span>]</pre>
+      <p class="note">Copy <b>requirements first</b>, install, then copy code — so the pip layer caches across code changes.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🏗️</span> Build &amp; tag</h2>
+      <pre>docker build -t myimg:1.0 .
+docker build -t myimg:1.0 -f Dockerfile.prod .
+docker tag myimg:1.0 registry/acct/myimg:1.0
+docker push registry/acct/myimg:1.0
+docker login registry.example.com
+docker history myimg:1.0     <i># layer sizes</i></pre>
+    </div>
+
+    <div class="sec">Compose &amp; ops</div>
+
+    <div class="card">
+      <h2><span class="ic">🧩</span> docker compose</h2>
+      <pre><i># compose.yaml</i>
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_PASSWORD: pw }
+    ports: [<span class="s">"5432:5432"</span>]
+    volumes: [<span class="s">"pgdata:/var/lib/postgresql/data"</span>]
+  app:
+    build: .
+    depends_on: [db]
+volumes: { pgdata: {} }</pre>
+      <pre>docker compose up -d     docker compose down
+docker compose logs -f app     docker compose ps</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💾</span> Volumes &amp; networks</h2>
+      <pre>docker volume ls        docker volume create data
+docker volume rm data
+<i># bind mount (host path) vs named volume (managed)</i>
+docker network ls
+docker network create mynet
+docker run --network mynet ...   <i># containers resolve by name</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧹</span> Cleanup</h2>
+      <pre>docker system df           <i># disk usage</i>
+docker container prune     <i># remove stopped</i>
+docker image prune -a      <i># unused images</i>
+docker volume prune
+docker system prune -a --volumes   <i># reclaim everything (!)</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Best practice</h2>
+      <ul>
+        <li>Use small bases (<code>-slim</code>, <code>alpine</code>) &amp; <b>multi-stage builds</b> to shrink images.</li>
+        <li>Add a <code>.dockerignore</code> (skip <code>.git</code>, data, venvs).</li>
+        <li>Pin versions (<code>python:3.12-slim</code>, not <code>latest</code>) for reproducibility.</li>
+        <li>One process per container; pass config via env; don't bake secrets into images.</li>
+        <li>Containers are ephemeral — persist data in <b>volumes</b>, not the container layer.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Docker Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

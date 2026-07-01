@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GCP CLI Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🟦</span> GCP CLI <span class="brand">Cheat Sheet</span></h1>
+      <p>Google Cloud from the terminal — gcloud, gsutil (GCS), bq (BigQuery), Pub/Sub, Dataflow, Dataproc, Composer and IAM.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Setup</div>
+
+    <div class="card">
+      <h2><span class="ic">🔑</span> gcloud config &amp; auth</h2>
+      <pre>gcloud init
+gcloud auth login
+gcloud auth application-default login   <i># for SDKs</i>
+gcloud config set project my-proj
+gcloud config set compute/region us-central1
+gcloud config list
+gcloud projects list</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎛️</span> Output &amp; filter</h2>
+      <pre>--format=json | table | value(...)
+--filter=<span class="s">"status=RUNNING"</span>
+gcloud compute instances list \
+  --format=<span class="s">"value(name,zone)"</span>
+gcloud &lt;svc&gt; --help</pre>
+    </div>
+
+    <div class="sec">Storage &amp; BigQuery</div>
+
+    <div class="card">
+      <h2><span class="ic">🪣</span> gsutil (GCS)</h2>
+      <pre>gsutil ls gs://bucket/prefix/
+gsutil cp file.csv gs://bucket/path/
+gsutil cp gs://bucket/f.csv .
+gsutil -m cp -r ./dir gs://bucket/dir/   <i># -m = parallel</i>
+gsutil rsync -r ./local gs://bucket/dir/
+gsutil rm -r gs://bucket/old/
+gsutil du -sh gs://bucket/
+<i># newer: gcloud storage cp ... (faster)</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> bq (BigQuery)</h2>
+      <pre>bq query --use_legacy_sql=false <span class="s">'SELECT 1'</span>
+bq ls mydata            bq show mydata.t
+bq mk --dataset US:mydata
+bq load --source_format=PARQUET \
+  mydata.t gs://bucket/*.parquet
+bq extract mydata.t gs://bucket/out-*.csv
+bq query --dry_run --use_legacy_sql=false <span class="s">'…'</span>   <i># cost check</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📨</span> Pub/Sub</h2>
+      <pre>gcloud pubsub topics create orders
+gcloud pubsub subscriptions create sub1 --topic orders
+gcloud pubsub topics publish orders --message <span class="s">'{"id":1}'</span>
+gcloud pubsub subscriptions pull sub1 --auto-ack --limit 10</pre>
+      <p class="note">A subscription only receives messages published <b>after</b> it exists (or within retention via seek).</p>
+    </div>
+
+    <div class="sec">Processing &amp; governance</div>
+
+    <div class="card">
+      <h2><span class="ic">🌊</span> Dataflow (Beam)</h2>
+      <pre>gcloud dataflow jobs list --status=active
+gcloud dataflow jobs run my-job \
+  --gcs-location gs://dataflow-templates/.../Word_Count \
+  --region us-central1 \
+  --parameters inputFile=gs://in,output=gs://out
+gcloud dataflow jobs cancel &lt;JOB_ID&gt;</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Dataproc (Spark)</h2>
+      <pre>gcloud dataproc clusters create c1 --region us-central1 \
+  --num-workers 3 --image-version 2.2
+gcloud dataproc jobs submit pyspark job.py \
+  --cluster c1 --region us-central1
+gcloud dataproc clusters delete c1 --region us-central1
+<i># Composer = managed Airflow</i>
+gcloud composer environments list --locations us-central1</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔐</span> IAM</h2>
+      <pre>gcloud iam service-accounts create etl-sa
+gcloud projects add-iam-policy-binding my-proj \
+  --member=<span class="s">"serviceAccount:etl-sa@my-proj.iam.gserviceaccount.com"</span> \
+  --role=<span class="s">"roles/bigquery.dataEditor"</span>
+gcloud iam service-accounts keys create key.json \
+  --iam-account=etl-sa@my-proj.iam.gserviceaccount.com</pre>
+      <p class="note">Prefer <b>workload identity</b> / ADC over downloading key files.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Tips</h2>
+      <ul>
+        <li><code>gcloud storage</code> is the newer, faster replacement for many <code>gsutil</code> commands.</li>
+        <li>Set project/region once in config to shorten every command.</li>
+        <li>Use <code>--dry_run</code> (bq) &amp; least-privilege service accounts for pipelines.</li>
+        <li><b>Dataplex</b> / Data Catalog handle governance &amp; metadata across GCS + BigQuery.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · GCP CLI Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AWS CLI Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🟧</span> AWS CLI <span class="brand">Cheat Sheet</span></h1>
+      <p>AWS from the command line for data engineers — S3, Glue, Athena, Redshift, Kinesis, Step Functions and IAM, plus output/query tricks.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Setup &amp; basics</div>
+
+    <div class="card">
+      <h2><span class="ic">🔑</span> Configure &amp; auth</h2>
+      <pre>aws configure                 <i># key, secret, region, format</i>
+aws configure --profile prod
+aws sts get-caller-identity   <i># who am I</i>
+export AWS_PROFILE=prod
+export AWS_REGION=us-east-1
+aws sso login --profile prod</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎛️</span> Output &amp; query</h2>
+      <pre>--output json | table | text
+--region us-east-1     --profile prod
+<i># JMESPath filtering</i>
+aws s3api list-buckets \
+  --query <span class="s">"Buckets[].Name"</span> --output text
+aws ec2 describe-instances \
+  --query <span class="s">"Reservations[].Instances[].InstanceId"</span></pre>
+    </div>
+
+    <div class="sec">Storage &amp; catalog</div>
+
+    <div class="card">
+      <h2><span class="ic">🪣</span> S3</h2>
+      <pre>aws s3 ls s3://bucket/prefix/
+aws s3 cp file.csv s3://bucket/path/
+aws s3 cp s3://bucket/f.csv .           <i># download</i>
+aws s3 sync ./local s3://bucket/dir/    <i># incremental</i>
+aws s3 sync s3://bucket/dir/ ./local --delete
+aws s3 rm s3://bucket/old/ --recursive
+aws s3 presign s3://bucket/f --expires-in 3600
+<i># low-level api</i>
+aws s3api list-objects-v2 --bucket b --prefix p/ \
+  --query <span class="s">"Contents[].Key"</span></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧰</span> Glue</h2>
+      <pre>aws glue start-job-run --job-name etl \
+  --arguments '{"--dt":"2026-01-01"}'
+aws glue get-job-run --job-name etl --run-id jr_..
+aws glue start-crawler --name my_crawler
+aws glue get-tables --database-name lake \
+  --query <span class="s">"TableList[].Name"</span>
+aws glue get-databases</pre>
+      <p class="note">Glue Data Catalog = the Hive metastore Athena/Redshift Spectrum/EMR all share.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> Athena</h2>
+      <pre>qid=$(aws athena start-query-execution \
+  --query-string <span class="s">"SELECT count(*) FROM db.t"</span> \
+  --result-configuration OutputLocation=s3://bucket/aq/ \
+  --query-execution-context Database=db \
+  --query <span class="s">"QueryExecutionId"</span> --output text)
+
+aws athena get-query-execution --query-execution-id $qid \
+  --query <span class="s">"QueryExecution.Status.State"</span>
+aws athena get-query-results --query-execution-id $qid</pre>
+    </div>
+
+    <div class="sec">Warehouse, streams &amp; orchestration</div>
+
+    <div class="card">
+      <h2><span class="ic">🟥</span> Redshift Data API</h2>
+      <pre>aws redshift-data execute-statement \
+  --cluster-identifier dw --database prod \
+  --db-user etl --sql <span class="s">"SELECT count(*) FROM sales"</span>
+aws redshift-data describe-statement --id &lt;id&gt;
+aws redshift-data get-statement-result --id &lt;id&gt;</pre>
+      <p class="note">Serverless SQL calls (no JDBC/driver) — handy from Lambda/Step Functions.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🌊</span> Kinesis</h2>
+      <pre>aws kinesis put-record --stream-name orders \
+  --partition-key c1 --data <span class="s">"$(echo '{...}' | base64)"</span>
+aws kinesis describe-stream-summary --stream-name orders
+aws firehose put-record --delivery-stream-name s3-ds \
+  --record Data=<span class="s">"..."</span></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> Step Functions &amp; EMR</h2>
+      <pre>aws stepfunctions start-execution \
+  --state-machine-arn arn:aws:states:... \
+  --input '{"dt":"2026-01-01"}'
+aws stepfunctions describe-execution --execution-arn ...
+
+aws emr create-cluster --release-label emr-7.0.0 \
+  --applications Name=Spark --instance-type m5.xlarge \
+  --instance-count 3 --use-default-roles</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔐</span> IAM &amp; Lambda</h2>
+      <pre>aws iam list-roles --query <span class="s">"Roles[].RoleName"</span>
+aws iam attach-role-policy --role-name r \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+aws lambda invoke --function-name f \
+  --payload '{"k":1}' out.json
+aws logs tail /aws/lambda/f --follow</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Tips</h2>
+      <ul>
+        <li>Use <b>named profiles</b> (<code>--profile</code>) &amp; SSO instead of long-lived keys.</li>
+        <li><code>--dry-run</code> where supported; <code>--no-paginate</code>/<code>--max-items</code> for big lists.</li>
+        <li>Prefer <b>roles</b> (instance/task roles) over embedding credentials in pipelines.</li>
+        <li><code>aws help</code> / <code>aws s3 help</code> — every service is self-documenting.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · AWS CLI Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

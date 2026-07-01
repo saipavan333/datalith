@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Redshift Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🟥</span> Redshift <span class="brand">Cheat Sheet</span></h1>
+      <p>Amazon Redshift — table design (distribution &amp; sort keys), COPY/UNLOAD, Spectrum, VACUUM/ANALYZE, WLM and the system tables that matter.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Architecture &amp; design</div>
+
+    <div class="card">
+      <h2><span class="ic">🟥</span> Architecture</h2>
+      <ul>
+        <li><b>Leader node</b> plans queries; <b>compute nodes</b> hold data in <b>slices</b> and run in parallel (MPP, columnar).</li>
+        <li><b>RA3</b> nodes = managed storage (scale compute &amp; storage separately); <b>Serverless</b> option too.</li>
+        <li>Performance hinges on <b>distribution</b> + <b>sort keys</b> (there are no secondary indexes).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧭</span> Distribution styles</h2>
+      <pre><b>CREATE TABLE</b> sales (
+  id BIGINT, cust_id BIGINT, dt DATE, amt DECIMAL(12,2))
+<b>DISTSTYLE KEY</b> <b>DISTKEY</b>(cust_id)   <i>-- co-locate joins on cust_id</i>
+<b>SORTKEY</b>(dt);</pre>
+      <ul>
+        <li><b>KEY</b> — rows with equal DISTKEY land on the same slice → fast joins/aggregations on that key.</li>
+        <li><b>ALL</b> — full copy on every node (small dimensions).</li>
+        <li><b>EVEN</b> — round-robin (no clear join key).</li>
+        <li><b>AUTO</b> — Redshift decides (default).</li>
+      </ul>
+      <p class="note">Pick DISTKEY = the big join column; avoid skew (a hot key overloads one slice).</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">↕️</span> Sort keys &amp; encoding</h2>
+      <pre><b>SORTKEY</b>(dt)                <i>-- compound (default)</i>
+<b>INTERLEAVED SORTKEY</b>(a, b)   <i>-- equal weight, multi-filter</i>
+
+<i>-- column compression (usually AUTO/ANALYZE picks)</i>
+amt DECIMAL(12,2) <b>ENCODE</b> az64,
+name VARCHAR(64)  <b>ENCODE</b> zstd</pre>
+      <p class="note">Sort key = the column you filter on by range (usually a date) → lets Redshift skip blocks via zone maps.</p>
+    </div>
+
+    <div class="sec">Load &amp; unload</div>
+
+    <div class="card">
+      <h2><span class="ic">📥</span> COPY from S3</h2>
+      <pre><b>COPY</b> sales
+<b>FROM</b> <span class="s">'s3://bucket/sales/'</span>
+<b>IAM_ROLE</b> <span class="s">'arn:aws:iam::123:role/redshift'</span>
+<b>FORMAT AS PARQUET</b>;
+
+<i>-- CSV variant</i>
+<b>COPY</b> sales <b>FROM</b> <span class="s">'s3://bucket/f.csv'</span>
+<b>IAM_ROLE</b> <span class="s">'…'</span> <b>CSV IGNOREHEADER</b> 1 <b>GZIP</b>
+<b>DATEFORMAT</b> <span class="s">'auto'</span>;</pre>
+      <p class="note"><b>COPY</b> loads in parallel across slices — far faster than INSERTs. Split files into multiples of the slice count.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📤</span> UNLOAD to S3</h2>
+      <pre><b>UNLOAD</b> (<span class="s">'SELECT * FROM sales WHERE dt = ''2026-01-01'''</span>)
+<b>TO</b> <span class="s">'s3://bucket/export/sales_'</span>
+<b>IAM_ROLE</b> <span class="s">'arn:aws:iam::123:role/redshift'</span>
+<b>FORMAT PARQUET</b>
+<b>PARTITION BY</b> (dt)
+<b>ALLOWOVERWRITE</b>;</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔭</span> Spectrum (query S3)</h2>
+      <pre><b>CREATE EXTERNAL SCHEMA</b> spectrum
+<b>FROM DATA CATALOG</b> DATABASE <span class="s">'lake'</span>
+<b>IAM_ROLE</b> <span class="s">'arn:aws:iam::123:role/redshift'</span>;
+
+<b>CREATE EXTERNAL TABLE</b> spectrum.events (
+  id BIGINT, ts TIMESTAMP)
+<b>PARTITIONED BY</b> (dt DATE)
+<b>STORED AS PARQUET</b> <b>LOCATION</b> <span class="s">'s3://bucket/events/'</span>;
+<b>ALTER TABLE</b> spectrum.events <b>ADD PARTITION</b>(dt=<span class="s">'2026-01-01'</span>)
+  <b>LOCATION</b> <span class="s">'s3://bucket/events/dt=2026-01-01/'</span>;</pre>
+      <p class="note">Join warehouse tables to open S3 data without loading it (bills per TB scanned).</p>
+    </div>
+
+    <div class="sec">Operate &amp; tune</div>
+
+    <div class="card">
+      <h2><span class="ic">🧹</span> VACUUM &amp; ANALYZE</h2>
+      <pre><b>VACUUM</b> sales;             <i>-- reclaim + re-sort after big deletes/loads</i>
+<b>VACUUM DELETE ONLY</b> sales;  <i>-- just reclaim space</i>
+<b>VACUUM SORT ONLY</b> sales;
+<b>ANALYZE</b> sales;            <i>-- refresh planner stats</i></pre>
+      <p class="note">Deletes/updates leave dead rows &amp; unsorted regions; VACUUM restores them. ANALYZE keeps the optimizer accurate.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🚦</span> Workload (WLM)</h2>
+      <ul>
+        <li><b>WLM</b> = query queues with memory/concurrency limits; prefer <b>Auto WLM</b>.</li>
+        <li><b>Concurrency Scaling</b> adds transient clusters for bursts of reads.</li>
+        <li><b>Short Query Acceleration</b> fast-lanes small queries.</li>
+        <li>Set <code>query_group</code> / QMR rules to isolate ETL from BI.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔍</span> System tables</h2>
+      <pre><i>-- recent queries</i>
+<b>SELECT</b> query, elapsed, substring <b>FROM</b> <b>SVL_QLOG</b>
+<b>ORDER BY</b> starttime <b>DESC</b> <b>LIMIT</b> 20;
+
+<b>STL_LOAD_ERRORS</b>       <i>-- why a COPY failed</i>
+<b>SVV_TABLE_INFO</b>        <i>-- skew, unsorted %, size</i>
+<b>STV_WLM_QUERY_STATE</b>   <i>-- running queries</i>
+<b>SVL_QUERY_REPORT</b>      <i>-- per-step detail</i>
+<b>PG_TABLE_DEF</b>          <i>-- columns / distkey / sortkey</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> Upsert pattern</h2>
+      <pre><b>BEGIN</b>;
+<b>CREATE TEMP TABLE</b> stage (<b>LIKE</b> sales);
+<b>COPY</b> stage <b>FROM</b> <span class="s">'s3://…'</span> <b>IAM_ROLE</b> <span class="s">'…'</span>;
+<b>DELETE FROM</b> sales <b>USING</b> stage <b>WHERE</b> sales.id = stage.id;
+<b>INSERT INTO</b> sales <b>SELECT</b> * <b>FROM</b> stage;
+<b>COMMIT</b>;   <i>-- MERGE is also supported on newer clusters</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Tuning checklist</h2>
+      <ul>
+        <li>DISTKEY on the largest join column; DISTSTYLE ALL for small dims.</li>
+        <li>SORTKEY on the range-filter column (date); keep tables VACUUMed.</li>
+        <li>Load with <b>COPY</b> from many gzip/Parquet files; avoid singleton INSERTs.</li>
+        <li>Check <code>SVV_TABLE_INFO</code> for skew &amp; unsorted %; compress with ENCODE.</li>
+        <li>Offload cold/raw data to S3 + query via <b>Spectrum</b>.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Redshift Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

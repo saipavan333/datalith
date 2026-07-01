@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cheat Sheets — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">◆</span> Datalith <span class="brand">Cheat Sheets</span></h1>
+      <p>Professional, printable syntax references for every core data-engineering technology. Open one, then print or save as PDF (Ctrl/Cmd&nbsp;+&nbsp;P).</p>
+    </div>
+    <div class="toolbar no-print">
+      <a class="btn" href="../../index.html">← Back to app</a>
+    </div>
+  </header>
+
+  <div class="hub-sec">Languages &amp; core tools</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="sql.html">
+      <div class="ic">🗄️</div><h3>SQL</h3>
+      <p>Querying, joins, window functions, CTEs, DDL/DML, MERGE and tuning.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="python.html">
+      <div class="ic">🐍</div><h3>Python</h3>
+      <p>Collections, comprehensions, generators, typing, dates, JSON, ingestion.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="pandas.html">
+      <div class="ic">🐼</div><h3>pandas</h3>
+      <p>DataFrame IO, filtering, groupby, joins, reshaping and the SQL→pandas map.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="bash.html">
+      <div class="ic">🐚</div><h3>Bash / Unix</h3>
+      <p>Files, pipes, grep/awk/sed, robust scripting, permissions, cron.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="git.html">
+      <div class="ic">🔧</div><h3>Git</h3>
+      <p>Commit, branch, merge vs rebase, remotes, undo and conflict resolution.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="regex.html">
+      <div class="ic">✳️</div><h3>Regex</h3>
+      <p>Classes, quantifiers, groups, lookaround, and use in Python / grep / SQL.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+  </div>
+
+  <div class="hub-sec">Warehouses &amp; platforms</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="snowflake.html">
+      <div class="ic">❄️</div><h3>Snowflake</h3>
+      <p>Warehouses, COPY, Snowpipe, Streams &amp; Tasks, Time Travel, RBAC, VARIANT.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="databricks.html">
+      <div class="ic">🧱</div><h3>Databricks</h3>
+      <p>PySpark, Delta Lake, MERGE, Auto Loader, Structured Streaming, Unity Catalog.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="bigquery.html">
+      <div class="ic">🟦</div><h3>BigQuery</h3>
+      <p>Partition/cluster, arrays &amp; structs, MERGE, the bq CLI, cost controls, BQML.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="redshift.html">
+      <div class="ic">🟥</div><h3>Redshift</h3>
+      <p>Distribution &amp; sort keys, COPY/UNLOAD, Spectrum, VACUUM, WLM, system tables.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+  </div>
+
+  <div class="hub-sec">Processing &amp; pipelines</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="pyspark.html">
+      <div class="ic">⚡</div><h3>PySpark</h3>
+      <p>DataFrame API, joins, windows, UDFs, Spark SQL and shuffle/skew tuning.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="dbt.html">
+      <div class="ic">🔶</div><h3>dbt</h3>
+      <p>Models, ref/source, materializations, tests, snapshots, incremental, macros.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="airflow.html">
+      <div class="ic">🌀</div><h3>Airflow</h3>
+      <p>DAGs, operators, dependencies, scheduling, TaskFlow, XCom, sensors.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="kafka.html">
+      <div class="ic">📨</div><h3>Kafka</h3>
+      <p>Topics/partitions, consumer groups, CLI, producer/consumer, exactly-once.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="tableformats.html">
+      <div class="ic">🔺</div><h3>Delta &amp; Iceberg</h3>
+      <p>ACID table formats — MERGE, time travel, schema evolution, maintenance.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+  </div>
+
+  <div class="hub-sec">Cloud CLIs &amp; infra</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="aws.html">
+      <div class="ic">🟧</div><h3>AWS CLI</h3>
+      <p>S3, Glue, Athena, Redshift, Kinesis, Step Functions and IAM from the CLI.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="gcloud.html">
+      <div class="ic">☁️</div><h3>GCP CLI</h3>
+      <p>gcloud, gsutil, bq, Pub/Sub, Dataflow, Dataproc and IAM.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="docker.html">
+      <div class="ic">🐳</div><h3>Docker</h3>
+      <p>Images, Dockerfiles, run flags, volumes, Compose and cleanup.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+    <a class="hub-card" href="terraform.html">
+      <div class="ic">🏗️</div><h3>Terraform</h3>
+      <p>HCL, plan/apply, variables, remote state, modules and meta-arguments.</p>
+      <div class="meta">SYNTAX REFERENCE →</div>
+    </a>
+  </div>
+
+  <div class="hub-sec">Interview</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="../cheatsheet.html">
+      <div class="ic">🎯</div><h3>DE Interview Cheat Sheet</h3>
+      <p>The whole stack across all 26 tracks, distilled to the highest-yield facts + rapid-fire Q&amp;A.</p>
+      <div class="meta">INTERVIEW PREP →</div>
+    </a>
+  </div>
+
+  <footer>Datalith · Cheat Sheets · every page prints cleanly to one or two pages (Ctrl/Cmd + P)</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Git Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🔧</span> Git <span class="brand">Cheat Sheet</span></h1>
+      <p>Version control for data &amp; code — the everyday commands plus branching, remotes, undo, and how to dig yourself out of trouble.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Setup &amp; basics</div>
+
+    <div class="card">
+      <h2><span class="ic">⚙️</span> Config &amp; start</h2>
+      <pre>git config --global user.name  <span class="s">"Ada"</span>
+git config --global user.email <span class="s">"ada@x.com"</span>
+git config --global init.defaultBranch main
+
+git init                <i># new repo</i>
+git clone URL           <i># copy remote</i>
+git clone URL dir</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💾</span> Stage &amp; commit</h2>
+      <pre>git status              <i># what changed</i>
+git add file.py         <i># stage one</i>
+git add -A              <i># stage everything</i>
+git add -p              <i># stage hunks interactively</i>
+git commit -m <span class="s">"feat: add loader"</span>
+git commit -am <span class="s">"msg"</span>     <i># add tracked + commit</i>
+git commit --amend      <i># fix last commit</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔬</span> Inspect history</h2>
+      <pre>git log --oneline --graph --all
+git log -p file         <i># commits + diffs for a file</i>
+git show HEAD           <i># last commit detail</i>
+git diff                <i># unstaged changes</i>
+git diff --staged       <i># staged changes</i>
+git blame file          <i># who changed each line</i></pre>
+    </div>
+
+    <div class="sec">Branching &amp; merging</div>
+
+    <div class="card">
+      <h2><span class="ic">🌿</span> Branches</h2>
+      <pre>git branch                 <i># list</i>
+git switch -c feature      <i># create + switch (new)</i>
+git checkout -b feature    <i># create + switch (classic)</i>
+git switch main
+git branch -d feature      <i># delete (merged)</i>
+git branch -M main         <i># rename current -&gt; main</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> Merge vs rebase</h2>
+      <pre>git merge feature       <i># merge into current branch</i>
+<i># linear history: replay commits on top</i>
+git switch feature
+git rebase main
+<i># interactive: squash/reorder/edit</i>
+git rebase -i HEAD~3</pre>
+      <p class="note"><b>Merge</b> keeps history as-is (merge commit). <b>Rebase</b> rewrites for a linear log — don't rebase shared/pushed branches.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">☁️</span> Remotes</h2>
+      <pre>git remote -v
+git remote add origin URL
+git remote set-url origin URL   <i># change remote</i>
+git push -u origin main         <i># push + track</i>
+git push       git pull         <i># pull = fetch + merge</i>
+git fetch       <i># download, don't merge</i>
+git pull --rebase   <i># linear pull</i></pre>
+    </div>
+
+    <div class="sec">Fixing things</div>
+
+    <div class="card">
+      <h2><span class="ic">📦</span> Stash</h2>
+      <pre>git stash              <i># shelve dirty changes</i>
+git stash -u           <i># include untracked</i>
+git stash list
+git stash pop          <i># reapply + drop</i>
+git stash apply        <i># reapply, keep</i>
+git stash drop</pre>
+      <p class="note">Use before switching branches with uncommitted work.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">↩️</span> Undo (safe → nuclear)</h2>
+      <pre>git restore file          <i># discard unstaged edits</i>
+git restore --staged file <i># unstage (keep edits)</i>
+git revert HEAD           <i># new commit that undoes (safe)</i>
+git reset --soft HEAD~1   <i># undo commit, keep staged</i>
+git reset HEAD~1          <i># undo commit, keep edits</i>
+git reset --hard HEAD~1   <i># discard commit + edits (!)</i></pre>
+      <p class="note"><b>revert</b> = safe on shared branches. <b>reset --hard</b> destroys work — be sure.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🍒</span> Cherry-pick &amp; tags</h2>
+      <pre>git cherry-pick a1b2c3    <i># apply one commit here</i>
+git tag v1.0.0            <i># lightweight tag</i>
+git tag -a v1.0.0 -m <span class="s">"release"</span>
+git push origin --tags</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚔️</span> Merge conflicts</h2>
+      <pre><i># after a conflicting merge/rebase:</i>
+git status                 <i># see conflicted files</i>
+<i># edit files, remove markers:</i>
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD  … ======= … &gt;&gt;&gt;&gt;&gt;&gt;&gt; feature
+git add resolved_file
+git commit          <i># (merge)</i>
+git rebase --continue   <i># (rebase)</i>
+git merge --abort   /   git rebase --abort</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🚫</span> .gitignore &amp; recovery</h2>
+      <pre><i># .gitignore</i>
+__pycache__/
+*.pyc
+.env
+.venv/
+data/*.csv
+
+git rm --cached secret.env  <i># stop tracking, keep file</i>
+git reflog                  <i># find "lost" commits</i>
+git reset --hard HEAD@{2}   <i># jump back to a reflog state</i></pre>
+      <p class="note">Committed a secret? Rotate it — history is public even after deletion.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔁</span> Daily flow</h2>
+      <pre>git switch -c feat/x
+<i># …edit…</i>
+git add -A &amp;&amp; git commit -m <span class="s">"feat: x"</span>
+git push -u origin feat/x
+<i># open PR, review, merge</i>
+git switch main &amp;&amp; git pull</pre>
+    </div>
+
+  </div>
+  <footer>Datalith · Git Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

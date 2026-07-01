@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SQL Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🗄️</span> SQL <span class="brand">Cheat Sheet</span></h1>
+      <p>ANSI SQL for data engineering — querying, joins, windows, CTEs, DDL/DML, MERGE and tuning. Dialect notes where they differ.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Querying</div>
+
+    <div class="card">
+      <h2><span class="ic">▶</span> Query basics &amp; clause order</h2>
+      <pre><b>SELECT</b> col, other AS alias
+<b>FROM</b> table
+<b>WHERE</b>  pred
+<b>GROUP BY</b> col
+<b>HAVING</b> agg_pred
+<b>ORDER BY</b> col <b>DESC</b>
+<b>LIMIT</b> 100 <b>OFFSET</b> 20;</pre>
+      <p class="note"><b>Logical run order:</b> FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT. So a SELECT alias can't be used in WHERE.</p>
+      <pre><b>SELECT DISTINCT</b> country <i>-- unique rows</i>
+<b>FROM</b> customers;</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> Filtering (WHERE)</h2>
+      <pre><i>-- operators</i>
+=  &lt;&gt;  &lt;  &lt;=  &gt;  &gt;=
+<b>AND</b>  <b>OR</b>  <b>NOT</b>
+x <b>BETWEEN</b> 1 <b>AND</b> 10
+x <b>IN</b> (<span class="s">'a'</span>,<span class="s">'b'</span>)
+name <b>LIKE</b> <span class="s">'A%'</span>   <i>-- % = any, _ = one</i>
+name <b>ILIKE</b> <span class="s">'a%'</span>  <i>-- case-insensitive (PG)</i></pre>
+      <pre><i>-- NULL is unknown: use IS</i>
+col <b>IS NULL</b>   /   col <b>IS NOT NULL</b>
+<b>COALESCE</b>(col, 0)   <i>-- first non-null</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> Joins</h2>
+      <pre><b>SELECT</b> *
+<b>FROM</b> a
+<b>JOIN</b>       b <b>ON</b> a.id = b.a_id  <i>-- INNER</i>
+<b>LEFT JOIN</b>  b <b>ON</b> a.id = b.a_id  <i>-- +unmatched left</i>
+<b>RIGHT JOIN</b> b <b>ON</b> ...
+<b>FULL JOIN</b>  b <b>ON</b> ...
+<b>CROSS JOIN</b> b               <i>-- cartesian</i>
+<b>JOIN</b> b <b>USING</b> (id)          <i>-- same col name</i></pre>
+      <pre><i>-- anti-join: rows in a with no b</i>
+<b>FROM</b> a <b>LEFT JOIN</b> b <b>ON</b> a.id=b.a_id
+<b>WHERE</b> b.a_id <b>IS NULL</b>;</pre>
+      <p class="note">Filter the right table in <b>ON</b>, not WHERE, or a LEFT JOIN silently becomes INNER. Non-unique join key <b>multiplies rows</b>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">Σ</span> Aggregation &amp; GROUP BY</h2>
+      <pre><b>SELECT</b> dept,
+       <b>COUNT</b>(*)          n,
+       <b>COUNT</b>(<b>DISTINCT</b> uid) users,
+       <b>SUM</b>(amt), <b>AVG</b>(amt),
+       <b>MIN</b>(ts), <b>MAX</b>(ts)
+<b>FROM</b> orders
+<b>GROUP BY</b> dept
+<b>HAVING</b> <b>SUM</b>(amt) &gt; 1000;</pre>
+      <p class="note"><code>COUNT(*)</code> counts rows; <code>COUNT(col)</code> skips NULLs. Subtotals: <code>GROUP BY ROLLUP(a,b)</code> / <code>CUBE</code> / <code>GROUPING SETS</code>.</p>
+    </div>
+
+    <div class="sec">Analytic SQL</div>
+
+    <div class="card">
+      <h2><span class="ic">🪟</span> Window functions</h2>
+      <pre>func() <b>OVER</b> (
+   <b>PARTITION BY</b> dept
+   <b>ORDER BY</b> salary <b>DESC</b>)</pre>
+      <pre><b>ROW_NUMBER</b>()  <i>-- 1,2,3 unique</i>
+<b>RANK</b>()        <i>-- 1,2,2,4 (gaps)</i>
+<b>DENSE_RANK</b>()  <i>-- 1,2,2,3</i>
+<b>NTILE</b>(4)      <i>-- quartiles</i>
+<b>LAG</b>(x,1) / <b>LEAD</b>(x,1)  <i>-- prev/next</i>
+<b>SUM</b>(x) <b>OVER</b>(<b>ORDER BY</b> d)  <i>-- running total</i></pre>
+      <p class="note"><b>Top-N per group:</b> ROW_NUMBER() in a subquery, then <code>WHERE rn &lt;= N</code>. <b>Dedup:</b> keep <code>rn = 1</code> ordered by recency.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🖼️</span> Window frames</h2>
+      <pre><b>AVG</b>(x) <b>OVER</b>(
+  <b>ORDER BY</b> d
+  <b>ROWS BETWEEN</b> 6 <b>PRECEDING</b>
+        <b>AND CURRENT ROW</b>)   <i>-- 7-day avg</i>
+
+<b>RANGE BETWEEN UNBOUNDED PRECEDING</b>
+      <b>AND CURRENT ROW</b>       <i>-- cumulative</i></pre>
+      <p class="note">Default frame with ORDER BY is <code>RANGE … UNBOUNDED PRECEDING</code>. Use <code>ROWS</code> for exact row counts.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧩</span> CTEs &amp; subqueries</h2>
+      <pre><b>WITH</b> recent <b>AS</b> (
+  <b>SELECT</b> * <b>FROM</b> orders
+  <b>WHERE</b> ts &gt; <b>CURRENT_DATE</b> - 30
+)
+<b>SELECT</b> * <b>FROM</b> recent;</pre>
+      <pre><i>-- correlated + EXISTS</i>
+<b>SELECT</b> * <b>FROM</b> c
+<b>WHERE EXISTS</b> (
+  <b>SELECT</b> 1 <b>FROM</b> o <b>WHERE</b> o.cid=c.id);</pre>
+      <pre><i>-- recursive (hierarchies)</i>
+<b>WITH RECURSIVE</b> t <b>AS</b> (
+  <b>SELECT</b> id,mgr <b>FROM</b> emp <b>WHERE</b> mgr <b>IS NULL</b>
+  <b>UNION ALL</b>
+  <b>SELECT</b> e.id,e.mgr <b>FROM</b> emp e <b>JOIN</b> t <b>ON</b> e.mgr=t.id)
+<b>SELECT</b> * <b>FROM</b> t;</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">∪</span> Set ops &amp; CASE</h2>
+      <pre>q1 <b>UNION</b> q2       <i>-- distinct</i>
+q1 <b>UNION ALL</b> q2   <i>-- keep dups (faster)</i>
+q1 <b>INTERSECT</b> q2
+q1 <b>EXCEPT</b> q2      <i>-- minus</i></pre>
+      <pre><b>CASE WHEN</b> amt &gt; 100 <b>THEN</b> <span class="s">'big'</span>
+     <b>WHEN</b> amt &gt; 10  <b>THEN</b> <span class="s">'mid'</span>
+     <b>ELSE</b> <span class="s">'small'</span> <b>END</b> AS bucket
+
+<b>NULLIF</b>(a,b)   <i>-- NULL if a=b (safe divide)</i></pre>
+    </div>
+
+    <div class="sec">Functions</div>
+
+    <div class="card">
+      <h2><span class="ic">🔤</span> String functions</h2>
+      <pre><b>LENGTH</b>(s)              <b>UPPER</b>/<b>LOWER</b>(s)
+<b>TRIM</b>(s)  <b>LTRIM</b>/<b>RTRIM</b>(s)
+<b>SUBSTRING</b>(s,1,4)        <b>LEFT</b>/<b>RIGHT</b>(s,3)
+<b>CONCAT</b>(a,b)  /  a <b>||</b> b   <i>-- concat</i>
+<b>REPLACE</b>(s,<span class="s">'a'</span>,<span class="s">'b'</span>)
+<b>SPLIT_PART</b>(s,<span class="s">','</span>,1)
+<b>POSITION</b>(<span class="s">'x'</span> <b>IN</b> s)
+s <b>LIKE</b> <span class="s">'%foo%'</span>   <b>REGEXP_REPLACE</b>(s,p,r)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📅</span> Date &amp; time</h2>
+      <pre><b>CURRENT_DATE</b>   <b>CURRENT_TIMESTAMP</b>   <b>NOW</b>()
+<b>DATE_TRUNC</b>(<span class="s">'month'</span>, ts)
+<b>DATE_PART</b>(<span class="s">'year'</span>, ts) / <b>EXTRACT</b>(<b>YEAR FROM</b> ts)
+ts + <b>INTERVAL</b> <span class="s">'7 days'</span>
+<b>DATEDIFF</b>(<span class="s">'day'</span>, a, b)   <i>-- dialect varies</i>
+<b>DATE_ADD</b> / <b>DATE_SUB</b>(d, <b>INTERVAL</b> 1 <b>MONTH</b>)</pre>
+      <p class="note">Store timestamps in <b>UTC</b>; convert only for display. Bucket by <code>DATE_TRUNC</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">#</span> Numbers &amp; casting</h2>
+      <pre><b>ROUND</b>(x,2)  <b>CEIL</b>(x)  <b>FLOOR</b>(x)  <b>ABS</b>(x)
+<b>MOD</b>(a,b)  /  a % b
+a::<b>numeric</b>            <i>-- PG cast</i>
+<b>CAST</b>(a <b>AS</b> <b>DECIMAL</b>(10,2))  <i>-- ANSI cast</i>
+<b>TRY_CAST</b>(s <b>AS</b> <b>INT</b>)   <i>-- NULL on fail</i>
+1.0 * a / b            <i>-- force float divide</i></pre>
+    </div>
+
+    <div class="sec">Defining &amp; changing data</div>
+
+    <div class="card">
+      <h2><span class="ic">🏗️</span> DDL — tables &amp; constraints</h2>
+      <pre><b>CREATE TABLE</b> users (
+  id      <b>BIGINT</b> <b>PRIMARY KEY</b>,
+  email   <b>VARCHAR</b>(255) <b>UNIQUE NOT NULL</b>,
+  dept_id <b>INT REFERENCES</b> dept(id),
+  status  <b>VARCHAR</b>(20) <b>DEFAULT</b> <span class="s">'active'</span>,
+  amt     <b>NUMERIC</b>(12,2) <b>CHECK</b>(amt &gt;= 0),
+  created <b>TIMESTAMP DEFAULT CURRENT_TIMESTAMP</b>);
+
+<b>ALTER TABLE</b> users <b>ADD COLUMN</b> phone <b>TEXT</b>;
+<b>ALTER TABLE</b> users <b>DROP COLUMN</b> phone;
+<b>DROP TABLE IF EXISTS</b> users;
+<b>CREATE INDEX</b> idx_users_dept <b>ON</b> users(dept_id);
+<b>CREATE VIEW</b> v <b>AS SELECT</b> ...;</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">✏️</span> DML — insert / update / delete</h2>
+      <pre><b>INSERT INTO</b> t (a,b) <b>VALUES</b> (1,<span class="s">'x'</span>),(2,<span class="s">'y'</span>);
+<b>INSERT INTO</b> t <b>SELECT</b> * <b>FROM</b> staging;
+
+<b>UPDATE</b> t <b>SET</b> b=<span class="s">'z'</span> <b>WHERE</b> a=1;
+
+<b>DELETE FROM</b> t <b>WHERE</b> a=1;
+<b>TRUNCATE TABLE</b> t;   <i>-- fast, no WHERE</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> MERGE / upsert (idempotent)</h2>
+      <pre><b>MERGE INTO</b> target t
+<b>USING</b> source s <b>ON</b> t.id = s.id
+<b>WHEN MATCHED THEN UPDATE SET</b> t.v = s.v
+<b>WHEN NOT MATCHED THEN INSERT</b> (id,v)
+     <b>VALUES</b> (s.id, s.v);</pre>
+      <pre><i>-- Postgres flavor</i>
+<b>INSERT INTO</b> t (id,v) <b>VALUES</b> (1,<span class="s">'a'</span>)
+<b>ON CONFLICT</b> (id) <b>DO UPDATE SET</b> v = <b>EXCLUDED</b>.v;</pre>
+      <p class="note">MERGE / upsert = the idempotency workhorse: re-running the load yields the same result.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔒</span> Transactions</h2>
+      <pre><b>BEGIN</b>;
+  <b>UPDATE</b> acct <b>SET</b> bal=bal-100 <b>WHERE</b> id=1;
+  <b>UPDATE</b> acct <b>SET</b> bal=bal+100 <b>WHERE</b> id=2;
+<b>COMMIT</b>;   <i>-- or ROLLBACK;</i></pre>
+      <p class="note"><b>ACID.</b> Isolation levels: READ COMMITTED → REPEATABLE READ → SERIALIZABLE (fewer anomalies, more locking).</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Performance</h2>
+      <ul>
+        <li><code>EXPLAIN</code> / <code>EXPLAIN ANALYZE</code> — read the plan; watch <b>seq scan</b> vs <b>index scan</b>.</li>
+        <li><b>Index</b> columns you filter/join/sort on. Don't wrap them in functions in WHERE (kills the index) — use ranges.</li>
+        <li>Select only needed columns; filter early; <b>partition</b> big tables &amp; prune by date.</li>
+        <li>Prefer <code>UNION ALL</code>, <code>EXISTS</code> over <code>IN (subquery)</code> on big sets; watch join-key grain before SUM.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · SQL Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PySpark Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">⚡</span> PySpark <span class="brand">Cheat Sheet</span></h1>
+      <p>Apache Spark with Python — DataFrame API, columns &amp; functions, joins, windows, UDFs, Spark SQL, writing partitioned data and tuning shuffles.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Setup &amp; IO</div>
+
+    <div class="card">
+      <h2><span class="ic">🚀</span> SparkSession</h2>
+      <pre><b>from</b> pyspark.sql <b>import</b> SparkSession, functions <b>as</b> F, Window <b>as</b> W
+
+spark = (SparkSession.builder
+    .appName(<span class="s">"job"</span>)
+    .config(<span class="s">"spark.sql.shuffle.partitions"</span>, <span class="s">"200"</span>)
+    .getOrCreate())
+spark.sparkContext.setLogLevel(<span class="s">"WARN"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📥</span> Read &amp; write</h2>
+      <pre>df = spark.read.parquet(<span class="s">"/path/*.parquet"</span>)
+df = (spark.read.option(<span class="s">"header"</span>, True)
+        .option(<span class="s">"inferSchema"</span>, True).csv(<span class="s">"f.csv"</span>))
+df = spark.read.json(<span class="s">"f.json"</span>)
+df = spark.read.format(<span class="s">"delta"</span>).load(path)
+
+(df.write.mode(<span class="s">"overwrite"</span>)          <i># append|overwrite|ignore|error</i>
+   .partitionBy(<span class="s">"dt"</span>)
+   .parquet(<span class="s">"/out"</span>))
+df.write.saveAsTable(<span class="s">"db.t"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔍</span> Inspect</h2>
+      <pre>df.show(5, truncate=False)
+df.printSchema()   df.columns   df.dtypes
+df.count()         df.explain(True)   <i># physical plan</i>
+df.select(<span class="s">"a"</span>).distinct().count()
+df.summary().show()</pre>
+    </div>
+
+    <div class="sec">Transform</div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> Select, filter, columns</h2>
+      <pre>df.select(<span class="s">"a"</span>, <span class="s">"b"</span>)   df.drop(<span class="s">"c"</span>)
+df.filter(F.col(<span class="s">"amt"</span>) &gt; 100)          <i># .where() = alias</i>
+df.filter((F.col(<span class="s">"amt"</span>) &gt; 100) &amp; (F.col(<span class="s">"dept"</span>) == <span class="s">"eng"</span>))
+df.withColumn(<span class="s">"net"</span>, F.col(<span class="s">"amt"</span>) - F.col(<span class="s">"fee"</span>))
+df.withColumnRenamed(<span class="s">"a"</span>, <span class="s">"amount"</span>)
+df.selectExpr(<span class="s">"amt * 1.1 AS gross"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧰</span> Column functions (F)</h2>
+      <pre>F.when(F.col(<span class="s">"a"</span>) &gt; 0, <span class="s">"pos"</span>).otherwise(<span class="s">"neg"</span>)
+F.coalesce(<span class="s">"a"</span>, F.lit(0))    F.lit(1)
+F.concat_ws(<span class="s">"-"</span>, <span class="s">"a"</span>, <span class="s">"b"</span>)   F.upper(<span class="s">"s"</span>)   F.trim(<span class="s">"s"</span>)
+F.to_date(<span class="s">"ts"</span>)   F.date_trunc(<span class="s">"month"</span>, <span class="s">"ts"</span>)
+F.regexp_replace(<span class="s">"s"</span>, <span class="s">"\\d+"</span>, <span class="s">""</span>)
+F.split(<span class="s">"s"</span>, <span class="s">","</span>)   F.explode(<span class="s">"arr"</span>)
+F.cast / col.cast(<span class="s">"double"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> Joins</h2>
+      <pre>a.join(b, <span class="s">"id"</span>, <span class="s">"inner"</span>)     <i># inner|left|right|outer</i>
+a.join(b, a.id == b.aid, <span class="s">"left"</span>)
+a.join(b, [<span class="s">"id"</span>, <span class="s">"dt"</span>])         <i># multi-key</i>
+a.join(F.broadcast(dim), <span class="s">"id"</span>)  <i># broadcast small side</i>
+a.join(b, <span class="s">"id"</span>, <span class="s">"left_anti"</span>)   <i># rows in a not in b</i>
+a.join(b, <span class="s">"id"</span>, <span class="s">"left_semi"</span>)   <i># rows in a that match</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">Σ</span> GroupBy &amp; aggregate</h2>
+      <pre>(df.groupBy(<span class="s">"dept"</span>)
+   .agg(F.sum(<span class="s">"amt"</span>).alias(<span class="s">"total"</span>),
+        F.countDistinct(<span class="s">"uid"</span>).alias(<span class="s">"users"</span>),
+        F.avg(<span class="s">"amt"</span>), F.max(<span class="s">"ts"</span>)))
+
+df.groupBy(<span class="s">"dept"</span>).pivot(<span class="s">"month"</span>).sum(<span class="s">"amt"</span>)
+df.agg(F.sum(<span class="s">"amt"</span>)).collect()[0][0]</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🪟</span> Window functions</h2>
+      <pre>w = W.partitionBy(<span class="s">"dept"</span>).orderBy(F.desc(<span class="s">"amt"</span>))
+
+df.withColumn(<span class="s">"rn"</span>, F.row_number().over(w))
+  .withColumn(<span class="s">"rk"</span>, F.dense_rank().over(w))
+  .withColumn(<span class="s">"prev"</span>, F.lag(<span class="s">"amt"</span>, 1).over(w))
+
+wr = (W.partitionBy(<span class="s">"dept"</span>).orderBy(<span class="s">"ts"</span>)
+       .rowsBetween(-6, 0))          <i># 7-row window</i>
+df.withColumn(<span class="s">"roll"</span>, F.avg(<span class="s">"amt"</span>).over(wr))
+<i># dedup: keep rn==1</i>
+df.withColumn(<span class="s">"rn"</span>, F.row_number().over(w)).filter(<span class="s">"rn = 1"</span>)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧩</span> UDFs (last resort)</h2>
+      <pre><b>from</b> pyspark.sql.types <b>import</b> StringType
+
+<b>@F.udf</b>(StringType())
+<b>def</b> clean(s): <b>return</b> (s or <span class="s">""</span>).strip().lower()
+df.withColumn(<span class="s">"c"</span>, clean(<span class="s">"name"</span>))
+
+<i># vectorized pandas UDF (faster)</i>
+<b>@F.pandas_udf</b>(<span class="s">"double"</span>)
+<b>def</b> norm(x): <b>return</b> (x - x.mean()) / x.std()</pre>
+      <p class="note">Prefer built-in <code>F.*</code> functions — UDFs skip Catalyst optimization &amp; are slower.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗄️</span> Spark SQL</h2>
+      <pre>df.createOrReplaceTempView(<span class="s">"orders"</span>)
+spark.sql(<span class="s">"""
+  SELECT dept, SUM(amt) t
+  FROM orders GROUP BY dept
+"""</span>).show()
+spark.table(<span class="s">"db.t"</span>)
+spark.catalog.listTables()</pre>
+    </div>
+
+    <div class="sec">Performance</div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> Shuffle, skew &amp; partitions</h2>
+      <pre>df.repartition(200, <span class="s">"key"</span>)   <i># wide, even</i>
+df.coalesce(1)                <i># narrow, merge (no shuffle)</i>
+df.rdd.getNumPartitions()
+
+<i># Adaptive Query Execution (on by default 3.x)</i>
+spark.conf.set(<span class="s">"spark.sql.adaptive.enabled"</span>, True)
+spark.conf.set(<span class="s">"spark.sql.adaptive.skewJoin.enabled"</span>, True)</pre>
+      <ul>
+        <li><b>Shuffle</b> (join/groupBy/distinct) is the main cost — filter &amp; select before it.</li>
+        <li><b>Skew:</b> salt the hot key, or rely on AQE skew join.</li>
+        <li>Target ~128–256 MB per partition; avoid tiny files.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💾</span> Cache &amp; broadcast</h2>
+      <pre>df.cache()   df.persist()   df.unpersist()
+<i># reuse a DataFrame across multiple actions</i>
+
+F.broadcast(small_df)   <i># force broadcast join</i>
+spark.conf.set(<span class="s">"spark.sql.autoBroadcastJoinThreshold"</span>,
+               10*1024*1024)   <i># 10MB auto-broadcast</i></pre>
+      <p class="note">Lazy: transformations build a plan; <b>actions</b> (count/collect/write/show) run it. Cache only if reused.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧠</span> Gotchas</h2>
+      <ul>
+        <li><code>collect()</code> pulls all rows to the driver — OOM risk on big data.</li>
+        <li>Watch <b>skew</b> (one slow task) and <b>small files</b> on write.</li>
+        <li>Column pruning + predicate pushdown work best on Parquet/Delta.</li>
+        <li>Prefer <code>DataFrame</code>/SQL over RDDs (Catalyst + Tungsten optimize them).</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · PySpark Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

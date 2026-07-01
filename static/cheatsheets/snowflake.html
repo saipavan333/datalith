@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Snowflake Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">❄️</span> Snowflake <span class="brand">Cheat Sheet</span></h1>
+      <p>Snowflake for data engineering — warehouses, loading, Streams &amp; Tasks, Dynamic Tables, Time Travel, RBAC, semi-structured data and tuning.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Architecture &amp; context</div>
+
+    <div class="card">
+      <h2><span class="ic">🏔️</span> Architecture</h2>
+      <ul>
+        <li><b>3 layers:</b> cloud services (optimizer, metadata, security) · <b>compute</b> (virtual warehouses) · <b>storage</b> (columnar micro-partitions) — scale independently.</li>
+        <li><b>Micro-partitions</b> (~50–500 MB, immutable) carry min/max metadata → automatic pruning.</li>
+        <li><b>Caching:</b> result cache (24 h, free) → warehouse SSD → remote storage.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚙️</span> Warehouses &amp; context</h2>
+      <pre><b>CREATE WAREHOUSE</b> wh
+  <b>WAREHOUSE_SIZE</b> = <span class="s">'MEDIUM'</span>
+  <b>AUTO_SUSPEND</b> = 60      <i>-- seconds idle</i>
+  <b>AUTO_RESUME</b>  = TRUE
+  <b>MIN_CLUSTER_COUNT</b>=1 <b>MAX_CLUSTER_COUNT</b>=3; <i>-- multi-cluster</i>
+
+<b>USE</b> WAREHOUSE wh;
+<b>USE</b> DATABASE db; <b>USE</b> SCHEMA sch; <b>USE</b> ROLE eng;
+<b>ALTER WAREHOUSE</b> wh <b>SUSPEND</b>;</pre>
+      <p class="note">Size up (bigger warehouse) for slow queries; add clusters for concurrency. Billed per-second while running.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗄️</span> Databases &amp; tables</h2>
+      <pre><b>CREATE DATABASE</b> db;   <b>CREATE SCHEMA</b> db.sch;
+
+<b>CREATE TABLE</b> t (id <b>INT</b>, name <b>STRING</b>, ts <b>TIMESTAMP_NTZ</b>);
+<b>CREATE OR REPLACE TABLE</b> t ...;
+<b>CREATE TRANSIENT TABLE</b> t ...;   <i>-- no Fail-safe, cheaper</i>
+<b>CREATE TEMPORARY TABLE</b> t ...;   <i>-- session only</i>
+
+<b>SHOW TABLES</b>;   <b>DESC TABLE</b> t;
+<i>-- types: NUMBER, FLOAT, STRING/VARCHAR, BOOLEAN,
+--        DATE, TIMESTAMP_NTZ/LTZ/TZ, VARIANT, ARRAY, OBJECT</i></pre>
+    </div>
+
+    <div class="sec">Loading data</div>
+
+    <div class="card">
+      <h2><span class="ic">📥</span> Stages, formats &amp; COPY</h2>
+      <pre><b>CREATE FILE FORMAT</b> ff <b>TYPE</b>=CSV
+  <b>FIELD_OPTIONALLY_ENCLOSED_BY</b>=<span class="s">'"'</span> <b>SKIP_HEADER</b>=1;
+
+<b>CREATE STAGE</b> my_stage
+  <b>URL</b>=<span class="s">'s3://bucket/path'</span>
+  <b>STORAGE_INTEGRATION</b>=s3_int
+  <b>FILE_FORMAT</b>=ff;
+
+<b>COPY INTO</b> t <b>FROM</b> @my_stage
+  <b>FILE_FORMAT</b>=(FORMAT_NAME=ff)
+  <b>ON_ERROR</b>=<span class="s">'CONTINUE'</span>;
+<b>LIST</b> @my_stage;   <b>PUT</b> file://local @my_stage;</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🚰</span> Snowpipe (auto-ingest)</h2>
+      <pre><b>CREATE PIPE</b> sales_pipe <b>AUTO_INGEST</b>=TRUE <b>AS</b>
+  <b>COPY INTO</b> sales
+  <b>FROM</b> @my_stage
+  <b>FILE_FORMAT</b>=(TYPE=PARQUET);
+
+<i>-- point cloud event notifications at the pipe's ARN</i>
+<b>SELECT SYSTEM$PIPE_STATUS</b>(<span class="s">'sales_pipe'</span>);</pre>
+      <p class="note">Serverless, continuous, event-driven ingest. Dedups files for ~14 days; no ordering guarantee.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔄</span> Streams &amp; Tasks (pipelines)</h2>
+      <pre><i>-- Stream = CDC on a table (inserts/updates/deletes)</i>
+<b>CREATE STREAM</b> s <b>ON TABLE</b> src;
+
+<b>CREATE TASK</b> load_task
+  <b>WAREHOUSE</b>=wh
+  <b>SCHEDULE</b>=<span class="s">'1 MINUTE'</span>
+  <b>WHEN SYSTEM$STREAM_HAS_DATA</b>(<span class="s">'s'</span>) <b>AS</b>
+  <b>MERGE INTO</b> tgt <b>USING</b> s <b>ON</b> ...;
+
+<b>ALTER TASK</b> load_task <b>RESUME</b>;   <i>-- tasks start suspended</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧊</span> Dynamic Tables</h2>
+      <pre><b>CREATE DYNAMIC TABLE</b> dt
+  <b>TARGET_LAG</b> = <span class="s">'5 minutes'</span>
+  <b>WAREHOUSE</b> = wh <b>AS</b>
+  <b>SELECT</b> dept, <b>SUM</b>(amt) t <b>FROM</b> orders <b>GROUP BY</b> dept;</pre>
+      <p class="note">Declarative, auto-incremental transforms — you define the result &amp; freshness (lag); Snowflake maintains it. Simpler than Streams+Tasks.</p>
+    </div>
+
+    <div class="sec">Time travel, security, semi-structured</div>
+
+    <div class="card">
+      <h2><span class="ic">⏱️</span> Time Travel &amp; Clone</h2>
+      <pre><b>SELECT</b> * <b>FROM</b> t <b>AT</b>(<b>OFFSET</b> =&gt; -3600);   <i>-- 1h ago</i>
+<b>SELECT</b> * <b>FROM</b> t <b>BEFORE</b>(STATEMENT =&gt; <span class="s">'&lt;query_id&gt;'</span>);
+<b>UNDROP TABLE</b> t;
+
+<i>-- zero-copy clone (instant, metadata only)</i>
+<b>CREATE TABLE</b> t_dev <b>CLONE</b> t;
+<b>CREATE DATABASE</b> dev <b>CLONE</b> prod;</pre>
+      <p class="note">Time Travel up to 90 days (Enterprise); Fail-safe adds 7 more (recovery only).</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔐</span> RBAC &amp; grants</h2>
+      <pre><b>CREATE ROLE</b> analyst;
+<b>GRANT USAGE ON</b> WAREHOUSE wh <b>TO ROLE</b> analyst;
+<b>GRANT USAGE ON</b> DATABASE db <b>TO ROLE</b> analyst;
+<b>GRANT SELECT ON ALL TABLES IN SCHEMA</b> db.sch <b>TO ROLE</b> analyst;
+<b>GRANT SELECT ON FUTURE TABLES IN SCHEMA</b> db.sch <b>TO ROLE</b> analyst;
+<b>GRANT ROLE</b> analyst <b>TO USER</b> ada;</pre>
+      <p class="note">Grant to <b>roles</b>, not users. <b>Future grants</b> cover tables created later. Role hierarchy rolls up privileges.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">{ }</span> Semi-structured (VARIANT)</h2>
+      <pre><b>SELECT</b>
+  src:id::<b>INT</b>              <i>-- path + cast</i>
+  , src:user.name::<b>STRING</b>
+  , src:tags[0]::<b>STRING</b>
+<b>FROM</b> raw;
+
+<i>-- explode an array of objects</i>
+<b>SELECT</b> f.value:sku::STRING
+<b>FROM</b> raw, <b>LATERAL FLATTEN</b>(input =&gt; raw.src:items) f;
+
+PARSE_JSON(s)   OBJECT_CONSTRUCT(...)   ARRAY_AGG(x)</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Performance &amp; tuning</h2>
+      <ul>
+        <li>Add a <code>CLUSTER BY (col)</code> only on very large, filtered tables; check <code>SYSTEM$CLUSTERING_INFORMATION</code>.</li>
+        <li>Prune via WHERE on high-cardinality/date columns (micro-partition min/max).</li>
+        <li>Right-size the warehouse; use a separate WH per workload; enable auto-suspend.</li>
+        <li>Read <b>Query Profile</b> for spilling / exploding joins; use <code>RESULT_SCAN</code> to reuse results.</li>
+        <li><code>SELECT ... FROM t SAMPLE (1)</code> to sample; avoid <code>SELECT *</code>.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🤝</span> Sharing &amp; utilities</h2>
+      <pre><b>CREATE SHARE</b> sh;
+<b>GRANT SELECT ON TABLE</b> t <b>TO SHARE</b> sh;   <i>-- no data copy</i>
+
+<b>SHOW WAREHOUSES</b>;  <b>SHOW TASKS</b>;
+<b>SELECT</b> * <b>FROM</b> <b>INFORMATION_SCHEMA</b>.TABLES;
+<b>SELECT</b> * <b>FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY</b>;
+<b>SELECT CURRENT_WAREHOUSE</b>(), <b>CURRENT_ROLE</b>();</pre>
+    </div>
+
+  </div>
+  <footer>Datalith · Snowflake Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

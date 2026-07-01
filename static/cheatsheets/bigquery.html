@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BigQuery Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🟦</span> BigQuery <span class="brand">Cheat Sheet</span></h1>
+      <p>Google BigQuery — GoogleSQL, partitioning &amp; clustering, arrays/structs, MERGE, the bq CLI, cost controls and BQML.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Model &amp; DDL</div>
+
+    <div class="card">
+      <h2><span class="ic">🟦</span> How it bills</h2>
+      <ul>
+        <li>Serverless MPP; <b>on-demand</b> billing = <b>bytes scanned</b> (or <b>slots</b> for capacity).</li>
+        <li>Storage &amp; compute are separate; no indexes — control cost via <b>partition + cluster</b> and narrow SELECT.</li>
+        <li>Fully-qualified name: <code>project.dataset.table</code>.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗄️</span> Datasets &amp; tables</h2>
+      <pre><b>CREATE SCHEMA</b> mydata <b>OPTIONS</b>(location=<span class="s">'US'</span>);
+
+<b>CREATE TABLE</b> mydata.orders (
+  id     <b>INT64</b>,
+  amt    <b>NUMERIC</b>,
+  ts     <b>TIMESTAMP</b>,
+  tags   <b>ARRAY</b>&lt;<b>STRING</b>&gt;,
+  cust   <b>STRUCT</b>&lt;id INT64, name STRING&gt;
+);
+<b>CREATE OR REPLACE TABLE</b> t <b>AS SELECT</b> ...;
+<i>-- types: INT64, NUMERIC/BIGNUMERIC, FLOAT64, STRING,
+--   BOOL, DATE, DATETIME, TIMESTAMP, ARRAY, STRUCT, JSON, GEOGRAPHY</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧱</span> Partition &amp; cluster</h2>
+      <pre><b>CREATE TABLE</b> events (ts <b>TIMESTAMP</b>, uid <b>INT64</b>, ...)
+<b>PARTITION BY</b> <b>DATE</b>(ts)
+<b>CLUSTER BY</b> uid, event_type
+<b>OPTIONS</b>(require_partition_filter=true);
+
+<i>-- prune: filter the partition column</i>
+<b>SELECT</b> * <b>FROM</b> events
+<b>WHERE</b> <b>DATE</b>(ts) <b>BETWEEN</b> <span class="s">'2026-01-01'</span> <b>AND</b> <span class="s">'2026-01-07'</span>;</pre>
+      <p class="note">Partition by date to scan fewer bytes; cluster by common filter columns to skip blocks. <code>require_partition_filter</code> blocks full scans.</p>
+    </div>
+
+    <div class="sec">Querying</div>
+
+    <div class="card">
+      <h2><span class="ic">[ ]</span> Arrays &amp; structs</h2>
+      <pre><i>-- explode an array</i>
+<b>SELECT</b> id, tag
+<b>FROM</b> t, <b>UNNEST</b>(tags) <b>AS</b> tag;
+
+<i>-- build / aggregate arrays</i>
+<b>ARRAY_AGG</b>(x <b>ORDER BY</b> ts <b>LIMIT</b> 5)
+<b>ARRAY_LENGTH</b>(tags)   tags[<b>OFFSET</b>(0)]
+<b>STRUCT</b>(1 <b>AS</b> a, <span class="s">'x'</span> <b>AS</b> b)
+<b>SELECT</b> cust.name <b>FROM</b> t;   <i>-- dotted struct access</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> MERGE &amp; DML</h2>
+      <pre><b>MERGE</b> mydata.tgt t
+<b>USING</b> mydata.src s <b>ON</b> t.id = s.id
+<b>WHEN MATCHED THEN UPDATE SET</b> amt = s.amt
+<b>WHEN NOT MATCHED THEN INSERT</b> (id, amt)
+     <b>VALUES</b> (s.id, s.amt);
+
+<b>DELETE FROM</b> t <b>WHERE</b> <b>DATE</b>(ts) &lt; <span class="s">'2025-01-01'</span>;
+<b>UPDATE</b> t <b>SET</b> amt = 0 <b>WHERE</b> amt <b>IS NULL</b>;</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧠</span> Handy SQL</h2>
+      <pre><b>SAFE_CAST</b>(s <b>AS</b> INT64)      <i>-- NULL on failure</i>
+<b>SAFE_DIVIDE</b>(a, b)
+<b>PARSE_DATE</b>(<span class="s">'%Y-%m-%d'</span>, s)
+<b>DATE_TRUNC</b>(dt, MONTH)   <b>DATE_DIFF</b>(a, b, DAY)
+<b>APPROX_COUNT_DISTINCT</b>(uid)   <i>-- HyperLogLog</i>
+<b>QUALIFY</b> <b>ROW_NUMBER</b>() <b>OVER</b>(<b>PARTITION BY</b> id
+         <b>ORDER BY</b> ts <b>DESC</b>) = 1   <i>-- dedup, no subquery</i></pre>
+    </div>
+
+    <div class="sec">CLI, load &amp; cost</div>
+
+    <div class="card">
+      <h2><span class="ic">⌨️</span> bq CLI</h2>
+      <pre>bq query --use_legacy_sql=false <span class="s">'SELECT 1'</span>
+bq ls mydata            bq show mydata.orders
+bq mk --dataset US:mydata
+bq load --source_format=PARQUET \
+   mydata.t gs://bucket/*.parquet
+bq extract mydata.t gs://bucket/out-*.csv
+bq rm -t mydata.t</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💸</span> Cost controls</h2>
+      <pre><i>-- estimate bytes without running</i>
+bq query --dry_run --use_legacy_sql=false <span class="s">'…'</span>
+<i>-- cap bytes billed</i>
+bq query --maximum_bytes_billed=1000000000 <span class="s">'…'</span></pre>
+      <ul>
+        <li>Never <code>SELECT *</code> — name columns (columnar scan cost).</li>
+        <li>Filter the <b>partition</b> column; preview with <code>tablesample</code>.</li>
+        <li>Materialize hot results; use <b>BI Engine</b>/cached results.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> External &amp; scheduled</h2>
+      <pre><i>-- query files in GCS directly</i>
+<b>CREATE EXTERNAL TABLE</b> ext
+<b>OPTIONS</b>(format=<span class="s">'PARQUET'</span>,
+        uris=[<span class="s">'gs://bucket/*.parquet'</span>]);
+
+<i>-- scheduled query (recurring)</i>
+bq mk --transfer_config --data_source=scheduled_query \
+  --schedule=<span class="s">'every 24 hours'</span> --target_dataset=mydata \
+  --params='{"query":"…","destination_table_name_template":"daily"}'</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🤖</span> BigQuery ML</h2>
+      <pre><b>CREATE MODEL</b> mydata.churn
+<b>OPTIONS</b>(model_type=<span class="s">'LOGISTIC_REG'</span>,
+        input_label_cols=[<span class="s">'churned'</span>]) <b>AS</b>
+<b>SELECT</b> * <b>FROM</b> mydata.training;
+
+<b>SELECT</b> * <b>FROM</b> <b>ML.PREDICT</b>(<b>MODEL</b> mydata.churn,
+       (<b>SELECT</b> * <b>FROM</b> mydata.new));
+<b>SELECT</b> * <b>FROM</b> <b>ML.EVALUATE</b>(<b>MODEL</b> mydata.churn);</pre>
+      <p class="note">Train &amp; serve models in SQL — no data movement.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> Metadata</h2>
+      <pre><b>SELECT</b> * <b>FROM</b> mydata.<b>INFORMATION_SCHEMA</b>.TABLES;
+<b>SELECT</b> * <b>FROM</b> mydata.<b>INFORMATION_SCHEMA</b>.COLUMNS;
+<b>SELECT</b> job_id, total_bytes_processed
+<b>FROM</b> region-us.<b>INFORMATION_SCHEMA</b>.JOBS
+<b>WHERE</b> creation_time &gt; <b>TIMESTAMP_SUB</b>(<b>CURRENT_TIMESTAMP</b>(),
+      <b>INTERVAL</b> 1 <b>DAY</b>);</pre>
+    </div>
+
+  </div>
+  <footer>Datalith · BigQuery Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

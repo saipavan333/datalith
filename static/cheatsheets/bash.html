@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bash / Unix Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🐚</span> Bash / Unix <span class="brand">Cheat Sheet</span></h1>
+      <p>The command line for data engineers — files, pipes, text-crunching (grep/awk/sed), scripting, cron, permissions and networking.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Files &amp; navigation</div>
+
+    <div class="card">
+      <h2><span class="ic">📂</span> Navigate &amp; manage</h2>
+      <pre><b>pwd</b>              <i># where am I</i>
+<b>ls</b> -lah          <i># long, all, human sizes</i>
+<b>cd</b> /path   cd -  <i># go / previous dir</i>
+<b>mkdir</b> -p a/b/c   <i># make nested</i>
+<b>cp</b> -r src dst    <b>mv</b> a b     <b>rm</b> -rf dir
+<b>ln</b> -s target link <i># symlink</i>
+<b>find</b> . -name <span class="s">"*.csv"</span> -mtime -1  <i># modified &lt;1 day</i>
+<b>du</b> -sh *   <b>df</b> -h          <i># sizes / disk free</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">👀</span> View &amp; inspect</h2>
+      <pre><b>cat</b> f        <b>less</b> f        <i># view / page</i>
+<b>head</b> -n 20 f    <b>tail</b> -n 20 f
+<b>tail</b> -f app.log      <i># follow live</i>
+<b>wc</b> -l f              <i># line count</i>
+<b>sort</b> f | <b>uniq</b> -c    <i># dedupe + counts</i>
+<b>diff</b> a b    <b>md5sum</b> f
+<b>column</b> -t -s, f      <i># pretty CSV</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> Pipes &amp; redirection</h2>
+      <pre>cmd1 | cmd2            <i># pipe stdout -&gt; stdin</i>
+cmd &gt; out.txt          <i># stdout to file (overwrite)</i>
+cmd &gt;&gt; out.txt         <i># append</i>
+cmd 2&gt; err.txt         <i># stderr to file</i>
+cmd &gt; all.txt 2&gt;&amp;1     <i># both streams</i>
+cmd1 &amp;&amp; cmd2           <i># run 2 if 1 succeeds</i>
+cmd1 || cmd2           <i># run 2 if 1 fails</i>
+cmd &lt; input.txt        <i># file to stdin</i></pre>
+    </div>
+
+    <div class="sec">Text crunching</div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> grep</h2>
+      <pre><b>grep</b> <span class="s">"error"</span> app.log
+<b>grep</b> -i -n <span class="s">"warn"</span> f     <i># ignore case, line #</i>
+<b>grep</b> -r <span class="s">"TODO"</span> src/     <i># recursive</i>
+<b>grep</b> -v <span class="s">"debug"</span> f       <i># invert (exclude)</i>
+<b>grep</b> -c <span class="s">"200"</span> f         <i># count matches</i>
+<b>grep</b> -E <span class="s">"a|b"</span> f          <i># regex (extended)</i>
+<b>grep</b> -oE <span class="s">"[0-9]+"</span> f       <i># only the match</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧮</span> awk</h2>
+      <pre><i># print column 3 (space-delimited)</i>
+<b>awk</b> <span class="s">'{print $3}'</span> f
+<i># CSV: field sep = comma</i>
+<b>awk</b> -F, <span class="s">'{print $1, $3}'</span> f
+<i># filter + sum a column</i>
+<b>awk</b> -F, <span class="s">'$2 &gt; 100 {s += $2} END {print s}'</span> f
+<i># count by key</i>
+<b>awk</b> -F, <span class="s">'{c[$1]++} END {for (k in c) print k, c[k]}'</span> f</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">✂️</span> sed, cut, sort, uniq</h2>
+      <pre><b>sed</b> <span class="s">'s/old/new/g'</span> f        <i># substitute all</i>
+<b>sed</b> -n <span class="s">'1,10p'</span> f            <i># print lines 1-10</i>
+<b>sed</b> -i <span class="s">'s/a/b/g'</span> f          <i># edit in place</i>
+
+<b>cut</b> -d, -f1,3 f            <i># CSV cols 1,3</i>
+<b>sort</b> -t, -k2 -n -r f       <i># by col2, numeric, desc</i>
+<b>uniq</b> -c   <b>uniq</b> -d         <i># counts / dups only</i>
+<b>tr</b> <span class="s">'a-z'</span> <span class="s">'A-Z'</span> &lt; f       <i># translate</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧷</span> xargs &amp; find combos</h2>
+      <pre><i># delete all matching files</i>
+<b>find</b> . -name <span class="s">"*.tmp"</span> | <b>xargs</b> rm -f
+<i># safer with null-delimit (spaces)</i>
+<b>find</b> . -name <span class="s">"*.csv"</span> -print0 | <b>xargs</b> -0 gzip
+<i># parallel</i>
+<b>cat</b> urls.txt | <b>xargs</b> -P4 -n1 curl -O</pre>
+    </div>
+
+    <div class="sec">Scripting</div>
+
+    <div class="card">
+      <h2><span class="ic">$</span> Variables &amp; expansion</h2>
+      <pre>name=<span class="s">"ada"</span>          <i># no spaces around =</i>
+echo <span class="s">"$name"</span>          <i># quote to be safe</i>
+files=$(ls *.csv)      <i># command substitution</i>
+count=$((2 + 3))       <i># arithmetic</i>
+echo ${VAR:-default}   <i># default if unset</i>
+export DB_URL=<span class="s">"…"</span>     <i># env var for children</i>
+<span class="s">"$1"</span> <span class="s">"$@"</span> $#           <i># args / all / count</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔁</span> Conditionals &amp; loops</h2>
+      <pre><b>if</b> [ -f <span class="s">"$f"</span> ]; <b>then</b> echo <span class="s">"exists"</span>; <b>fi</b>
+<i># -f file, -d dir, -z empty, -n non-empty</i>
+[ <span class="s">"$a"</span> = <span class="s">"$b"</span> ]   [ $n -gt 5 ]  <i># -eq -ne -lt -ge</i>
+
+<b>for</b> f <b>in</b> *.csv; <b>do</b> echo <span class="s">"$f"</span>; <b>done</b>
+<b>while</b> read line; <b>do</b> echo <span class="s">"$line"</span>; <b>done</b> &lt; f
+<b>case</b> <span class="s">"$x"</span> <b>in</b> a) …;; *) …;; <b>esac</b></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📜</span> Robust scripts</h2>
+      <pre>#!/usr/bin/env bash
+<b>set</b> -euo pipefail   <i># exit on error/unset/pipe-fail</i>
+IFS=$'\n\t'
+
+log() { echo <span class="s">"[$(date +%F_%T)] $*"</span>; }
+trap <span class="s">'log "failed at line $LINENO"'</span> ERR
+
+main() { log <span class="s">"start"</span>; }
+main <span class="s">"$@"</span></pre>
+      <p class="note">Exit code <code>0</code> = success; check <code>$?</code>. <code>set -euo pipefail</code> is the safety standard.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔐</span> Permissions &amp; processes</h2>
+      <pre><b>chmod</b> +x run.sh       <b>chmod</b> 644 f   <i># rw-r--r--</i>
+<b>chown</b> user:grp f
+<b>ps</b> aux | grep python
+<b>top</b>   <b>htop</b>            <i># live processes</i>
+<b>kill</b> -9 PID    <b>pkill</b> -f name
+nohup cmd &amp;            <i># run detached</i>
+cmd &amp;   <b>jobs</b>   fg %1    <i># background / foreground</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🌐</span> Network &amp; transfer</h2>
+      <pre><b>curl</b> -sSL <span class="s">"$url"</span> -o out.json
+<b>curl</b> -X POST -H <span class="s">"Content-Type: application/json"</span> \
+     -d <span class="s">'{"k":1}'</span> <span class="s">"$url"</span>
+<b>wget</b> <span class="s">"$url"</span>
+<b>ssh</b> user@host       <b>scp</b> f user@host:/path
+<b>rsync</b> -avz src/ host:/dst/</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗜️</span> Archives &amp; cron</h2>
+      <pre><b>tar</b> -czf out.tar.gz dir/   <i># compress</i>
+<b>tar</b> -xzf out.tar.gz        <i># extract</i>
+<b>gzip</b> f    <b>gunzip</b> f.gz    <b>zcat</b> f.gz
+
+<i># cron: min hr dom mon dow  cmd</i>
+crontab -e
+0 6 * * *  /path/run.sh   <i># daily 06:00</i>
+*/15 * * * * cmd          <i># every 15 min</i></pre>
+    </div>
+
+  </div>
+  <footer>Datalith · Bash / Unix Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

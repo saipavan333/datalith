@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Databricks Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🧱</span> Databricks <span class="brand">Cheat Sheet</span></h1>
+      <p>Databricks &amp; Delta Lake — PySpark, Spark SQL, Delta (MERGE / OPTIMIZE / time travel / CDF), Auto Loader, Structured Streaming, DLT and Unity Catalog.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Notebooks &amp; Spark</div>
+
+    <div class="card">
+      <h2><span class="ic">📓</span> Notebook magics</h2>
+      <pre>%python  %sql  %scala  %r      <i># language per cell</i>
+%sh   ls /dbfs/mnt              <i># shell</i>
+%fs   ls /mnt                   <i># dbutils.fs shortcut</i>
+%md   # markdown
+%run  ./other_notebook         <i># import another nb</i>
+%pip install pandas            <i># notebook-scoped libs</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> PySpark DataFrame</h2>
+      <pre><b>from</b> pyspark.sql <b>import</b> functions <b>as</b> F
+
+df = spark.read.format(<span class="s">"delta"</span>).table(<span class="s">"cat.sch.t"</span>)
+df = spark.read.parquet(<span class="s">"/mnt/raw/*.parquet"</span>)
+
+df.select(<span class="s">"a"</span>, <span class="s">"b"</span>).filter(F.col(<span class="s">"amt"</span>) &gt; 100)
+  .withColumn(<span class="s">"net"</span>, F.col(<span class="s">"amt"</span>) - F.col(<span class="s">"fee"</span>))
+  .groupBy(<span class="s">"dept"</span>).agg(F.sum(<span class="s">"amt"</span>).alias(<span class="s">"t"</span>))
+  .orderBy(F.desc(<span class="s">"t"</span>))
+
+df.join(other, <span class="s">"id"</span>, <span class="s">"left"</span>)
+df.write.format(<span class="s">"delta"</span>).mode(<span class="s">"overwrite"</span>).saveAsTable(<span class="s">"cat.sch.out"</span>)</pre>
+      <p class="note">Transformations are lazy; <code>.show()</code>/<code>.count()</code>/<code>.write</code> trigger the job.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗄️</span> Spark SQL</h2>
+      <pre>%sql
+<b>CREATE TABLE</b> cat.sch.t <b>USING DELTA AS SELECT</b> ...;
+<b>SELECT</b> dept, <b>SUM</b>(amt) <b>FROM</b> cat.sch.orders <b>GROUP BY</b> dept;
+
+<i>-- from Python</i>
+spark.sql(<span class="s">"SELECT * FROM cat.sch.t WHERE dt = current_date()"</span>)
+df.createOrReplaceTempView(<span class="s">"v"</span>)</pre>
+    </div>
+
+    <div class="sec">Delta Lake</div>
+
+    <div class="card">
+      <h2><span class="ic">🔺</span> Create &amp; write Delta</h2>
+      <pre>%sql
+<b>CREATE TABLE</b> t (id <b>BIGINT</b>, amt <b>DOUBLE</b>) <b>USING DELTA</b>
+  <b>PARTITIONED BY</b> (dt);
+
+<i># append / overwrite</i>
+df.write.format(<span class="s">"delta"</span>).mode(<span class="s">"append"</span>).saveAsTable(<span class="s">"t"</span>)
+df.write.mode(<span class="s">"overwrite"</span>).option(<span class="s">"replaceWhere"</span>,
+             <span class="s">"dt = '2026-01-01'"</span>).saveAsTable(<span class="s">"t"</span>)</pre>
+      <p class="note">Delta = Parquet + a transaction log (<code>_delta_log</code>) → ACID, versions, schema enforcement.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> MERGE (upsert)</h2>
+      <pre>%sql
+<b>MERGE INTO</b> tgt t
+<b>USING</b> updates u <b>ON</b> t.id = u.id
+<b>WHEN MATCHED THEN UPDATE SET</b> *
+<b>WHEN NOT MATCHED THEN INSERT</b> *
+<b>WHEN NOT MATCHED BY SOURCE THEN DELETE</b>;   <i>-- full sync</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧹</span> OPTIMIZE, time travel, CDF</h2>
+      <pre>%sql
+<b>OPTIMIZE</b> t <b>ZORDER BY</b> (user_id);   <i>-- compact + co-locate</i>
+<b>VACUUM</b> t <b>RETAIN</b> 168 <b>HOURS</b>;      <i>-- purge old files</i>
+
+<b>SELECT</b> * <b>FROM</b> t <b>VERSION AS OF</b> 12;
+<b>SELECT</b> * <b>FROM</b> t <b>TIMESTAMP AS OF</b> <span class="s">'2026-01-01'</span>;
+<b>DESCRIBE HISTORY</b> t;
+
+<i># Change Data Feed</i>
+<b>ALTER TABLE</b> t <b>SET TBLPROPERTIES</b>(delta.enableChangeDataFeed=true);
+<b>SELECT</b> * <b>FROM</b> table_changes(<span class="s">'t'</span>, 10);</pre>
+    </div>
+
+    <div class="sec">Ingest, stream &amp; govern</div>
+
+    <div class="card">
+      <h2><span class="ic">📡</span> Auto Loader</h2>
+      <pre>(spark.readStream.format(<span class="s">"cloudFiles"</span>)
+   .option(<span class="s">"cloudFiles.format"</span>, <span class="s">"json"</span>)
+   .option(<span class="s">"cloudFiles.schemaLocation"</span>, <span class="s">"/chk/schema"</span>)
+   .load(<span class="s">"/mnt/raw/"</span>)
+ .writeStream
+   .option(<span class="s">"checkpointLocation"</span>, <span class="s">"/chk/bronze"</span>)
+   .trigger(availableNow=True)
+   .toTable(<span class="s">"bronze"</span>))</pre>
+      <p class="note">Incrementally &amp; idempotently ingests new files from cloud storage; tracks state in the checkpoint.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🌊</span> Structured Streaming</h2>
+      <pre>(spark.readStream.table(<span class="s">"bronze"</span>)
+   .withWatermark(<span class="s">"ts"</span>, <span class="s">"10 minutes"</span>)
+   .groupBy(F.window(<span class="s">"ts"</span>, <span class="s">"5 minutes"</span>), <span class="s">"dept"</span>)
+   .agg(F.sum(<span class="s">"amt"</span>))
+ .writeStream.format(<span class="s">"delta"</span>)
+   .option(<span class="s">"checkpointLocation"</span>, <span class="s">"/chk/agg"</span>)
+   .outputMode(<span class="s">"append"</span>).toTable(<span class="s">"gold"</span>))</pre>
+      <p class="note">Checkpoint + idempotent Delta sink = exactly-once.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🏗️</span> Delta Live Tables (DLT)</h2>
+      <pre><b>import</b> dlt
+
+<b>@dlt.table</b>
+<b>def</b> bronze():
+    <b>return</b> spark.readStream.format(<span class="s">"cloudFiles"</span>)...load(<span class="s">"/raw"</span>)
+
+<b>@dlt.table</b>
+<b>@dlt.expect_or_drop</b>(<span class="s">"valid_amt"</span>, <span class="s">"amt &gt;= 0"</span>)
+<b>def</b> silver():
+    <b>return</b> dlt.read_stream(<span class="s">"bronze"</span>).where(<span class="s">"id IS NOT NULL"</span>)</pre>
+      <p class="note">Declarative pipelines: dependencies, quality <b>expectations</b>, and orchestration are managed for you.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🛡️</span> Unity Catalog</h2>
+      <pre>%sql
+<i>-- 3-level namespace: catalog.schema.table</i>
+<b>SELECT</b> * <b>FROM</b> prod.sales.orders;
+<b>GRANT SELECT ON TABLE</b> prod.sales.orders <b>TO</b> `analysts`;
+<b>GRANT USAGE ON SCHEMA</b> prod.sales <b>TO</b> `analysts`;
+<b>CREATE VIEW</b> v <b>AS SELECT</b> ...;   <i>-- column/row masking too</i>
+<b>DESCRIBE HISTORY</b> ...;   <i>-- + automatic lineage in UI</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧰</span> dbutils, widgets &amp; jobs</h2>
+      <pre>dbutils.fs.ls(<span class="s">"/mnt"</span>)   dbutils.fs.cp(a, b)
+dbutils.secrets.get(<span class="s">"scope"</span>, <span class="s">"key"</span>)
+dbutils.widgets.text(<span class="s">"dt"</span>, <span class="s">"2026-01-01"</span>)
+dt = dbutils.widgets.get(<span class="s">"dt"</span>)
+dbutils.notebook.run(<span class="s">"child"</span>, 60, {<span class="s">"dt"</span>: dt})
+dbutils.jobs.taskValues.set(<span class="s">"k"</span>, v)</pre>
+      <p class="note"><b>Jobs</b> orchestrate multi-task workflows on a schedule. Use <b>job clusters</b> (ephemeral) for scheduled runs, not all-purpose clusters.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> Tuning</h2>
+      <ul>
+        <li><b>Photon</b> (vectorized engine) for SQL/ETL speed; enable on the cluster.</li>
+        <li><code>OPTIMIZE</code> + <code>ZORDER</code> on filter columns; keep files ~128–256 MB.</li>
+        <li>Enable <b>AQE</b> (default) for skew joins &amp; dynamic partitions; broadcast small sides.</li>
+        <li>Partition by low-cardinality columns (e.g. date) — not high-cardinality ids.</li>
+        <li>Medallion: bronze (raw) → silver (clean) → gold (aggregated/serving).</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Databricks Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

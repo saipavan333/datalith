@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terraform Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🏗️</span> Terraform <span class="brand">Cheat Sheet</span></h1>
+      <p>Infrastructure as code — HCL blocks, the plan/apply workflow, variables, state &amp; remote backends, modules and meta-arguments.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Language (HCL)</div>
+
+    <div class="card">
+      <h2><span class="ic">🔌</span> Provider &amp; resource</h2>
+      <pre><b>terraform</b> {
+  required_providers {
+    aws = { source = <span class="s">"hashicorp/aws"</span>, version = <span class="s">"~&gt; 5.0"</span> }
+  }
+}
+<b>provider</b> <span class="s">"aws"</span> { region = var.region }
+
+<b>resource</b> <span class="s">"aws_s3_bucket"</span> <span class="s">"lake"</span> {
+  bucket = <span class="s">"my-data-lake"</span>
+  tags   = { env = var.env }
+}</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔢</span> Variables &amp; outputs</h2>
+      <pre><b>variable</b> <span class="s">"region"</span> {
+  type    = string
+  default = <span class="s">"us-east-1"</span>
+}
+<b>variable</b> <span class="s">"env"</span> { type = string }
+
+<b>output</b> <span class="s">"bucket_name"</span> {
+  value = aws_s3_bucket.lake.bucket
+}
+<b>locals</b> { prefix = <span class="s">"${var.env}-data"</span> }</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📥</span> tfvars &amp; references</h2>
+      <pre><i># terraform.tfvars</i>
+region = <span class="s">"us-east-1"</span>
+env    = <span class="s">"prod"</span>
+
+<i># reference styles</i>
+var.env                    <i># variable</i>
+aws_s3_bucket.lake.arn     <i># resource attr</i>
+local.prefix               <i># local</i>
+module.net.vpc_id          <i># module output</i>
+data.aws_caller_identity.me.account_id</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔍</span> Data sources</h2>
+      <pre><b>data</b> <span class="s">"aws_caller_identity"</span> <span class="s">"me"</span> {}
+<b>data</b> <span class="s">"aws_ami"</span> <span class="s">"ubuntu"</span> {
+  most_recent = true
+  owners      = [<span class="s">"099720109477"</span>]
+  filter { name = <span class="s">"name"</span>, values = [<span class="s">"ubuntu/*"</span>] }
+}
+<i># read existing infra, don't create it</i></pre>
+    </div>
+
+    <div class="sec">Workflow</div>
+
+    <div class="card">
+      <h2><span class="ic">⌨️</span> Core commands</h2>
+      <pre>terraform init        <i># download providers + backend</i>
+terraform fmt         <i># format code</i>
+terraform validate    <i># syntax check</i>
+terraform plan        <i># preview changes</i>
+terraform plan -out=tf.plan
+terraform apply       <i># apply (asks to confirm)</i>
+terraform apply tf.plan   <i># apply saved plan</i>
+terraform destroy     <i># tear down</i></pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> Targeting &amp; state</h2>
+      <pre>terraform apply -target=aws_s3_bucket.lake
+terraform apply -var=<span class="s">"env=dev"</span> -var-file=dev.tfvars
+terraform state list
+terraform state show aws_s3_bucket.lake
+terraform import aws_s3_bucket.lake my-bucket   <i># adopt existing</i>
+terraform output bucket_name</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗄️</span> Remote state (backend)</h2>
+      <pre><b>terraform</b> {
+  <b>backend</b> <span class="s">"s3"</span> {
+    bucket         = <span class="s">"tf-state"</span>
+    key            = <span class="s">"data/prod.tfstate"</span>
+    region         = <span class="s">"us-east-1"</span>
+    dynamodb_table = <span class="s">"tf-locks"</span>   <i># state locking</i>
+    encrypt        = true
+  }
+}</pre>
+      <p class="note">Shared remote state + locking lets a team apply safely. Never commit <code>*.tfstate</code> (holds secrets).</p>
+    </div>
+
+    <div class="sec">Reuse &amp; control</div>
+
+    <div class="card">
+      <h2><span class="ic">📦</span> Modules</h2>
+      <pre><b>module</b> <span class="s">"network"</span> {
+  source = <span class="s">"./modules/network"</span>     <i># or a registry/git URL</i>
+  cidr   = <span class="s">"10.0.0.0/16"</span>
+  env    = var.env
+}
+<i># use its outputs</i>
+resource <span class="s">"aws_instance"</span> <span class="s">"x"</span> {
+  subnet_id = module.network.subnet_id
+}</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔁</span> count &amp; for_each</h2>
+      <pre><i># count -&gt; list, index by [count.index]</i>
+resource <span class="s">"aws_instance"</span> <span class="s">"web"</span> {
+  count = 3
+  tags  = { Name = <span class="s">"web-${count.index}"</span> }
+}
+<i># for_each -&gt; map/set, key by [each.key]</i>
+resource <span class="s">"aws_s3_bucket"</span> <span class="s">"b"</span> {
+  for_each = toset([<span class="s">"raw"</span>, <span class="s">"clean"</span>])
+  bucket   = <span class="s">"lake-${each.key}"</span>
+}
+lifecycle { prevent_destroy = true }
+depends_on = [aws_iam_role.r]</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Best practice</h2>
+      <ul>
+        <li>Always <code>plan</code> before <code>apply</code>; review the diff. Terraform is <b>declarative</b> — it converges to the config.</li>
+        <li>Use <b>remote state</b> + locking; one state file per environment.</li>
+        <li>Parameterize per env with <code>*.tfvars</code> / workspaces; keep modules small &amp; reusable.</li>
+        <li><code>fmt</code> + <code>validate</code> in CI; never hand-edit state — use <code>import</code>/<code>state</code> commands.</li>
+        <li>Keep secrets out of code &amp; state comments — source them from a vault/SSM.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Terraform Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>
