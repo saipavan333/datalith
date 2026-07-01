@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DataForge Academy — Data Engineering Interview Cheat Sheet</title>
+<style>
+  :root { --ink:#15202b; --dim:#52606d; --line:#d7deea; --accent:#2563eb; --soft:#eef3fc; --code:#0b3d91; --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f3f6fb; color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif; font-size:13px; line-height:1.5; }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px 20px 60px; }
+  header.head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
+    border-bottom:3px solid var(--accent); padding-bottom:12px; margin-bottom:6px; flex-wrap:wrap; }
+  .head h1 { font-size:24px; margin:0; letter-spacing:-.02em; }
+  .head .brand { color:var(--accent); }
+  .head p { margin:4px 0 0; color:var(--dim); font-size:12.5px; }
+  .toolbar { display:flex; gap:8px; }
+  .btn { cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:8px 14px; border-radius:8px; font-weight:600; font-size:12.5px; }
+  .btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .legend { color:var(--dim); font-size:11.5px; margin:8px 0 16px; }
+  .grid { column-count:3; column-gap:14px; }
+  .card { break-inside:avoid; background:#fff; border:1px solid var(--line); border-radius:10px;
+    padding:11px 13px; margin:0 0 14px; display:inline-block; width:100%; }
+  .card h2 { font-size:13px; margin:0 0 7px; color:var(--accent); letter-spacing:.01em;
+    display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--line); padding-bottom:5px; }
+  .card h2 .ic { font-size:14px; }
+  .card ul { margin:0; padding-left:15px; }
+  .card li { margin:3px 0; }
+  .card p { margin:5px 0; }
+  b, strong { color:var(--ink); }
+  code { font-family:var(--mono); font-size:11px; background:var(--soft); color:var(--code);
+    padding:1px 4px; border-radius:4px; }
+  pre { font-family:var(--mono); font-size:10.5px; background:var(--soft); color:var(--code);
+    border-radius:6px; padding:7px 9px; margin:6px 0; overflow-x:auto; white-space:pre-wrap; }
+  .qa { break-inside:avoid; }
+  .qa .q { font-weight:700; margin-top:7px; }
+  .qa .a { color:var(--dim); }
+  .tag { display:inline-block; font-size:10px; font-weight:700; color:var(--accent);
+    background:var(--soft); border-radius:5px; padding:1px 6px; }
+  footer { margin-top:18px; color:var(--dim); font-size:11px; text-align:center; border-top:1px solid var(--line); padding-top:10px; }
+  @media (max-width:900px){ .grid{ column-count:2; } }
+  @media (max-width:600px){ .grid{ column-count:1; } }
+  @media print {
+    body { background:#fff; font-size:9.3px; }
+    .wrap { max-width:none; padding:0; }
+    .no-print { display:none !important; }
+    .grid { column-count:3; column-gap:9px; }
+    .card { border:1px solid #c7d0dd; padding:7px 9px; margin-bottom:8px; }
+    .card h2 { font-size:10.5px; }
+    code,pre { background:#eef2f8; }
+    pre { font-size:8.4px; }
+    @page { margin:10mm 8mm; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>◆ DataForge — DE Interview <span class="brand">Cheat Sheet</span></h1>
+      <p>The highest-yield facts across the whole data-engineering stack. Print it, or save as PDF (Ctrl/Cmd&nbsp;+&nbsp;P).</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / Save as PDF</button>
+      <a class="btn" href="../index.html">← Back to app</a>
+    </div>
+  </header>
+  <div class="legend no-print"><span class="tag">tip</span> Everything below is covered in depth in the lessons &amp; "Go deeper" sections of the app.</div>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2><span class="ic">🗄️</span> SQL — core</h2>
+      <ul>
+        <li><b>Logical order:</b> FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT.</li>
+        <li><b>WHERE</b> filters rows <i>before</i> grouping; <b>HAVING</b> filters groups <i>after</i> aggregation.</li>
+        <li><b>NULL</b> = unknown: test with <code>IS NULL</code>, never <code>=</code>. <code>COALESCE(x,fallback)</code> for defaults.</li>
+        <li><code>COUNT(*)</code> counts rows; <code>COUNT(col)</code> skips NULLs; <code>COUNT(DISTINCT col)</code> uniques.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> SQL — joins</h2>
+      <ul>
+        <li><b>INNER</b> = matches only. <b>LEFT</b> = all left + NULLs for non-matches.</li>
+        <li><b>Anti-join</b> (find missing): <code>LEFT JOIN … WHERE right.key IS NULL</code>.</li>
+        <li><b>ON vs WHERE</b> on a LEFT join: filtering the right table in <code>WHERE</code> silently turns it into an INNER join — filter it in <code>ON</code>.</li>
+        <li>Joining a non-unique key <b>multiplies rows</b> — know each side's grain before you SUM.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🪟</span> Window functions</h2>
+      <pre>func() OVER (PARTITION BY ..
+            ORDER BY ..)</pre>
+      <ul>
+        <li><b>ROW_NUMBER</b> (1,2,3) · <b>RANK</b> (gaps) · <b>DENSE_RANK</b> (no gaps).</li>
+        <li><b>LAG/LEAD</b> = prev/next row → period-over-period change.</li>
+        <li><b>SUM() OVER(ORDER BY)</b> = running total.</li>
+        <li><b>Top-N per group:</b> ROW_NUMBER in a subquery, then <code>WHERE rn&lt;=N</code> (can't filter the window in the same SELECT).</li>
+        <li><b>Dedup:</b> <code>ROW_NUMBER() … ORDER BY updated_at DESC</code>, keep <code>rn=1</code>.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚡</span> SQL — performance</h2>
+      <ul>
+        <li><b>EXPLAIN</b> first; watch for <b>full table scan</b> vs <b>index scan</b>.</li>
+        <li><b>Index</b> the columns you filter/join/sort on.</li>
+        <li>Don't wrap an indexed column in a function in WHERE (kills the index) — use a range.</li>
+        <li>Select only needed columns; filter early; <b>partition</b> big tables.</li>
+        <li>Cost ∝ data scanned — scanning 100× less is ~100× faster <i>and</i> cheaper.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🐍</span> Python for DE</h2>
+      <ul>
+        <li><b>Comprehensions:</b> <code>[f(x) for x in xs if cond]</code>.</li>
+        <li><b>Generators</b> (<code>yield</code>) = lazy, constant memory → process data &gt; RAM.</li>
+        <li><b>try/except</b> specific errors; <code>finally</code> always runs (cleanup).</li>
+        <li><b>pandas:</b> boolean mask = WHERE, <code>groupby().agg()</code> = GROUP BY, <code>merge()</code> = JOIN. <b>Vectorise</b>; avoid <code>iterrows</code>.</li>
+        <li>Store timestamps in <b>UTC</b>; convert to local only for display.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📐</span> Data modeling</h2>
+      <ul>
+        <li><b>Fact</b> = events/measures + keys (tall, skinny). <b>Dimension</b> = context (short, wide).</li>
+        <li><b>Grain</b> = what one fact row means — decide it first, in one sentence.</li>
+        <li><b>Star</b> (denormalized dims, fewer joins) vs <b>Snowflake</b> (normalized).</li>
+        <li><b>Surrogate keys</b> (generated ints) over business keys; enables history.</li>
+        <li><b>SCD2</b> = new dim row + validity dates to keep history.</li>
+        <li>Measures: additive / semi-additive (not over time) / non-additive (ratios).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧱</span> OLTP vs OLAP · formats</h2>
+      <ul>
+        <li><b>OLTP</b> = many small txns, row-store. <b>OLAP</b> = big scans, column-store.</li>
+        <li><b>Columnar</b> (Parquet) reads only needed columns + compresses well → 10–100× for analytics.</li>
+        <li><b>Normalize</b> for write-heavy OLTP; <b>denormalize</b> for read-heavy analytics.</li>
+        <li>CSV (simple, untyped) · JSON (nested, APIs) · Parquet (columnar, analytics) · Avro (row, streaming).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⚙️</span> Spark</h2>
+      <ul>
+        <li><b>Transformations</b> (filter/select/join) are <b>lazy</b>; <b>actions</b> (count/write/collect) trigger the DAG.</li>
+        <li>Laziness → Catalyst optimises the whole plan (pushdown, column pruning).</li>
+        <li><b>Partitions</b> = parallel chunks (~128–256 MB, ~1/core).</li>
+        <li><b>Shuffle</b> (groupBy/join/distinct) moves data across network — the main cost. Filter early.</li>
+        <li><b>Skew:</b> one hot key → 1 slow task. Fix: salting, AQE, broadcast.</li>
+        <li><b>Broadcast</b> small table in a join to skip the shuffle. <b>cache()</b> reused DataFrames.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔧</span> Pipelines</h2>
+      <ul>
+        <li><b>ETL</b> (transform before load) vs <b>ELT</b> (load raw, transform in-warehouse — modern default).</li>
+        <li><b>Idempotent</b> = re-run = same result. Use upsert/MERGE or delete-then-insert per partition.</li>
+        <li><b>Incremental</b> via high-water mark; <b>CDC</b> reads the DB change log (captures deletes).</li>
+        <li><b>Backfill</b> = re-run past dates; needs date-parameterised + idempotent runs.</li>
+        <li><b>Orchestration</b> (Airflow): DAG of tasks with dependencies, schedules, retries.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🌊</span> Streaming</h2>
+      <ul>
+        <li><b>Event time</b> (when it happened) vs <b>processing time</b> (when handled) — window by event time.</li>
+        <li>Windows: <b>tumbling</b> (fixed), <b>sliding</b> (overlap), <b>session</b> (activity gaps).</li>
+        <li><b>Watermark</b> = max event time − grace; passes window end → finalise. Later = late data.</li>
+        <li><b>Guarantees:</b> at-most-once (lossy) · at-least-once (dups) · exactly-once (once).</li>
+        <li>Exactly-once = checkpoints + idempotent/transactional sink. Cheap path: at-least-once + upsert by id.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🏞️</span> Lakehouse</h2>
+      <ul>
+        <li><b>Lake</b> (cheap files, no safety) + <b>warehouse</b> (reliable, costly) → <b>lakehouse</b>.</li>
+        <li><b>Table formats</b> (Delta/Iceberg/Hudi) add a transaction log over files →</li>
+        <li>ACID writes · row-level UPDATE/DELETE/MERGE (GDPR!) · time travel · schema evolution.</li>
+        <li><b>Compaction</b> fixes the small-files problem; <b>vacuum</b> reclaims storage.</li>
+        <li><b>Medallion:</b> bronze (raw) → silver (clean) → gold (business-ready).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">☁️</span> Cloud</h2>
+      <ul>
+        <li>Compute ladder: <b>VM</b> (most control) → <b>container</b>/K8s → <b>serverless</b> (scale-to-zero).</li>
+        <li><b>Object storage</b> (S3/GCS/ADLS) = cheap, scalable backbone.</li>
+        <li><b>Cost:</b> scan less (partition + columnar + narrow SELECT), tier old data, co-locate compute (avoid egress), use spot for batch.</li>
+        <li><b>IAM:</b> least privilege via roles; service accounts for pipelines; encrypt at rest + in transit.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧩</span> NoSQL &amp; CAP</h2>
+      <ul>
+        <li><b>Key-value</b> (fetch by key) · <b>document</b> (flexible JSON) · <b>wide-column</b> (huge writes) · <b>graph</b> (relationships).</li>
+        <li><b>CAP:</b> during a <i>partition</i>, choose <b>C</b> or <b>A</b> (P is unavoidable). CP = correct; AP = available + eventual consistency.</li>
+        <li><b>Sharding</b> splits data by key (handles size); <b>replication</b> copies it (reliability + read scale).</li>
+        <li>Pick the store by <b>access pattern</b>, not hype.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🛠️</span> DataOps &amp; quality</h2>
+      <ul>
+        <li><b>Observability pillars:</b> freshness, volume, schema, distribution, lineage.</li>
+        <li><b>Quality checks:</b> not-null, uniqueness, range/valid-set, referential — block publish on fail.</li>
+        <li>Beware <b>silent failures</b> ("succeeded" but wrong/empty data).</li>
+        <li><b>CI/CD</b> runs tests per change; <b>IaC</b> (Terraform) = version-controlled infra; <b>SLA</b> = promise to consumers.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🛡️</span> Governance</h2>
+      <ul>
+        <li><b>PII</b> = identifies a person (directly or via quasi-identifiers).</li>
+        <li><b>GDPR rights:</b> access &amp; <b>erasure</b> ("be forgotten") → needs row-level delete + lineage.</li>
+        <li><b>RBAC</b> + least privilege; restrict at table/column/row level.</li>
+        <li><b>Masking</b> (****1234), <b>tokenization</b>, <b>pseudonymization</b> for analytics.</li>
+        <li>Data <b>residency</b> = keep data in-region.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> System design method</h2>
+      <ul>
+        <li><b>1 Clarify</b> (freshness, scale, users, history).</li>
+        <li><b>2 Estimate:</b> vol = events×bytes; tput = events÷86,400 ×peak(2–5); storage = daily×retention×overhead.</li>
+        <li><b>3 Flow:</b> source → ingest → store → transform → serve.</li>
+        <li><b>4 Choose</b> components with reasons.</li>
+        <li><b>5 Hard parts:</b> idempotency, late/dup data, quality, schema change, monitoring.</li>
+        <li><b>6 Trade-offs:</b> simplest design that meets the requirement (batch unless real-time is truly needed).</li>
+      </ul>
+    </div>
+
+    <div class="card qa">
+      <h2><span class="ic">⚡</span> Rapid-fire Q&amp;A</h2>
+      <p class="q">Find customers with no orders?</p>
+      <p class="a">LEFT JOIN orders … WHERE order_id IS NULL.</p>
+      <p class="q">2nd-highest salary?</p>
+      <p class="a">DENSE_RANK() OVER(ORDER BY salary DESC), pick rank=2.</p>
+      <p class="q">WHERE vs HAVING?</p>
+      <p class="a">WHERE = rows pre-group; HAVING = groups post-aggregate.</p>
+      <p class="q">Why is shuffle slow?</p>
+      <p class="a">Moves data across network/disk by key.</p>
+      <p class="q">Make a pipeline idempotent?</p>
+      <p class="a">Upsert/MERGE or delete-then-insert per partition.</p>
+      <p class="q">Exactly-once?</p>
+      <p class="a">Checkpoints + idempotent/transactional sink.</p>
+      <p class="q">Delete one user from a lake?</p>
+      <p class="a">Use a table format (Delta/Iceberg) with row-level DELETE + lineage.</p>
+    </div>
+
+    <div class="card qa">
+      <h2><span class="ic">⚡</span> More Q&amp;A</h2>
+      <p class="q">ETL vs ELT?</p>
+      <p class="a">Transform before vs after loading; ELT suits cloud warehouses.</p>
+      <p class="q">Star vs snowflake?</p>
+      <p class="a">Denormalized dims (fewer joins) vs normalized.</p>
+      <p class="q">CAP for a shopping cart?</p>
+      <p class="a">AP — stay available, reconcile; brief staleness is fine.</p>
+      <p class="q">Fix Spark data skew?</p>
+      <p class="a">Salting, AQE skew handling, or broadcast the small side.</p>
+      <p class="q">Parquet vs CSV?</p>
+      <p class="a">Columnar → reads only needed columns, compresses, far faster.</p>
+      <p class="q">Slowly Changing Dimension type 2?</p>
+      <p class="a">New row per change with validity dates + current flag.</p>
+      <p class="q">Catch bad data before it ships?</p>
+      <p class="a">Quality assertions + freshness/volume checks that block publish.</p>
+    </div>
+
+  </div>
+
+  <footer>DataForge Academy · Data Engineering Interview Cheat Sheet · plain-English companion to the 13-track course</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,7 @@
+pyspark>=3.5
+pandas>=2.0
+pyarrow>=14.0
+duckdb>=1.0
+dbt-duckdb>=1.7
+pytest>=7.0
+# Java 11+ required for PySpark. Optional infra in docker-compose.yml (Kafka, Postgres/Greenplum, MinIO).

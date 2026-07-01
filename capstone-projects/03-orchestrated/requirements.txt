@@ -1,0 +1,4 @@
+# Prefect is optional — run.py falls back to a built-in mini-orchestrator if it's absent.
+# Install it to run the "real" orchestrated version:
+prefect>=2.14
+duckdb>=1.0

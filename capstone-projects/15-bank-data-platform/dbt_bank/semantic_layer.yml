@@ -1,0 +1,40 @@
+# PRODUCTION SEMANTIC LAYER SPEC (reference) — the dbt MetricFlow form of the metrics
+# that metrics_summary.sql computes locally. Kept OUTSIDE models/ so `dbt build` doesn't
+# require the MetricFlow runtime; on dbt Cloud / dbt-metricflow this is the real layer,
+# queried via `dbt sl query --metrics net_movement --group-by region`.
+semantic_models:
+  - name: transactions
+    model: ref('fact_transactions')
+    entities:
+      - {name: txn_id, type: primary}
+      - {name: account_id, type: foreign}
+    dimensions:
+      - {name: txn_date, type: time, type_params: {time_granularity: day}}
+      - {name: region, type: categorical}
+      - {name: segment, type: categorical}
+    measures:
+      - {name: amount_sum, agg: sum, expr: amount}
+      - {name: txn_count, agg: count, expr: txn_id}
+
+  - name: fraud
+    model: ref('stg_fraud_alerts')
+    entities:
+      - {name: txn_id, type: primary}
+    dimensions:
+      - {name: country, type: categorical}
+    measures:
+      - {name: scored, agg: count, expr: txn_id}
+      - {name: alerts, agg: sum, expr: "case when is_alert then 1 else 0 end"}
+
+metrics:
+  - name: net_movement
+    type: simple
+    type_params: {measure: amount_sum}
+  - name: transactions
+    type: simple
+    type_params: {measure: txn_count}
+  - name: fraud_alert_rate
+    type: ratio
+    type_params: {numerator: alerts, denominator: scored}
+  # consumers (Power BI / Looker / Tableau / API) query these metrics by region/segment/day
+  # -> one definition, identical numbers everywhere.

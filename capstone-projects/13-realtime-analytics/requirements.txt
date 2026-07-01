@@ -1,0 +1,2 @@
+duckdb>=1.0
+# Optional: a real ClickHouse via docker (see README) instead of the DuckDB stand-in.

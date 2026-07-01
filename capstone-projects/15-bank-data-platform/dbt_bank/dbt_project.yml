@@ -1,0 +1,13 @@
+name: bank
+version: "1.0"
+config-version: 2
+profile: bank
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+models:
+  bank:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

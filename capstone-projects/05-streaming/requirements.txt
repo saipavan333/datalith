@@ -1,0 +1,3 @@
+# Core runs with the standard library only (in-process stream simulation).
+# Optional: a real Kafka variant is described in README (docker-compose) and uses:
+# kafka-python>=2.0

@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: fact_transactions
+    description: "Conformed transaction fact enriched with customer region/segment."
+    columns:
+      - name: txn_id
+        tests: [not_null, unique]      # proves the Spark dedup worked
+      - name: amount
+        tests: [not_null]
+
+  - name: gold_daily_reconciliation
+    description: "Daily posted/reversal/net control totals for reconciliation."
+    columns:
+      - name: txn_date
+        tests: [not_null, unique]
+
+  - name: gold_fraud_summary
+    description: "Fraud/AML alert summary by country."
+    columns:
+      - name: country
+        tests: [not_null, unique]
+
+  - name: gold_regulatory_exposure
+    description: "Exposure by region & segment for regulatory reporting."
+    columns:
+      - name: total_volume
+        tests: [not_null]

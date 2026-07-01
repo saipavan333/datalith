@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="static/favicon.svg" />
+  <title>DataForge Academy — Become a world-class Data Engineer</title>
+  <link rel="stylesheet" href="static/styles.css?v=20260629" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">DataForge<span class="brand-accent"> Academy</span></span>
+    </div>
+    <div class="topbar-search">
+      <input id="search" type="search" placeholder="Search lessons…" autocomplete="off" />
+    </div>
+    <div class="topbar-actions">
+      <div class="progress-pill" title="Your overall progress">
+        <div class="progress-ring"><span id="progress-pct">0%</span></div>
+        <span class="progress-label">complete</span>
+      </div>
+      <button id="btn-sql" class="btn ghost" title="Open the live SQL playground">⌘ SQL Playground</button>
+      <button id="btn-ai" class="btn ghost" title="Ask the AI assistant">✦ AI Assistant</button>
+      <a href="static/cheatsheet.html" target="_blank" rel="noopener" class="btn ghost" title="Printable interview cheat sheet">📄 Cheat Sheet</a>
+      <button id="btn-theme" class="btn icon" title="Toggle light / dark">☾</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar"><!-- tracks injected here --></aside>
+    <main class="content" id="content"><!-- lesson / playground injected here --></main>
+  </div>
+
+  <!-- AI assistant drawer -->
+  <div class="drawer-scrim" id="ai-scrim"></div>
+  <aside class="drawer" id="ai-drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <h3>✦ AI Mentor</h3>
+      <button class="btn icon" id="ai-close">✕</button>
+    </div>
+    <div class="ai-messages" id="ai-messages"></div>
+    <form class="ai-input" id="ai-form">
+      <input id="ai-question" type="text" placeholder="Ask anything — e.g. 'Explain a JOIN like I'm 10'…" />
+      <button class="btn primary" type="submit">Send</button>
+    </form>
+  </aside>
+
+  <script src="static/diagrams.js?v=20260629"></script>
+  <script src="static/diagrams2.js?v=20260629"></script>
+  <script src="static/diagrams3.js?v=20260629"></script>
+  <script src="static/diagrams4.js?v=20260629"></script>
+  <script src="static/diagrams5.js?v=20260629"></script>
+  <script src="static/diagrams6.js?v=20260629"></script>
+  <script src="static/diagrams7.js?v=20260629"></script>
+  <script src="static/diagrams8.js?v=20260629"></script>
+  <script src="static/diagrams9.js?v=20260629"></script>
+  <script src="static/diagrams10.js?v=20260629"></script>
+  <script src="static/diagrams11.js?v=20260629"></script>
+  <script src="static/diagrams12.js?v=20260629"></script>
+  <script src="static/diagrams13.js?v=20260629"></script>
+  <script src="static/diagrams14.js?v=20260629"></script>
+  <script src="static/diagrams15.js?v=20260629"></script>
+  <script src="static/diagrams16.js?v=20260629"></script>
+  <script src="static/diagrams17.js?v=20260629"></script>
+  <script src="static/diagrams18.js?v=20260629"></script>
+  <script src="static/diagrams19.js?v=20260629"></script>
+  <script src="static/diagrams20.js?v=20260629"></script>
+  <script src="static/diagrams21.js?v=20260629"></script>
+  <script src="static/diagrams22.js?v=20260629"></script>
+  <script src="static/diagrams23.js?v=20260629"></script>
+  <script src="static/diagrams24.js?v=20260629"></script>
+  <script src="static/diagrams25.js?v=20260629"></script>
+  <script src="static/diagrams26.js?v=20260629"></script>
+  <script src="static/diagrams27.js?v=20260629"></script>
+  <script src="static/diagrams28.js?v=20260629"></script>
+  <script src="static/diagrams29.js?v=20260629"></script>
+  <script src="static/diagrams30.js?v=20260629"></script>
+  <script src="static/diagrams31.js?v=20260629"></script>
+  <script src="static/diagrams32.js?v=20260629"></script>
+  <script src="static/diagrams33.js?v=20260629"></script>
+  <script src="static/diagrams34.js?v=20260629"></script>
+  <script src="static/diagrams35.js?v=20260629"></script>
+  <script src="static/diagrams36.js?v=20260629"></script>
+  <script src="static/diagrams37.js?v=20260629"></script>
+  <script src="static/diagrams38.js?v=20260629"></script>
+  <script src="static/diagrams39.js?v=20260629"></script>
+  <script src="static/diagrams40.js?v=20260629"></script>
+  <script src="static/diagrams41.js?v=20260629"></script>
+  <script src="static/diagrams42.js?v=20260629"></script>
+  <script src="static/diagrams43.js?v=20260629"></script>
+  <script src="static/diagrams44.js?v=20260629"></script>
+  <script src="static/diagrams45.js?v=20260629"></script>
+  <script src="static/diagrams46.js?v=20260629"></script>
+  <script src="static/diagrams47.js?v=20260629"></script>
+  <script src="static/diagrams48.js?v=20260629"></script>
+  <script src="static/diagrams49.js?v=20260629"></script>
+  <script src="static/diagrams50.js?v=20260629"></script>
+  <script src="static/diagrams51.js?v=20260629"></script>
+  <script src="static/diagrams52.js?v=20260629"></script>
+  <script src="static/diagrams53.js?v=20260629"></script>
+  <script src="static/diagrams54.js?v=20260629"></script>
+  <script src="static/diagrams55.js?v=20260629"></script>
+  <script src="static/diagrams56.js?v=20260629"></script>
+  <script src="static/diagrams57.js?v=20260629"></script>
+  <script src="static/diagrams58.js?v=20260629"></script>
+  <script src="static/diagrams59.js?v=20260629"></script>
+  <script src="static/diagrams60.js?v=20260629"></script>
+  <script src="static/diagrams61.js?v=20260629"></script>
+  <script src="static/diagrams62.js?v=20260629"></script>
+  <script src="static/diagrams63.js?v=20260629"></script>
+  <script src="static/diagrams64.js?v=20260629"></script>
+  <script src="static/diagrams65.js?v=20260629"></script>
+  <script src="static/diagrams66.js?v=20260629"></script>
+  <script src="static/diagrams67.js?v=20260629"></script>
+  <script src="static/diagrams68.js?v=20260629"></script>
+  <script src="static/diagrams69.js?v=20260629"></script>
+  <script src="static/diagrams70.js?v=20260629"></script>
+  <script src="static/diagrams71.js?v=20260629"></script>
+  <script src="static/mentor.js?v=20260629"></script>
+  <script src="static/sql-playground.js?v=20260629"></script>
+  <script src="static/app.js?v=20260629"></script>
+</body>
+</html>

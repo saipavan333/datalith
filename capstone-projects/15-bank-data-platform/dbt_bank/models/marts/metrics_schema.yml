@@ -1,0 +1,9 @@
+version: 2
+models:
+  - name: metrics_summary
+    description: "Governed metrics layer — each headline metric defined once (metric, value)."
+    columns:
+      - name: metric
+        tests: [not_null, unique]
+      - name: value
+        tests: [not_null]

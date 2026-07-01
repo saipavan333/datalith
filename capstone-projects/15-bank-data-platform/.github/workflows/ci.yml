@@ -1,0 +1,44 @@
+name: bank-data-platform-ci
+
+# CI/CD: on every push/PR, run unit + data-quality tests, the contract gate, and dbt build.
+# This is the "shift-left" control plane a regulated bank needs — nothing ships unless it's green.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    env:
+      SPARK_LOCAL_IP: 127.0.0.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint (non-blocking)
+        run: pip install ruff && ruff check src || true
+
+      - name: Unit + data-quality tests
+        run: pytest -q
+
+      - name: Run pipeline (generate -> bronze -> silver -> stream -> contract -> warehouse)
+        run: python run.py --no-dbt
+
+      - name: Data contract gate
+        run: python src/contracts.py        # exits non-zero on violation -> fails the build
+
+      - name: dbt build (gold marts + tests)
+        run: dbt build --project-dir dbt_bank --profiles-dir dbt_bank

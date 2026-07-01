@@ -1,0 +1,43 @@
+{
+  "name": "bank_pipeline",
+  "tags": {"domain": "payments", "tier": "production"},
+  "schedule": {"quartz_cron_expression": "0 0 2 * * ?", "timezone_id": "UTC"},
+  "email_notifications": {"on_failure": ["payments-data-eng@bank.example"]},
+  "job_clusters": [
+    {
+      "job_cluster_key": "batch",
+      "new_cluster": {
+        "spark_version": "15.4.x-scala2.12",
+        "node_type_id": "Standard_DS4_v2",
+        "autoscale": {"min_workers": 2, "max_workers": 8},
+        "spark_conf": {"spark.databricks.delta.optimizeWrite.enabled": "true"}
+      }
+    }
+  ],
+  "tasks": [
+    {"task_key": "generate", "job_cluster_key": "batch",
+     "spark_python_task": {"python_file": "dbfs:/bank/src/generate_data.py"}},
+
+    {"task_key": "datastage_etl_bronze", "depends_on": [{"task_key": "generate"}],
+     "job_cluster_key": "batch", "spark_python_task": {"python_file": "dbfs:/bank/src/datastage_etl.py"}},
+
+    {"task_key": "pyspark_silver", "depends_on": [{"task_key": "datastage_etl_bronze"}],
+     "job_cluster_key": "batch", "spark_python_task": {"python_file": "dbfs:/bank/src/spark_medallion.py"}},
+
+    {"task_key": "streaming_fraud", "depends_on": [{"task_key": "generate"}],
+     "job_cluster_key": "batch", "spark_python_task": {"python_file": "dbfs:/bank/src/streaming_fraud.py"}},
+
+    {"task_key": "contract_gate",
+     "depends_on": [{"task_key": "pyspark_silver"}, {"task_key": "streaming_fraud"}],
+     "job_cluster_key": "batch", "spark_python_task": {"python_file": "dbfs:/bank/src/contracts.py"}},
+
+    {"task_key": "load_warehouse", "depends_on": [{"task_key": "contract_gate"}],
+     "job_cluster_key": "batch", "spark_python_task": {"python_file": "dbfs:/bank/src/load_warehouse.py"}},
+
+    {"task_key": "dbt_build_gold", "depends_on": [{"task_key": "load_warehouse"}],
+     "dbt_task": {"project_directory": "dbt_bank", "commands": ["dbt build"]}},
+
+    {"task_key": "serve_dashboard", "depends_on": [{"task_key": "dbt_build_gold"}],
+     "job_cluster_key": "batch", "spark_python_task": {"python_file": "dbfs:/bank/src/serve_dashboard.py"}}
+  ]
+}

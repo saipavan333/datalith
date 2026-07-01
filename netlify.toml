@@ -1,0 +1,17 @@
+# DataForge Academy is a pure static site — no build step.
+# Netlify (and Cloudflare Pages) just publish the project folder as-is.
+[build]
+  publish = "."
+  command = ""
+
+# Long-cache the big diagram/JS assets (they're versioned with ?v=...),
+# but always re-check the HTML and course content so updates show immediately.
+[[headers]]
+  for = "/content/*"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"

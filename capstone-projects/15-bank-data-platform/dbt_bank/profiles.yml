@@ -1,0 +1,16 @@
+# Local: DuckDB (the Greenplum stand-in). Swap to the postgres/greenplum output for the bank.
+bank:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../out/warehouse.duckdb
+      threads: 4
+    # greenplum:                       # dbt-postgres works against Greenplum
+    #   type: postgres
+    #   host: "{{ env_var('GP_HOST') }}"
+    #   port: 5432
+    #   user: "{{ env_var('GP_USER') }}"
+    #   password: "{{ env_var('GP_PASSWORD') }}"
+    #   dbname: bank
+    #   schema: gold

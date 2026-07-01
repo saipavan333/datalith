@@ -1,0 +1,9 @@
+version: 2
+sources:
+  - name: silver
+    schema: main
+    description: "Silver tables loaded from the lakehouse into the warehouse."
+    tables:
+      - name: src_transactions
+      - name: src_dim_customer
+      - name: src_fraud_alerts

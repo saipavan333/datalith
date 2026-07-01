@@ -1,0 +1,20 @@
+# ODCS-style data contract (simplified). Kept in the repo, enforced in CI.
+dataset: orders
+owner: orders-team
+sla:
+  freshness_minutes: 60
+  max_null_rate:
+    amount: 0.0
+schema:
+  - field: order_id
+    type: string
+    required: true
+    unique: true
+  - field: region
+    type: string
+    required: true
+    accepted_values: ["NA", "EU", "APAC", "LATAM"]
+  - field: amount
+    type: number
+    required: true
+    min: 0

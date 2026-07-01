@@ -1,0 +1,4 @@
+pyiceberg>=0.7
+sqlalchemy>=2.0
+pyarrow>=17.0
+pandas>=2.0

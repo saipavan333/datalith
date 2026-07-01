@@ -1,0 +1,4 @@
+numpy>=1.24
+# Core runs fully offline with a deterministic hashing embedder (no downloads).
+# Optional: better embeddings with a real model:
+# sentence-transformers>=2.2

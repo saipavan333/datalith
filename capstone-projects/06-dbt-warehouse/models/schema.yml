@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: "Cleaned, conformed orders."
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: region
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["NA", "EU", "APAC", "LATAM"]
+      - name: amount
+        tests: [not_null]
+
+  - name: orders_by_region
+    description: "Revenue and order counts per region."
+    columns:
+      - name: region
+        tests: [not_null, unique]
+      - name: revenue
+        tests: [not_null]

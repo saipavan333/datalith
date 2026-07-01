@@ -1,0 +1,16 @@
+name: dataforge
+version: "1.0"
+config-version: 2
+profile: dataforge
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+target-path: "out/target"
+clean-targets: ["out/target", "dbt_packages"]
+
+models:
+  dataforge:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
