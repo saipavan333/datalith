@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mermaid Cheat Sheet — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🧜</span> Mermaid <span class="brand">Cheat Sheet</span></h1>
+      <p>Diagrams as code — flowcharts, sequence, ER, class, state and gantt in plain text. Renders in this app, GitHub, GitLab, Notion and most docs.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Basics</div>
+
+    <div class="card">
+      <h2><span class="ic">📝</span> How to use</h2>
+      <pre>```mermaid
+flowchart LR
+  A --&gt; B
+```</pre>
+      <ul>
+        <li>Put code in a <code>mermaid</code> fenced block in Markdown — it renders as SVG.</li>
+        <li>First line = diagram type; direction: <b>TD</b>/<b>TB</b> (top-down), <b>LR</b> (left-right), <b>RL</b>, <b>BT</b>.</li>
+        <li>Version-controlled, diff-able, editable — no binary image files.</li>
+      </ul>
+    </div>
+
+    <div class="sec">Flowchart</div>
+
+    <div class="card">
+      <h2><span class="ic">🔷</span> Nodes &amp; edges</h2>
+      <pre>flowchart LR
+  A[Rectangle]
+  B(Rounded)
+  C{Decision}
+  D((Circle))
+  E[(Database)]
+  A --&gt; B            %% arrow
+  A --- C            %% line, no arrow
+  A --&gt;|label| B     %% labelled edge
+  C --&gt;|yes| D
+  C --&gt;|no| E
+  A -.-&gt; B           %% dotted
+  A ==&gt; B            %% thick</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📦</span> Subgraphs (a pipeline)</h2>
+      <pre>flowchart LR
+  subgraph Ingest
+    S[(Source)] --&gt; K[Kafka]
+  end
+  subgraph Process
+    K --&gt; T[Transform]
+  end
+  T --&gt; W[(Warehouse)]
+  W --&gt; BI[Dashboard]</pre>
+      <p class="note">Group related nodes with <code>subgraph … end</code> to show zones/stages.</p>
+    </div>
+
+    <div class="sec">Behavior</div>
+
+    <div class="card">
+      <h2><span class="ic">⏱️</span> Sequence diagram</h2>
+      <pre>sequenceDiagram
+  participant C as Client
+  participant A as API
+  C-&gt;&gt;A: request           %% solid = call
+  A-&gt;&gt;Kafka: produce
+  Kafka--&gt;&gt;A: ack           %% dashed = return
+  A--&gt;&gt;C: 202 Accepted
+  Note over A,Kafka: async
+  loop every 1m
+    Worker-&gt;&gt;DB: upsert
+  end</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔁</span> State diagram</h2>
+      <pre>stateDiagram-v2
+  [*] --&gt; queued
+  queued --&gt; running
+  running --&gt; success
+  running --&gt; failed
+  failed --&gt; running: retry
+  success --&gt; [*]</pre>
+    </div>
+
+    <div class="sec">Data models</div>
+
+    <div class="card">
+      <h2><span class="ic">🗝️</span> ER diagram</h2>
+      <pre>erDiagram
+  CUSTOMER ||--o{ ORDER : places
+  ORDER ||--|{ ORDER_ITEM : contains
+  PRODUCT ||--o{ ORDER_ITEM : in
+  CUSTOMER {
+    int id PK
+    string email
+  }
+  ORDER {
+    int id PK
+    int customer_id FK
+  }
+%% || one   o{ zero-many   |{ one-many</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🧱</span> Class diagram</h2>
+      <pre>classDiagram
+  class Pipeline {
+    +string name
+    +run() void
+  }
+  Pipeline &lt;|-- BatchPipeline   %% inheritance
+  Pipeline o-- Task             %% aggregation
+  Pipeline *-- Config           %% composition
+  Pipeline --&gt; Logger           %% association</pre>
+    </div>
+
+    <div class="sec">Planning &amp; polish</div>
+
+    <div class="card">
+      <h2><span class="ic">📅</span> Gantt &amp; pie</h2>
+      <pre>gantt
+  title Migration
+  dateFormat YYYY-MM-DD
+  section Build
+  Ingest   :a1, 2026-01-01, 7d
+  Model    :after a1, 5d
+  section Ship
+  Backfill :2026-01-15, 3d</pre>
+      <pre>pie title Storage
+  "Parquet" : 70
+  "JSON" : 20
+  "CSV" : 10</pre>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎨</span> Notes &amp; styling</h2>
+      <pre>flowchart LR
+  A[OK] --&gt; B[Warn]
+  classDef bad fill:#3d1f24,stroke:#ff6b6b;
+  class B bad
+  %% comments start with %%
+  click A "https://…" "tooltip"</pre>
+      <p class="note">Keep diagrams small &amp; focused; one idea per diagram. Split large systems into several.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Tips</h2>
+      <ul>
+        <li>Prototype live at <b>mermaid.live</b>, then paste into your doc/repo.</li>
+        <li>Pick a direction (<b>LR</b> for pipelines, <b>TD</b> for hierarchies) and stay consistent.</li>
+        <li>Label edges (batch/stream, data type); use <code>[(cylinder)]</code> for data stores.</li>
+        <li>Renders in GitHub/GitLab READMEs, Notion, Obsidian, and this app's lessons.</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Mermaid Cheat Sheet · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

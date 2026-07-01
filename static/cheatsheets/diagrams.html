@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Data &amp; System Diagrams — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">🗂️</span> Data &amp; System Diagrams <span class="brand">Cheat Sheet</span></h1>
+      <p>The diagrams data engineers draw — architecture, data flow, ER, star schema, pipeline DAGs, sequence and C4 — what each shows and when to use it.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Pick the diagram</div>
+
+    <div class="card">
+      <h2><span class="ic">🧭</span> Which diagram, when</h2>
+      <pre>Architecture .. components &amp; how they connect
+Data flow ..... how data moves &amp; transforms
+ER ............ tables, keys, relationships
+Star schema ... facts &amp; dimensions (warehouse)
+Pipeline DAG .. task order &amp; dependencies
+Sequence ...... step-by-step messages over time
+C4 ............ zoom levels: context-&gt;container
+State ......... lifecycle of an entity/job</pre>
+      <p class="note">In a design doc or interview, lead with a simple <b>architecture</b> or <b>data-flow</b> diagram, then zoom in where it matters.</p>
+    </div>
+
+    <div class="sec">Structure &amp; flow</div>
+
+    <div class="card">
+      <h2><span class="ic">🏛️</span> Architecture diagram</h2>
+      <pre>[Sources] -&gt; [Ingest] -&gt; [Storage] -&gt; [Serve]
+  APIs        Kafka/      Lake/        BI /
+  DBs         Airflow     Warehouse    API</pre>
+      <ul>
+        <li>Boxes = components/services; <b>cylinders</b> = data stores; arrows = data/requests.</li>
+        <li>Label arrows (what flows, batch vs stream); group by zone/tier.</li>
+        <li>Goal: someone grasps the system in ~10 seconds.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔀</span> Data flow diagram (DFD)</h2>
+      <pre>(External) --data--&gt; [Process] --&gt; ||Data store||
+  entity              (transform)      (table/file)</pre>
+      <ul>
+        <li>Four elements: <b>external entity</b>, <b>process</b> (transform), <b>data store</b>, <b>data flow</b> (arrow).</li>
+        <li><b>Level 0</b> (context) = one process + externals; <b>Level 1</b> breaks it into sub-processes.</li>
+        <li>Focus on <i>what happens to the data</i>, not the tech.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗝️</span> ER diagram (crow's foot)</h2>
+      <pre>CUSTOMER ||--o{ ORDER : places
+ORDER    ||--|{ ORDER_ITEM : contains
+
+|| one (and only one)   o{ zero or many
+|{ one or many          o| zero or one</pre>
+      <ul>
+        <li>Entities = tables; lines = relationships; the <b>crow's foot</b> (fork) = the "many" side.</li>
+        <li>Mark <b>PK</b> and <b>FK</b>; a many-to-many resolves into a junction table.</li>
+        <li>Used for OLTP schema design &amp; documenting sources.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">⭐</span> Star / snowflake schema</h2>
+      <pre>   dim_date   dim_customer
+        \        /
+        [ FACT_SALES ]      (measures + FKs)
+        /        \
+  dim_product   dim_store</pre>
+      <ul>
+        <li><b>Fact</b> in the center (events/measures + dimension keys); <b>dimensions</b> around it.</li>
+        <li><b>Star</b> = denormalized dims; <b>snowflake</b> = dims normalized into sub-tables.</li>
+        <li>The go-to diagram for warehouse/dimensional design.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗺️</span> Pipeline DAG</h2>
+      <pre>extract -&gt; validate -&gt; transform -&gt; load -&gt; publish
+                 \-&gt; quarantine (on fail)</pre>
+      <ul>
+        <li>Nodes = tasks; directed edges = dependencies; must be <b>acyclic</b>.</li>
+        <li>Shows order, parallel branches, and ret/failure paths (Airflow/dbt/Dagster).</li>
+        <li>Independent branches run in parallel; a cycle = a design bug.</li>
+      </ul>
+    </div>
+
+    <div class="sec">Behavior &amp; zoom</div>
+
+    <div class="card">
+      <h2><span class="ic">⏱️</span> Sequence diagram</h2>
+      <pre>Client -&gt; API:    request
+API    -&gt; Kafka:  produce event
+Kafka  -&gt; Worker: consume
+Worker -&gt; DB:     upsert
+API    --&gt; Client: 202 Accepted   (dashed = response)</pre>
+      <ul>
+        <li>Vertical <b>lifelines</b> per actor; time flows <b>downward</b>; arrows = messages.</li>
+        <li>Solid = call/sync, dashed = return/async; great for API/event flows &amp; race conditions.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔎</span> C4 model (zoom levels)</h2>
+      <ul>
+        <li><b>1 Context</b> — the system as one box + users &amp; external systems.</li>
+        <li><b>2 Container</b> — apps, services, databases inside the system.</li>
+        <li><b>3 Component</b> — the parts inside one container.</li>
+        <li><b>4 Code</b> — classes (rarely drawn).</li>
+      </ul>
+      <p class="note">Start broad (context), zoom only where detail adds value — perfect structure for a design review.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔁</span> State diagram</h2>
+      <pre>[*] -&gt; queued -&gt; running -&gt; success -&gt; [*]
+                    running -&gt; failed -&gt; retrying</pre>
+      <p class="note">Models the lifecycle of an entity or job (states + transitions) — handy for order status, job runs, CDC records.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> In a system-design interview</h2>
+      <ul>
+        <li>Draw the <b>data-flow / architecture</b> first: source → ingest → store → transform → serve.</li>
+        <li>Mark <b>data stores</b> (queue, lake, warehouse) and label <b>batch vs stream</b> on arrows.</li>
+        <li>Call out the hard parts on the diagram: idempotency, late/dup data, partitioning, schema change.</li>
+        <li>Zoom into one component (C4-style) when asked; keep the top-level picture legible.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">💡</span> Tips</h2>
+      <ul>
+        <li>Label every arrow (what data, direction, batch/stream); add a small legend.</li>
+        <li>Left→right or top→down flow; consistent shapes (box=service, cylinder=store, queue=pipe).</li>
+        <li>One level of detail per diagram — split rather than cram.</li>
+        <li>Keep it in version control as code with <b>Mermaid</b> (see that cheat sheet).</li>
+      </ul>
+    </div>
+
+  </div>
+  <footer>Datalith · Data &amp; System Diagrams · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>

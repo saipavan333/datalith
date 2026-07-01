@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Choosing the Right Chart — Datalith</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1><span class="ic">📈</span> Choosing the Right Chart <span class="brand">Cheat Sheet</span></h1>
+      <p>Pick the chart that answers the question — comparison, trend, distribution, relationship, part-to-whole, flow. Plus the principles that keep charts honest.</p>
+    </div>
+    <div class="toolbar no-print">
+      <button class="btn primary" onclick="window.print()">🖨 Print / PDF</button>
+      <a class="btn" href="index.html">← All cheat sheets</a>
+      <a class="btn" href="../../index.html">Back to app</a>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <div class="sec">Start here</div>
+
+    <div class="card">
+      <h2><span class="ic">🧭</span> What question am I answering?</h2>
+      <pre>Comparison ....... bar / grouped bar
+Trend over time .. line / area
+Distribution ..... histogram / box / violin
+Relationship ..... scatter / heatmap
+Part-to-whole .... stacked bar / treemap
+Ranking .......... ordered bar / lollipop
+Flow ............. sankey / funnel / waterfall
+Geospatial ....... choropleth map
+Single metric .... big number / bullet</pre>
+      <p class="note">Chart type follows the <b>question &amp; data</b>, not decoration. Name the takeaway first, then pick the chart that shows it fastest.</p>
+    </div>
+
+    <div class="sec">By purpose</div>
+
+    <div class="card">
+      <h2><span class="ic">📊</span> Comparison</h2>
+      <ul>
+        <li><b>Bar / column</b> — compare values across categories. The default; sort by value.</li>
+        <li><b>Grouped bar</b> — compare a few series per category (≤ ~3 series).</li>
+        <li><b>Stacked bar</b> — compare totals <i>and</i> composition (but hard to compare inner segments).</li>
+        <li><b>Bullet</b> — a value vs a target/threshold (KPI).</li>
+      </ul>
+      <p class="note">Bars must start at <b>zero</b> — a cut axis exaggerates differences.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">📈</span> Trend over time</h2>
+      <ul>
+        <li><b>Line</b> — continuous change over time; best for many points / multiple series.</li>
+        <li><b>Area</b> — a line with emphasis on magnitude/volume.</li>
+        <li><b>Stacked area</b> — how composition evolves over time.</li>
+        <li><b>Candlestick / OHLC</b> — financial open-high-low-close.</li>
+      </ul>
+      <p class="note">Time goes on the <b>x-axis</b>, left→right. Use a line (not bars) when order/continuity matters.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔔</span> Distribution</h2>
+      <pre>Histogram    ▁▃▅▇▅▃▁   shape of one variable
+Box plot     |--[ | ]--o   median, IQR, outliers
+Violin       density + box combined</pre>
+      <ul>
+        <li><b>Histogram</b> — the shape/spread of one numeric variable (tune bin count).</li>
+        <li><b>Box</b> — median, quartiles, outliers; great to compare groups compactly.</li>
+        <li><b>Violin / KDE</b> — full density shape (bimodality) — richer than a box.</li>
+        <li><b>ECDF</b> — cumulative — good for percentiles &amp; comparisons.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🔗</span> Relationship</h2>
+      <ul>
+        <li><b>Scatter</b> — correlation between two numeric variables.</li>
+        <li><b>Bubble</b> — scatter + a third variable as size.</li>
+        <li><b>Heatmap</b> — a matrix of values (e.g. correlation, cohort, calendar).</li>
+        <li><b>Hexbin / 2-D density</b> — scatter when points overlap (big data).</li>
+      </ul>
+      <p class="note">Correlation ≠ causation — a scatter shows association, not cause.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🥧</span> Part-to-whole</h2>
+      <ul>
+        <li><b>Stacked bar (100%)</b> — composition across categories. Usually the best choice.</li>
+        <li><b>Treemap</b> — hierarchical parts, many categories, size = value.</li>
+        <li><b>Pie / donut</b> — only for 2–3 slices; humans compare angles poorly.</li>
+      </ul>
+      <p class="note">Prefer a <b>bar</b> over a pie for anything beyond a couple of slices.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🏆</span> Ranking</h2>
+      <ul>
+        <li><b>Ordered bar</b> — top-N; sort descending, label clearly.</li>
+        <li><b>Lollipop</b> — a cleaner ordered bar for many categories.</li>
+        <li><b>Slope / bump</b> — rank change between two periods.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🌊</span> Flow &amp; process</h2>
+      <ul>
+        <li><b>Sankey</b> — flows/volumes between stages (funnels, ETL, budgets).</li>
+        <li><b>Funnel</b> — drop-off through sequential steps (signup → purchase).</li>
+        <li><b>Waterfall</b> — how a total is built up/down by contributions.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🗺️</span> Geospatial &amp; KPI</h2>
+      <ul>
+        <li><b>Choropleth</b> — a metric shaded by region (normalize by population/area!).</li>
+        <li><b>Symbol / bubble map</b> — point locations sized by value.</li>
+        <li><b>Big number</b> — a single headline KPI (+ sparkline / delta).</li>
+        <li><b>Gauge</b> — value vs range (use sparingly; a bullet is clearer).</li>
+      </ul>
+    </div>
+
+    <div class="sec">Principles</div>
+
+    <div class="card">
+      <h2><span class="ic">✅</span> Make it honest &amp; clear</h2>
+      <ul>
+        <li><b>Zero baseline</b> for bars; be careful with truncated axes.</li>
+        <li>One clear message per chart; put it in the <b>title</b>.</li>
+        <li>Sort by value (not alphabetically) unless order has meaning.</li>
+        <li>Direct-label lines; minimize legends &amp; gridlines (cut chartjunk).</li>
+        <li>Avoid <b>dual y-axes</b> (misleading), 3-D, and rainbow palettes.</li>
+        <li>Color with intent: sequential for magnitude, diverging for +/−, categorical for groups; check colorblind-safety.</li>
+        <li><b>Aggregate</b> huge data (plotting millions of points is slow &amp; unreadable).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="ic">🎯</span> Quick decision guide</h2>
+      <pre>"compare categories"      -&gt; bar
+"over time"               -&gt; line
+"spread / outliers"       -&gt; box / histogram
+"x vs y related?"         -&gt; scatter
+"share of total"          -&gt; stacked bar / treemap
+"drop-off by step"        -&gt; funnel
+"where (map)"             -&gt; choropleth
+"one KPI"                 -&gt; big number</pre>
+    </div>
+
+  </div>
+  <footer>Datalith · Choosing the Right Chart · print with Ctrl/Cmd + P</footer>
+</div>
+</body>
+</html>
