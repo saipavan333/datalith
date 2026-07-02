@@ -31653,7 +31653,7 @@
    "id": "interview-bank",
    "title": "Interview Question Bank (50LPA+)",
    "icon": "🎯",
-   "blurb": "A research-backed bank of real questions from FAANG, Goldman Sachs and major banks — categorized by round and by difficulty, with detailed solutions.",
+   "blurb": "A research-backed bank of real questions from FAANG, Goldman Sachs and major banks — organized by round and by company (per-company playbooks for Amazon, Google, Meta, Microsoft, Netflix, Databricks, Uber, Airbnb, LinkedIn, Apple, Stripe), with detailed solutions, code, and links to the matching tutorials.",
    "modules": [
     {
      "title": "How the loop works",
@@ -32191,7 +32191,7 @@
      ]
     },
     {
-     "title": "Company playbooks & prep",
+     "title": "Company playbooks (full loop)",
      "lessons": [
       {
        "id": "ib-company-playbooks",
@@ -32258,6 +32258,600 @@
          "prompt": "How does JPMorgan's loop differ from a pure FAANG one?",
          "hint": "breadth + motivation.",
          "solution": "More CS/Python breadth (sometimes Java/concurrency, big-data concepts), shorter back-to-back rounds, case studies, and explicit 'why JPMorgan/finance' motivation."
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-amazon",
+       "title": "Amazon - DE interview playbook",
+       "minutes": 15,
+       "summary": "Amazon's data-engineer loop (SQL-heavy technical screen + onsite: SQL, coding/ETL, data modeling, system design, and Leadership-Principles behavioral) with signature questions, answers, and links to the concepts.",
+       "concept": "**The loop:** recruiter screen -> **technical screen** (SQL + Python/ETL on a shared editor - the first gate) -> **onsite loop** (SQL deep-dive, coding/ETL design, data modeling/warehouse, system/pipeline design, and a **Leadership Principles** behavioral round). **Emphasis:** SQL depth, ETL robustness (idempotency/late data), dimensional modeling, and LP-driven behavioral (bring 12-15 STAR stories).\n\n### SQL round\n**Q: 2nd-highest salary per department.** Use a window rank, not a correlated subquery.\n```sql\nSELECT dept, salary FROM (\n  SELECT dept, salary, DENSE_RANK() OVER (PARTITION BY dept ORDER BY salary DESC) rk\n  FROM emp) t WHERE rk = 2;\n```\n-> Revise: [window functions](#/lesson/sql-window)\n\n**Q: Running 7-day rolling average of daily revenue.** A window frame.\n```sql\nSELECT d, AVG(rev) OVER (ORDER BY d ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) r7\nFROM daily;\n```\n**Q: Month-over-month growth %.** `LAG` for the prior period, then compute the delta. -> Revise: [window functions](#/lesson/sql-window)\n\n### Coding / ETL round\n**Q: Make a daily load idempotent.** Re-running the same date must not duplicate: **MERGE/upsert** on the key, or **delete-then-insert per partition** (never a blind append). -> Revise: [idempotency](#/lesson/pipe-idempotency)\n\n**Q: Handle late/out-of-order events in a batch job.** Reprocess by **event-date partition** (not arrival), keyed + idempotent, so a backfill for a late day overwrites cleanly. -> Revise: [backfill & scheduling](#/lesson/pipe-scheduling-backfill)\n\n**Q (Python): top-K frequent items in a large log.** Hash-map counts + a size-K heap (O(n log K)); at huge scale, a Count-Min sketch + heap. -> Revise: [DSA patterns](#/cheat/dsa-de)\n\n### Data modeling round\n**Q: Model orders analytics.** Star schema: `fact_order_item` at grain 'one product per order line' (measures + FKs) around `dim_date/customer/product`. State the **grain first**. -> Revise: [star schema](#/lesson/model-star-schema)\n\n**Q: Track a customer's changing address without losing history.** **SCD Type 2** - new row + validity dates + current flag; surrogate keys. -> Revise: [SCD2](#/lesson/model-scd2)\n\n### System design round\n**Q: Design a pipeline for clickstream -> daily dashboards (billions/day).** Clarify scale/freshness; ingest to S3/Kafka; partition by date; Spark/Glue transform; **idempotent** loads to Redshift/lakehouse; quality checks; orchestrate with Airflow/Step Functions. Call out late data, skew, schema evolution. -> Revise: [system design](#/cheat/system-design)\n\n**Q: Cut a slow Redshift/Athena query's cost.** Partition + columnar (Parquet) + narrow SELECT so you scan fewer bytes; on Redshift, DISTKEY the join column + SORTKEY the date. -> Revise: [Athena partitioning](#/lesson/aws-athena-partitioning)\n\n### Behavioral round (Leadership Principles)\n**Q: 'Tell me about a time you dealt with ambiguity / disagreed & committed / delivered under a tight deadline.'** Answer in **STAR** mapped to a specific LP; quantify the result. Prepare **12-15 stories** you can flex across Ownership, Bias for Action, Dive Deep, Customer Obsession. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Amazon question - 'design the data model + pipeline for a new marketplace metric.'** Walk it end to end: (1) **clarify** the metric, grain, freshness, scale; (2) **model** it - `fact` at the right grain + conformed dims, SCD2 where history matters; (3) **pipeline** - ingest to S3, partition by event date, Spark transform, **idempotent** MERGE into the warehouse, DQ checks that block publish; (4) **trade-offs** - batch vs stream, cost (scan-less), late data, skew; (5) close with monitoring/alerting. Then a **behavioral** LP follow-up ('a time you had to Dive Deep to fix a data bug') in STAR with numbers. Nailing grain + idempotency + trade-off reasoning + a quantified LP story is the Amazon bar.",
+       "keypoints": [
+        "Loop: SQL+Python technical screen (the gate) -> onsite SQL, coding/ETL, data modeling, system design, LP behavioral.",
+        "SQL: window functions (2nd-highest, rolling avg, MoM/YoY) and dedup/top-N are near-guaranteed.",
+        "ETL: idempotency, late/out-of-order data, retries - MERGE or delete-then-insert per partition.",
+        "Modeling: state the grain first; star schema, SCD2, conformed dimensions; Redshift dist/sort keys.",
+        "System design: clarify -> estimate -> ingest/store/transform/serve -> trade-offs; scan fewer bytes to cut cost.",
+        "Behavioral is scored: STAR mapped to Leadership Principles; prepare 12-15 quantified stories."
+       ],
+       "quiz": [
+        {
+         "q": "Amazon SQL round: get the 2nd-highest salary per department. Best approach?",
+         "options": [
+          "A correlated subquery per row",
+          "DENSE_RANK() OVER (PARTITION BY dept ORDER BY salary DESC), keep rk=2",
+          "ORDER BY salary LIMIT 2",
+          "A self-join"
+         ],
+         "answer": 1,
+         "explain": "A partitioned window rank is the clean, efficient per-group top-N; keep rk=2."
+        },
+        {
+         "q": "What most distinguishes a strong Amazon behavioral answer?",
+         "options": [
+          "Being brief",
+          "A STAR story mapped to a Leadership Principle with a quantified result",
+          "Naming many tools",
+          "Avoiding numbers"
+         ],
+         "answer": 1,
+         "explain": "Amazon scores behavioral against LPs; STAR + a specific, quantified outcome is the bar."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Amazon-style: write SQL for the top-3 products by revenue within each category, and say why the window approach beats alternatives.",
+         "hint": "PARTITION BY category, rank, filter <= 3.",
+         "solution": "```sql\nSELECT category, product, revenue FROM (\n  SELECT category, product, revenue,\n         ROW_NUMBER() OVER (PARTITION BY category ORDER BY revenue DESC) rn\n  FROM sales) t\nWHERE rn <= 3;\n```\nUse `ROW_NUMBER` (or `RANK`/`DENSE_RANK` if ties should share a place) partitioned by category, ordered by revenue desc, then keep `rn <= 3`. Why it wins: it's a **single pass** the engine can do with a windowed sort, versus a **correlated subquery** (re-scans per row, O(n^2)) or self-joins (fan-out, error-prone with ties). It also generalizes to top-N per group by changing one number. Mention: `ROW_NUMBER` breaks ties arbitrarily, `RANK`/`DENSE_RANK` keep tied products - pick per the requirement. -> Revise: [window functions](#/lesson/sql-window)"
+        },
+        {
+         "prompt": "Amazon-style design: make a nightly S3->Redshift load safe to retry and backfill. Outline the design.",
+         "hint": "Partition by event date + idempotent MERGE.",
+         "solution": "Partition source data in S3 by **event date** (not load date). Each nightly run processes one date, keyed by the run's `logical_date`. Load with an **idempotent** step: stage the date's rows, then **MERGE** on the business key (update matched, insert new) - or **delete-then-insert for that partition** - so re-running the same date yields the same result, never duplicates. Track state in the orchestrator (Airflow/Step Functions) so a **failed task retries** just itself, and a **backfill** re-runs the same DAG for past dates in dependency order. Add DQ checks (row counts, not-null keys) that **block publish** on failure and route bad rows to quarantine. This gives retry-safety (idempotency), reprocessing (backfill), and trust (DQ) - the Amazon ETL bar. -> Revise: [idempotency](#/lesson/pipe-idempotency), [backfill](#/lesson/pipe-scheduling-backfill)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-google",
+       "title": "Google - DE interview playbook",
+       "minutes": 14,
+       "summary": "Google's DE loop (an online SQL+Python assessment, then a 4-5 round onsite) with a BigQuery/GCP flavor - SQL depth, coding, data modeling, and large-scale system design - plus signature questions, answers, and concept links.",
+       "concept": "**The loop:** online **coding assessment** (SQL + Python) -> **onsite loop** (4-5 rounds, 45-60 min each): SQL, coding/DSA, data modeling, large-scale **system design**, and Googleyness/behavioral. **Emphasis:** clean SQL, solid CS fundamentals (Python DSA), and **scale reasoning** - often with a **BigQuery/Dataflow** flavor.\n\n### SQL round\n**Q: De-duplicate to the latest row per key.** `QUALIFY` (BigQuery) makes it one statement.\n```sql\nSELECT * FROM events\nQUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY ts DESC) = 1;\n```\n-> Revise: [window functions](#/lesson/sql-window)\n\n**Q: Sessionize events (gaps > 30 min = new session).** `LAG` the timestamp, flag a new session when the gap exceeds the threshold, running-`SUM` the flag for a session id (gaps-and-islands). -> Revise: [window functions](#/lesson/sql-window)\n\n### Coding / DSA round\n**Q: Merge K sorted streams.** A min-heap of the K heads, pop-and-push - O(n log K). This is also 'merge K sorted files' at scale (external merge). -> Revise: [merge-K / heaps](#/lesson/dsa-merge-k)\n\n**Q: Sliding-window max / longest window with a constraint.** Two pointers / a deque - O(n) over ordered data. -> Revise: [two-pointer & window](#/lesson/dsa-two-pointer-window)\n\n### Data modeling round\n**Q: Model an events warehouse in BigQuery.** Use a **partitioned + clustered** fact (partition by event_date, cluster by user/event_type) so queries prune + block-skip; nested/repeated (ARRAY/STRUCT) where it fits. -> Revise: [BigQuery partition & cluster](#/lesson/bq-partition-cluster)\n\n**Q: Normalize vs denormalize for analytics?** Denormalize (star) for read-heavy analytics - fewer joins; normalize for write-heavy OLTP. -> Revise: [denormalization](#/lesson/model-denormalization)\n\n### System design round\n**Q: Design a pipeline to process 1M click events/min, sessionize, and serve dashboards every 5 min.** Clarify scale/latency; ingest via Pub/Sub; process with **Dataflow (Beam)** using event-time **windowing + watermarks** for sessionization; write aggregates to BigQuery; handle late data with allowed-lateness; partition/cluster the sink. -> Revise: [Dataflow windowing](#/lesson/df-windowing), [watermarks](#/lesson/stream-watermarks-late)\n\n**Q: Control a BigQuery bill.** Billed per **bytes scanned** - partition + cluster, never SELECT *, and cap with maximum_bytes_billed. -> Revise: [BigQuery partition & cluster](#/lesson/bq-partition-cluster)\n\n### Behavioral (Googleyness)\n**Q: 'Tell me about navigating ambiguity / collaborating across teams / a failure and what you learned.'** STAR, emphasize **structured thinking, collaboration, and learning**; quantify impact. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Google question - 'design a pipeline for 1M click events/min, sessionized, dashboards every 5 minutes.'** Clarify: exactly-once or approximate? how late can events be? Then: **Pub/Sub** ingest -> **Dataflow** (Beam) with **session windows** keyed by user and an **event-time watermark** + allowed lateness -> 5-minute aggregates -> **BigQuery** sink **partitioned by date, clustered by user**. Discuss **late/out-of-order** data (watermark + accumulation), **skew** (a hot user - salt/rebalance), **exactly-once** (Dataflow + idempotent sink), and **cost** (prune with partition/cluster). Sessionization is the algorithmic core (gaps-and-islands) - show you can do it in SQL and in the streaming model. Structured clarify -> design -> trade-offs is what Google scores.",
+       "keypoints": [
+        "Loop: online SQL+Python assessment -> onsite (SQL, coding/DSA, modeling, large-scale system design, Googleyness).",
+        "SQL: dedup with QUALIFY/ROW_NUMBER and sessionization (gaps-and-islands via LAG + running sum) are classics.",
+        "Coding leans real DSA: heaps (merge-K), two-pointer/sliding window, graphs - state time AND space.",
+        "Modeling/design carry a BigQuery/Dataflow flavor: partition+cluster, ARRAY/STRUCT, windowing + watermarks.",
+        "System design: clarify -> estimate -> ingest/process/serve -> trade-offs (late data, skew, exactly-once, cost).",
+        "Behavioral (Googleyness): structured thinking, collaboration, learning from failure - STAR with impact."
+       ],
+       "quiz": [
+        {
+         "q": "BigQuery: keep only the latest row per key in one statement. What do you use?",
+         "options": [
+          "DISTINCT",
+          "QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY ts DESC) = 1",
+          "GROUP BY id",
+          "LIMIT 1"
+         ],
+         "answer": 1,
+         "explain": "QUALIFY filters on a window function without a subquery - the idiomatic BigQuery dedup."
+        },
+        {
+         "q": "Design '1M clicks/min, sessionize, serve every 5 min' on GCP - core processing choice?",
+         "options": [
+          "A nightly batch job",
+          "Dataflow/Beam with event-time session windows + watermarks, sink to BigQuery",
+          "A single Postgres instance",
+          "Store raw only"
+         ],
+         "answer": 1,
+         "explain": "Sessionization at that rate needs stream processing with event-time windows and watermarks (Dataflow), aggregated into BigQuery."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Google-style SQL: assign a session id to each user's events where a gap over 30 minutes starts a new session.",
+         "hint": "LAG the ts, flag new session, running SUM.",
+         "solution": "```sql\nWITH f AS (\n  SELECT user_id, ts,\n    CASE WHEN ts - LAG(ts) OVER (PARTITION BY user_id ORDER BY ts)\n         > INTERVAL '30' MINUTE OR LAG(ts) OVER (PARTITION BY user_id ORDER BY ts) IS NULL\n         THEN 1 ELSE 0 END AS new_sess\n  FROM events)\nSELECT user_id, ts,\n  SUM(new_sess) OVER (PARTITION BY user_id ORDER BY ts) AS session_id\nFROM f;\n```\nThis is the **gaps-and-islands** pattern: `LAG` gets the previous timestamp, the `CASE` flags a **new session** when the gap exceeds 30 min (or it's the first event), and a **running SUM of the flag** numbers the sessions per user. It's O(n log n) (the sort), single pass conceptually, and mirrors how you'd sessionize in a streaming engine with session windows. -> Revise: [window functions](#/lesson/sql-window)"
+        },
+        {
+         "prompt": "Google-style: merge K sorted event streams into one ordered stream efficiently. Approach + complexity.",
+         "hint": "Min-heap of heads.",
+         "solution": "Use a **min-heap** holding the current head of each of the K streams (each entry tagged with which stream it came from). Pop the smallest, emit it, then push the **next element from that same stream**. Repeat until all streams are exhausted. **Complexity: O(n log K)** time (n total elements, each pushed/popped once through a heap of size <= K) and **O(K)** extra space. This is the in-memory version of a **k-way external merge** (how sort/merge-join works when data exceeds RAM: sort runs, then merge them with a heap). Edge cases: empty streams, ties (stable if you tie-break on stream index), and very large K (the heap stays O(K)). -> Revise: [merge-K / heaps](#/lesson/dsa-merge-k)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-meta",
+       "title": "Meta - DE interview playbook",
+       "minutes": 14,
+       "summary": "Meta's DE loop (a technical phone with ~25 min SQL + ~25 min Python, then an onsite of product sense, SQL/ETL, data modeling, and behavioral) with its product-analytics flavor - signature questions, answers, and concept links.",
+       "concept": "**The loop:** recruiter screen -> **technical phone** (cleanly split: ~25 min **SQL**, ~25 min **Python**) -> **onsite** (Product Sense, SQL/ETL, **Data Modeling** [weighted heavily], Behavioral/ownership). **Emphasis:** product-analytics SQL, **dimensional modeling**, and translating a fuzzy product question into metrics + a schema.\n\n### SQL round\n**Q: DAU/WAU/MAU and stickiness (DAU/MAU).** Count distinct users per window; stickiness = DAU/MAU. Use `COUNT(DISTINCT ...)` over date-bucketed data (or HLL `APPROX_COUNT_DISTINCT` at scale). -> Revise: [window functions](#/lesson/sql-window)\n\n**Q: Retention - what % of users active on day 0 return on day N?** Self-join / cohort: bucket users by first-active date, then join to activity N days later, divide. -> Revise: [SQL cram](#/cheat/databases-sql)\n\n### Python round\n**Q: Parse/aggregate a messy events file.** Show clean, vectorized **pandas** (or dict/Counter): group, dedup, handle nulls/late rows; avoid `iterrows`. -> Revise: [pandas](#/lesson/pd-merge-reshape)\n\n### Data modeling round (weighted)\n**Q: 'Design the data model for [a product feature, e.g. Reactions].'** Clarify the product; define the **grain** ('one reaction event'); build a **fact** (measures + FKs) + conformed **dims** (user, content, date); note **SCD2** for changing user attributes; pick partition keys. Meta pushes hard here - reason about grain and additive vs non-additive measures. -> Revise: [star schema](#/lesson/model-star-schema), [SCD2](#/lesson/model-scd2)\n\n**Q: Additive vs non-additive measures?** Counts/sums are additive; ratios (e.g. CTR) are non-additive - store numerator & denominator, compute the ratio at query time. -> Revise: [star schema](#/lesson/model-star-schema)\n\n### Product sense\n**Q: 'How would you measure the success of [feature]? What tables/metrics would you build?'** Name the **north-star metric** + guardrails, define events, translate to a fact/dim schema and the SQL to compute them. This is Meta's signature blend of product + modeling.\n\n### Behavioral\n**Q: 'A time you owned an ambiguous problem end to end / influenced without authority / why Meta.'** STAR, emphasize **ownership and impact**; quantify. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Meta question - 'design the data model and metrics for a new Stories feature.'** Start with **product sense**: what does success mean? (e.g., daily Stories creators, view-through rate, guardrail: report rate). Define the **events** (story_created, story_viewed) and the **grain** (one view event). Model a **fact_story_view** (measures: view flag, watch_ms; FKs: viewer, story, date) + dims (user with **SCD2** for attributes, story, date). Note **CTR is non-additive** - store views & impressions, divide at query time. Then write the **SQL** for DAU creators and view-through, using `COUNT(DISTINCT)` (HLL at scale). Meta scores your ability to go **fuzzy product question -> metrics -> schema -> SQL** cleanly, with grain and additivity correct.",
+       "keypoints": [
+        "Loop: technical phone (~25 min SQL + ~25 min Python) -> onsite (product sense, SQL/ETL, data modeling [heavy], behavioral).",
+        "SQL: product analytics - DAU/WAU/MAU, stickiness, retention/cohorts, funnels; COUNT(DISTINCT)/HLL at scale.",
+        "Python: clean, vectorized data wrangling (pandas/dict/Counter); avoid row loops.",
+        "Data modeling is weighted: nail the grain, star schema, SCD2, and additive vs non-additive measures.",
+        "Product sense: turn a fuzzy feature into a north-star metric + guardrails + a schema + the SQL to compute it.",
+        "Behavioral: ownership and quantified impact in STAR."
+       ],
+       "quiz": [
+        {
+         "q": "Meta asks for 'stickiness'. How is it defined?",
+         "options": [
+          "Total signups",
+          "DAU / MAU (daily active over monthly active)",
+          "Revenue per user",
+          "Sessions per day only"
+         ],
+         "answer": 1,
+         "explain": "Stickiness = DAU/MAU - the fraction of monthly users who come back daily."
+        },
+        {
+         "q": "Why is click-through rate (CTR) a non-additive measure in a fact table?",
+         "options": [
+          "It's always null",
+          "It's a ratio - you can't sum ratios across rows; store numerator & denominator and divide at query time",
+          "It's a string",
+          "It must be a dimension"
+         ],
+         "answer": 1,
+         "explain": "Ratios don't add; keep clicks and impressions as additive measures and compute CTR at query time."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Meta-style: compute Day-1 retention (users active on their signup day who return the next day). Sketch the SQL.",
+         "hint": "First-active cohort + a join to next-day activity.",
+         "solution": "```sql\nWITH first_day AS (\n  SELECT user_id, MIN(DATE(ts)) AS d0 FROM activity GROUP BY user_id)\nSELECT f.d0,\n  COUNT(DISTINCT a.user_id) * 1.0 / COUNT(DISTINCT f.user_id) AS day1_retention\nFROM first_day f\nLEFT JOIN activity a\n  ON a.user_id = f.user_id AND DATE(a.ts) = f.d0 + INTERVAL '1' DAY\nGROUP BY f.d0;\n```\nDefine each user's **cohort** (their first-active date `d0`), then **left-join** to activity exactly one day later; the ratio of distinct returners to the cohort size is **Day-1 retention** by cohort. Use a LEFT join so non-returners count in the denominator but not the numerator, and `COUNT(DISTINCT)` to avoid double-counting multiple events. Generalize to Day-N by changing the interval. -> Revise: [SQL cram](#/cheat/databases-sql)"
+        },
+        {
+         "prompt": "Meta-style modeling: design the fact/dim schema for measuring a 'Save post' feature. State grain, measures, dims, and one modeling subtlety.",
+         "hint": "Grain = one save event; watch non-additive metrics.",
+         "solution": "**Grain:** one **save event** (a user saves a post). **fact_post_save**: measures = `save_flag` (1, additive -> counts), maybe `is_first_save`; **FKs** = user_key, post_key, date_key. **Dims:** `dim_user` (SCD2 - segment/country change over time), `dim_post` (author, type, topic), `dim_date`. **Metrics** built on it: daily distinct savers (`COUNT(DISTINCT user)`), saves per post, save-through rate = saves / impressions. **Subtlety:** **save-through rate is non-additive** - store saves and impressions as separate additive measures (impressions may live in a different fact at a different grain) and compute the ratio at query time; never pre-store the ratio. Also decide whether an **unsave** is a new event (append, event-sourced) or a delete (mutation) - event-sourcing keeps history and is friendlier to a warehouse. Conform `dim_user`/`dim_date` with other product facts so metrics compare across features. -> Revise: [star schema](#/lesson/model-star-schema), [SCD2](#/lesson/model-scd2)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-microsoft",
+       "title": "Microsoft - DE interview playbook",
+       "minutes": 14,
+       "summary": "Microsoft's DE loop (online assessment/technical screen, then a 4-5 round 'as-appropriate' onsite) with an Azure flavor - SQL, coding/DSA, data modeling, Azure system design, and growth-mindset behavioral - with signature questions, answers, and concept links.",
+       "concept": "**The loop:** recruiter -> **online assessment / technical screen** (SQL + a coding problem) -> **onsite loop** (4-5 rounds): SQL, coding/DSA (often C#/Java/Python), data modeling, **Azure system design** (Synapse, Data Factory, ADLS, Event Hubs, Azure Databricks), and a **growth-mindset** behavioral + 'why Microsoft'. **Emphasis:** solid SQL, CS fundamentals, Azure data-stack fluency, and collaboration.\n\n### SQL round\n**Q: Nth-highest value / gaps in a sequence.** Window `DENSE_RANK`/`LAG`; for missing IDs, self-anti-join or a numbers table. -> Revise: [window functions](#/lesson/sql-window)\n\n**Q: Pivot monthly sales into columns.** `PIVOT` (T-SQL) or conditional aggregation `SUM(CASE WHEN month=... THEN amt END)`. -> Revise: [SQL cram](#/cheat/databases-sql)\n\n### Coding / DSA round\n**Q: Reverse a linked list / validate a BST / two-sum.** Classic DSA - know arrays, strings, hash maps, trees; state time & space. -> Revise: [DSA patterns](#/cheat/dsa-de)\n\n**Q: Detect a cycle in task dependencies.** Graph + DFS colors / Kahn's topological sort. -> Revise: [topological sort](#/lesson/dsa-topo-sort)\n\n### Data modeling round\n**Q: Design a star schema for sales analytics on Synapse.** Fact at line-item grain + conformed dims; on **dedicated SQL pools** pick a **distribution** (HASH on the big join key, ROUND_ROBIN for staging, REPLICATE for small dims) and columnstore. -> Revise: [star schema](#/lesson/model-star-schema)\n\n**Q: Slowly changing customer attributes?** **SCD2** with validity dates + current flag. -> Revise: [SCD2](#/lesson/model-scd2)\n\n### System design round (Azure)\n**Q: Design an end-to-end Azure analytics pipeline.** Ingest with **Data Factory** (or Event Hubs for streaming) -> land in **ADLS Gen2** (lake) -> transform in **Azure Databricks/Synapse Spark** -> serve from **Synapse** dedicated pool / Power BI; orchestrate + monitor; idempotent loads; partition by date. -> Revise: [cloud patterns](#/cheat/cloud), [system design](#/cheat/system-design)\n\n**Q: Make an ADF copy re-runnable.** Parameterize by date window, write to a date partition, and **upsert/overwrite that partition** so retries don't duplicate. -> Revise: [idempotency](#/lesson/pipe-idempotency)\n\n### Behavioral (growth mindset)\n**Q: 'A time you learned from failure / took feedback / collaborated across teams.'** STAR; emphasize **learning, curiosity, and collaboration** (Microsoft's growth-mindset culture). -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Microsoft question - 'design an Azure pipeline from operational DB to a Power BI dashboard.'** Clarify volume/freshness. Then: **Data Factory** extracts (watermark column for incremental) -> **ADLS Gen2** raw (partitioned by date) -> **Azure Databricks/Synapse Spark** cleans and builds a **star schema** -> **Synapse dedicated SQL pool** (HASH-distributed fact, replicated dims) -> **Power BI**. Cover **incremental** extraction (high-watermark), **idempotent** partition overwrites, distribution choice to avoid data movement/skew, and monitoring/alerting. Close with a growth-mindset behavioral in STAR. Microsoft rewards clean fundamentals + Azure fluency + collaborative framing.",
+       "keypoints": [
+        "Loop: online/technical screen (SQL+coding) -> onsite (SQL, DSA, modeling, Azure system design, growth-mindset behavioral).",
+        "SQL: window ranks, LAG/gaps, PIVOT/conditional aggregation.",
+        "DSA is real CS: arrays/strings/trees/graphs; topological sort for dependency cycles; state time & space.",
+        "Azure stack: Data Factory (orchestrate/ingest), ADLS Gen2 (lake), Synapse (warehouse; HASH/ROUND_ROBIN/REPLICATE distribution), Databricks, Event Hubs.",
+        "Modeling: star schema + SCD2; Synapse distribution choice avoids data movement and skew.",
+        "Behavioral: growth mindset - learning from failure, feedback, collaboration - in STAR."
+       ],
+       "quiz": [
+        {
+         "q": "On a Synapse dedicated SQL pool, how should a large fact table be distributed to speed up joins?",
+         "options": [
+          "ROUND_ROBIN always",
+          "HASH-distribute on the common join key (REPLICATE small dims)",
+          "REPLICATE the fact",
+          "No distribution needed"
+         ],
+         "answer": 1,
+         "explain": "HASH on the join key co-locates matching rows (minimizes data movement); small dims are REPLICATEd, staging uses ROUND_ROBIN."
+        },
+        {
+         "q": "Which Azure service is the natural choice to orchestrate and ingest batch data?",
+         "options": [
+          "Power BI",
+          "Azure Data Factory",
+          "Event Hubs",
+          "ADLS Gen2"
+         ],
+         "answer": 1,
+         "explain": "Data Factory orchestrates and copies/ingests batch data; Event Hubs is for streaming, ADLS is storage, Power BI is BI."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Microsoft-style: write SQL to pivot monthly revenue (rows -> one column per month) without the PIVOT keyword.",
+         "hint": "Conditional aggregation.",
+         "solution": "```sql\nSELECT product,\n  SUM(CASE WHEN month='Jan' THEN amt END) AS jan,\n  SUM(CASE WHEN month='Feb' THEN amt END) AS feb,\n  SUM(CASE WHEN month='Mar' THEN amt END) AS mar\nFROM sales\nGROUP BY product;\n```\n**Conditional aggregation** is the portable pivot: `SUM(CASE WHEN month=X THEN amt END)` puts each month's total in its own column, grouped by product. It works on every engine (unlike the T-SQL `PIVOT` operator), extends to counts/averages, and lets you add computed columns (e.g., a quarter total) easily. Mention the trade-off: it needs one CASE per output column, so a truly dynamic set of months requires dynamic SQL. -> Revise: [SQL cram](#/cheat/databases-sql)"
+        },
+        {
+         "prompt": "Microsoft-style design: an ADF pipeline copies an on-prem table to ADLS nightly. Make it incremental AND safe to retry.",
+         "hint": "High-watermark + partition overwrite.",
+         "solution": "**Incremental:** keep a **high-watermark** (e.g., `MAX(modified_at)` from the last successful run stored in a control table). Each run copies only rows with `modified_at > last_watermark`, then advances the watermark on success - so you never re-scan the whole source. **Safe to retry / idempotent:** land data into a **date-partitioned** path in ADLS (e.g., `/raw/orders/dt=2026-07-01/`) and **overwrite that partition** on each run (or MERGE into the curated Delta/Synapse table on the business key). A failed-and-retried run for the same window reproduces the same partition rather than appending duplicates. Add a **watermark-in-transaction** pattern (only advance the watermark after the write commits) so a crash mid-write is re-done, not skipped. Parameterize the date window so the same pipeline **backfills** past days. -> Revise: [idempotency](#/lesson/pipe-idempotency), [backfill](#/lesson/pipe-scheduling-backfill)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-netflix",
+       "title": "Netflix - DE interview playbook",
+       "minutes": 14,
+       "summary": "Netflix's senior-heavy DE loop (recruiter, technical screen, then an onsite of strong SQL, dimensional modeling, big-data pipeline design, and a rigorous culture/behavioral) with its Iceberg/Spark/Presto stack flavor - signature questions, answers, and concept links.",
+       "concept": "**The loop:** recruiter -> **technical screen** (SQL + Python/data) -> **onsite** (45-60 min each): advanced **SQL**, **dimensional modeling** (Kimball), **big-data pipeline/system design** at scale, and a rigorous **culture** round (Netflix's 'freedom & responsibility', high performance, candor). **Emphasis:** senior ownership, high-quality modeling, and scale reasoning on an **S3 + Iceberg + Spark + Presto/Trino + Kafka/Flink** stack.\n\n### SQL round (advanced)\n**Q: Rank titles by watch time within each country; show top 10 per country.** Partitioned window rank, filter <= 10. -> Revise: [window functions](#/lesson/sql-window)\n\n**Q: Compute a 28-day rolling active-viewer count.** Window frame over a date spine (fill gaps first). -> Revise: [window functions](#/lesson/sql-window)\n\n### Data modeling round (Kimball)\n**Q: Model 'plays/streams' for analytics.** Fact at grain 'one play event' (measures: watch_ms, completed flag; FKs: member, title, device, date) + conformed dims; **SCD2** on member/title attributes. State grain + additivity. -> Revise: [star schema](#/lesson/model-star-schema), [SCD2](#/lesson/model-scd2)\n\n**Q: Denormalize for a fast dashboard?** Pre-aggregate/denormalize a serving table (Druid/Iceberg) for read latency; keep the normalized fact as source of truth. -> Revise: [denormalization](#/lesson/model-denormalization)\n\n### System / pipeline design round (scale)\n**Q: Design the pipeline behind a 'plays per title per day' dashboard for 200M+ members.** Clarify scale/freshness; ingest events via **Kafka**; store raw on **S3/Iceberg** partitioned by event date; **Spark** batch (or Flink for near-real-time) aggregates; serve from Presto/Trino or Druid; handle **late events**, **skew** (hot titles - salt), schema evolution, and backfills. -> Revise: [Spark shuffle & skew](#/lesson/bd-partitions-shuffle), [partitioning](#/lesson/lake-partitioning), [late data](#/lesson/stream-watermarks-late)\n\n**Q: A Spark job is slow on a few huge titles (skew).** Diagnose via the stage's long-tail tasks; fix with **salting**, AQE skew-join, or broadcasting the small side. -> Revise: [Spark shuffle & skew](#/lesson/bd-partitions-shuffle)\n\n### Culture / behavioral\n**Q: 'A time you disagreed with a decision / gave hard feedback / owned an ambiguous project end to end.'** Netflix probes **judgment, candor, and impact** for senior autonomy - STAR with real trade-offs and quantified outcomes, and show you seek context, not control. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Netflix question - 'design the data model + pipeline for viewing analytics at 200M+ members.'** Start with **grain** ('one play/heartbeat event') and the **fact + conformed dims** (member SCD2, title, device, date), noting additive (watch_ms, plays) vs non-additive (completion rate) measures. Then the **pipeline**: Kafka ingest -> **Iceberg on S3** partitioned by event date -> **Spark** daily aggregates (Flink if near-real-time) -> Presto/Trino/Druid serving. Discuss **late/out-of-order** events, **skew** on blockbuster titles (salting / AQE), **schema evolution** (Iceberg handles it), **backfills** (reprocess a date partition idempotently), and cost. Close with a **culture** answer showing senior judgment and candor. Netflix hires for autonomy - reason about trade-offs like an owner.",
+       "keypoints": [
+        "Senior-heavy loop: technical screen -> onsite (advanced SQL, Kimball modeling, big-data pipeline design, rigorous culture round).",
+        "Stack flavor: S3 + Iceberg + Spark + Presto/Trino + Kafka/Flink (+ Druid serving).",
+        "SQL: partitioned top-N per group, rolling windows over a date spine.",
+        "Modeling: grain-first star schema, SCD2, additive vs non-additive; denormalize a serving layer for latency.",
+        "Design at scale: late events, skew (hot titles -> salt/AQE), schema evolution, idempotent backfills.",
+        "Culture round is real: judgment, candor, ownership - STAR with trade-offs and quantified impact."
+       ],
+       "quiz": [
+        {
+         "q": "A Netflix Spark aggregation is slow because a few blockbuster titles dominate one partition. Best first fix?",
+         "options": [
+          "Add more shuffle partitions blindly",
+          "Address skew: salt the hot keys / enable AQE skew-join / broadcast the small side",
+          "Cache everything",
+          "Switch to a single executor"
+         ],
+         "answer": 1,
+         "explain": "A long-tail task = data skew; salting, AQE skew-join handling, or broadcasting the small side rebalances the work."
+        },
+        {
+         "q": "Why store the viewing fact in Iceberg partitioned by event date?",
+         "options": [
+          "To avoid SQL",
+          "Partition pruning + schema evolution + idempotent per-date backfills",
+          "It removes the need for modeling",
+          "To store JSON only"
+         ],
+         "answer": 1,
+         "explain": "Date partitioning prunes scans and lets you reprocess a single day idempotently; Iceberg adds safe schema evolution and snapshots."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Netflix-style SQL: top 10 titles by watch time per country for last month. Write it and note the tie-handling choice.",
+         "hint": "PARTITION BY country, rank by watch time.",
+         "solution": "```sql\nSELECT country, title, watch_ms FROM (\n  SELECT country, title, SUM(watch_ms) AS watch_ms,\n         ROW_NUMBER() OVER (PARTITION BY country ORDER BY SUM(watch_ms) DESC) rn\n  FROM plays\n  WHERE play_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1' MONTH\n    AND play_date <  DATE_TRUNC('month', CURRENT_DATE)\n  GROUP BY country, title) t\nWHERE rn <= 10;\n```\nAggregate watch time per (country, title), then a **partitioned window rank** ordered by watch time desc, keep `rn <= 10`. **Tie handling:** `ROW_NUMBER` gives exactly 10 rows even if #10 and #11 tie (arbitrary winner); use `RANK`/`DENSE_RANK` if tied titles should both appear (may return >10). Filtering the month in the WHERE keeps the window over just last month's data. -> Revise: [window functions](#/lesson/sql-window)"
+        },
+        {
+         "prompt": "Netflix-style: your daily Spark aggregation over viewing events runs 5x slower some days. Walk through diagnosis and fixes.",
+         "hint": "Skew, small files, partitioning.",
+         "solution": "**Diagnose:** open the Spark UI - a stage with a **long-tail task** (one task processing far more rows/bytes) signals **data skew** (e.g., a viral title or a null join key). Also check for a **small-files** read problem (thousands of tiny input files -> scheduling overhead) and **spill** (shuffle bytes > memory). **Fixes:** (1) **Skew** - enable **AQE** skew-join, or **salt** the hot key (add a random suffix, aggregate, then re-aggregate), or **broadcast** the small side to avoid the shuffle entirely; (2) **small files** - compact inputs / increase `maxPartitionBytes`, and `OPTIMIZE`/compaction on the Iceberg/Delta source; (3) **partitioning** - partition the source by **event date** so the job prunes to the days it needs, and repartition before wide aggregations to control task count; (4) **spill** - raise executor memory or reduce partition size. Verify by comparing task-time distribution before/after. The root cause on 'some days' is usually a **skewed hot key** on those days. -> Revise: [Spark shuffle & skew](#/lesson/bd-partitions-shuffle), [partitioning](#/lesson/lake-partitioning)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-databricks",
+       "title": "Databricks - DE interview playbook",
+       "minutes": 15,
+       "summary": "Databricks' DE loop (technical screen with SQL + Spark, then an onsite of Spark internals, Delta Lake, lakehouse/medallion design, SQL, and behavioral) - the deepest Spark-performance and Delta questions of any company, with answers, code, and concept links.",
+       "concept": "**The loop:** recruiter -> **technical screen** (SQL + PySpark/Spark) -> **onsite**: **Spark internals & tuning**, **Delta Lake** (ACID/MERGE/time travel), **lakehouse/medallion** design, SQL, and behavioral. **Emphasis:** the deepest **Spark performance** and **Delta** questions anywhere - know the execution model cold.\n\n### Spark internals round\n**Q: What triggers a shuffle and why is it expensive?** Wide transformations (`groupBy`, `join`, `repartition`, `distinct`) redistribute data across the network by key - disk + network I/O + can skew. Minimize/rebalance them. -> Revise: [shuffle & partitions](#/lesson/bd-partitions-shuffle)\n\n**Q: A join is slow from skew. Fixes?** **Broadcast** the small side (`broadcast()` / autoBroadcastJoinThreshold), enable **AQE** skew-join, or **salt** the hot key. -> Revise: [shuffle & partitions](#/lesson/bd-partitions-shuffle)\n\n**Q: narrow vs wide transformation? lazy evaluation?** Narrow (map/filter) = no shuffle; wide = shuffle. Transformations are **lazy**; an **action** (count/write) triggers the DAG. -> Revise: [Spark cram](#/cheat/big-data-spark)\n\n### Delta Lake round\n**Q: What makes Delta ACID, and how do you upsert?** Parquet + a **transaction log** (`_delta_log`) gives ACID; upsert with **MERGE**.\n```sql\nMERGE INTO tgt t USING src s ON t.id=s.id\nWHEN MATCHED THEN UPDATE SET *\nWHEN NOT MATCHED THEN INSERT *;\n```\n-> Revise: [Delta MERGE](#/lesson/dbx-delta-merge)\n\n**Q: Small-files problem / time travel?** `OPTIMIZE` (+ `ZORDER`) compacts; `VERSION AS OF` / `DESCRIBE HISTORY` for time travel; `VACUUM` purges (mind retention). -> Revise: [Delta MERGE & tuning](#/lesson/dbx-delta-merge)\n\n### Lakehouse / pipeline design round\n**Q: Design a medallion pipeline.** **Bronze** (raw ingest via Auto Loader, append) -> **Silver** (clean/dedup/conform, MERGE) -> **Gold** (aggregated serving). Partition by date; exactly-once via checkpoint + idempotent Delta sink. -> Revise: [lakehouse partitioning](#/lesson/lake-partitioning), [idempotency](#/lesson/pipe-idempotency)\n\n**Q: Exactly-once structured streaming?** **Checkpoint** + idempotent/transactional Delta sink; watermark to bound state for late data. -> Revise: [streaming watermarks](#/lesson/dbx-ss-watermark)\n\n### SQL & behavioral\n**Q: dedup latest per key.** `QUALIFY ROW_NUMBER() OVER (PARTITION BY id ORDER BY ts DESC)=1`. -> Revise: [window functions](#/lesson/sql-window)\n**Q behavioral: 'a hard data bug you root-caused / owned a migration.'** STAR + impact. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Databricks question - 'design a medallion lakehouse for streaming IoT/event data and make it exactly-once.'** **Bronze:** ingest continuously with **Auto Loader** (`cloudFiles`, schema location + checkpoint), append raw. **Silver:** stream/batch clean, dedup, and **MERGE** into a conformed Delta table on the business key (idempotent). **Gold:** aggregate for serving; `OPTIMIZE`+`ZORDER` on filter columns. **Exactly-once:** structured streaming **checkpoint** + transactional Delta sink means a restart replays from the checkpoint without duplicates; a **watermark** bounds state and drops too-late events. Discuss partitioning by date (low cardinality), small-file compaction, AQE for skew, and Photon for speed. This tests the full Spark+Delta+lakehouse stack Databricks is built on.",
+       "keypoints": [
+        "Loop: SQL+Spark technical screen -> onsite (Spark internals/tuning, Delta Lake, medallion/lakehouse design, SQL, behavioral).",
+        "Spark: shuffles = wide transforms; lazy eval + actions; fix skew via broadcast / AQE / salting.",
+        "Delta = Parquet + transaction log -> ACID, MERGE upserts, time travel, OPTIMIZE/ZORDER, VACUUM.",
+        "Medallion: bronze (raw, Auto Loader) -> silver (clean, MERGE) -> gold (aggregated/serving).",
+        "Exactly-once streaming = checkpoint + idempotent Delta sink; watermark bounds late-data state.",
+        "Tuning: partition by low-cardinality date, compact small files, Photon, right-size clusters."
+       ],
+       "quiz": [
+        {
+         "q": "In Spark, which operation forces a shuffle?",
+         "options": [
+          "filter()",
+          "map()",
+          "groupBy()/join()/repartition()",
+          "select()"
+         ],
+         "answer": 2,
+         "explain": "Wide transformations (groupBy, join, repartition, distinct) redistribute data across partitions by key - that's the shuffle; narrow ops (map/filter/select) don't."
+        },
+        {
+         "q": "How does Delta Lake achieve exactly-once in Structured Streaming?",
+         "options": [
+          "It can't",
+          "Checkpoint + idempotent/transactional Delta sink (restart replays without duplicates)",
+          "By disabling retries",
+          "Only with a full re-run"
+         ],
+         "answer": 1,
+         "explain": "The streaming checkpoint tracks progress and the transactional Delta sink commits atomically, so a restart resumes exactly-once."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Databricks-style: a nightly PySpark join of a huge fact with a small dim spills and runs for hours. Diagnose and fix.",
+         "hint": "Broadcast + skew + partitions.",
+         "solution": "**Diagnose** in the Spark UI: a large **shuffle** on the join stage and possible **spill** (shuffle write > memory), maybe a **long-tail task** (skew). **Fixes:** (1) If the dim is small (< a few hundred MB), **broadcast** it - `df.join(broadcast(dim), 'k')` or rely on `spark.sql.autoBroadcastJoinThreshold` - which turns the shuffle join into a broadcast hash join (no fact shuffle). (2) If broadcast isn't possible and there's **skew** on the join key, enable **AQE** (`spark.sql.adaptive.enabled=true`, skew-join on) or **salt** the hot keys (append a random bucket to the key on both sides, join, then drop the salt). (3) Tune **shuffle partitions** (AQE coalesces them automatically) and ensure the fact is **partition-pruned** (filter on the partition/date column). (4) Enable **Photon**. Verify by re-checking task-time distribution and shuffle bytes. Usually **broadcasting the dim** alone fixes the classic 'big fact + small dim' case. -> Revise: [shuffle & partitions](#/lesson/bd-partitions-shuffle), [Delta MERGE](#/lesson/dbx-delta-merge)"
+        },
+        {
+         "prompt": "Databricks-style: write a Delta MERGE that upserts a daily batch and explain why MERGE makes the load idempotent.",
+         "hint": "Match on business key.",
+         "solution": "```sql\nMERGE INTO silver_orders t\nUSING staged_orders s\n  ON t.order_id = s.order_id\nWHEN MATCHED THEN UPDATE SET *\nWHEN NOT MATCHED THEN INSERT *;\n```\nMERGE upserts on the **business key** (`order_id`): existing rows are **updated**, new rows **inserted**. This makes the daily load **idempotent** - re-running the same batch (after a failure/retry) updates the same rows to the same values and inserts nothing new, so there are **no duplicates**, unlike a blind `INSERT`/append. Delta's **transaction log** commits the MERGE atomically (all-or-nothing), so a crash mid-merge leaves the table in its prior consistent state to be safely retried. For a full sync you can add `WHEN NOT MATCHED BY SOURCE THEN DELETE` to remove rows absent from the batch. Follow with `OPTIMIZE` to compact the files MERGE produces. -> Revise: [Delta MERGE](#/lesson/dbx-delta-merge), [idempotency](#/lesson/pipe-idempotency)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-uber",
+       "title": "Uber - DE interview playbook",
+       "minutes": 14,
+       "summary": "Uber's DE loop (technical screen with SQL + Python, then an onsite of advanced SQL, marketplace data modeling, real-time pipeline/system design, coding, and behavioral) with its streaming-heavy Kafka/Flink/Hive/Presto stack - signature questions, answers, and concept links.",
+       "concept": "**The loop:** recruiter -> **technical screen** (SQL + Python/coding) -> **onsite**: advanced **SQL**, **marketplace data modeling**, **real-time pipeline/system design**, coding, and behavioral. **Emphasis:** real-time/streaming, marketplace metrics (trips, surge, ETA), and scale on a **Kafka + Flink + Hive/HDFS + Presto** stack.\n\n### SQL round\n**Q: For each rider, time between consecutive trips.** `LAG(trip_ts) OVER (PARTITION BY rider ORDER BY trip_ts)`, subtract. -> Revise: [window functions](#/lesson/sql-window)\n\n**Q: Sessionize a driver's online periods (gap > 15 min = new session).** Gaps-and-islands: LAG + flag + running SUM. -> Revise: [window functions](#/lesson/sql-window)\n\n### Data modeling round\n**Q: Model the 'trips' fact for a two-sided marketplace.** Grain = 'one completed trip'; measures (fare, distance, duration, surge_multiplier); FKs (rider, driver, city, date); conform dims; SCD2 on driver/rider attributes. -> Revise: [star schema](#/lesson/model-star-schema), [SCD2](#/lesson/model-scd2)\n\n### Real-time / system design round\n**Q: Design real-time surge pricing / live supply-demand per city.** Ingest location/request events via **Kafka**; process with **Flink** using event-time **windows + watermarks** keyed by geo-hash; emit per-cell supply/demand every few seconds; serve from a low-latency store; handle **late events** and **exactly-once**. -> Revise: [streaming windows & watermarks](#/lesson/stream-watermarks-late), [delivery semantics](#/lesson/sd-idempotency-delivery)\n\n**Q: Design 'trips per city per hour' for both dashboards and ML.** Lambda-ish: Kafka -> Flink (speed layer, near-real-time) + Spark/Hive batch (accurate reprocess) on HDFS/S3 partitioned by date/hour; serve via Presto. Discuss skew (hot cities), backfills, schema evolution. -> Revise: [Spark shuffle & skew](#/lesson/bd-partitions-shuffle), [streaming cram](#/cheat/streaming)\n\n### Coding & behavioral\n**Q coding: top-K destinations in a stream / merge sorted trip logs.** Heap for top-K; k-way merge for sorted streams. -> Revise: [DSA patterns](#/cheat/dsa-de)\n**Q behavioral: 'a time you delivered under pressure / owned an incident.'** STAR + impact. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Uber question - 'design real-time supply/demand (surge) per city.'** Clarify latency (seconds) and accuracy. Then: rider-request + driver-location events -> **Kafka** (partitioned by city/geo-hash) -> **Flink** job keyed by geo-cell with **event-time tumbling/sliding windows + watermark** computing supply, demand, and the surge multiplier every few seconds -> push to a fast serving store (Redis/Pinot) for the pricing service. Cover **late/out-of-order** GPS events (watermark + allowed lateness), **exactly-once** (Flink checkpoints + idempotent sink), **skew** (hot cities - key by finer geo-cells or salt), and a **batch reconciliation** (Spark/Hive) to correct the speed layer. This tests streaming event-time semantics, which Uber weights heavily.",
+       "keypoints": [
+        "Loop: SQL+Python technical screen -> onsite (advanced SQL, marketplace modeling, real-time system design, coding, behavioral).",
+        "Stack: Kafka + Flink (streaming), Hive/HDFS/S3 + Spark (batch), Presto (query), Pinot/Redis (serving).",
+        "SQL: LAG for inter-event gaps, sessionization (gaps-and-islands), rolling windows.",
+        "Modeling: trips fact at trip grain, conformed dims, SCD2; two-sided marketplace metrics.",
+        "Real-time design: event-time windows + watermarks, exactly-once (checkpoints + idempotent sink), late data, skew on hot cities.",
+        "Often a Lambda-style split: Flink speed layer + Spark/Hive batch reconciliation."
+       ],
+       "quiz": [
+        {
+         "q": "Uber real-time design: which handles out-of-order GPS events correctly in the streaming layer?",
+         "options": [
+          "Processing-time windows",
+          "Event-time windows with watermarks (+ allowed lateness)",
+          "A nightly batch only",
+          "Ignoring timestamps"
+         ],
+         "answer": 1,
+         "explain": "Event-time windows + watermarks order events by when they happened and bound how long to wait for late ones - essential for correct real-time surge."
+        },
+        {
+         "q": "Why key the surge stream by geo-hash / city cell?",
+         "options": [
+          "To avoid Kafka",
+          "To parallelize and compute supply/demand per local area (and manage skew on hot cells)",
+          "It's required by SQL",
+          "To store JSON"
+         ],
+         "answer": 1,
+         "explain": "Surge is local; keying by geo-cell parallelizes the computation per area, and finer cells / salting handle hot-city skew."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Uber-style SQL: for each rider, compute the gap (in minutes) between consecutive trips and flag gaps over 30 days.",
+         "hint": "LAG the timestamp per rider.",
+         "solution": "```sql\nSELECT rider_id, trip_ts,\n  DATE_DIFF('minute', LAG(trip_ts) OVER (PARTITION BY rider_id ORDER BY trip_ts), trip_ts) AS gap_min,\n  CASE WHEN LAG(trip_ts) OVER (PARTITION BY rider_id ORDER BY trip_ts)\n            < trip_ts - INTERVAL '30' DAY THEN 1 ELSE 0 END AS churned_back\nFROM trips;\n```\n`LAG` fetches each rider's **previous** trip timestamp (partitioned by rider, ordered by time); the diff is the inter-trip gap, and the CASE flags a **reactivation** after a 30-day gap. The first trip per rider has a NULL LAG (gap undefined) - handle explicitly if needed. This pattern (previous-event via LAG) underlies retention, reactivation, and sessionization metrics. -> Revise: [window functions](#/lesson/sql-window)"
+        },
+        {
+         "prompt": "Uber-style design: 'trips per city per hour' must power both a live ops dashboard (seconds) and accurate finance reports. Outline the architecture and why.",
+         "hint": "Speed layer + batch reconciliation.",
+         "solution": "Use a **Lambda-style** split because the two consumers have different needs. **Speed layer:** trip events -> **Kafka** (partitioned by city) -> **Flink** with **event-time hourly windows + watermark**, emitting near-real-time counts to a fast store (Pinot/Redis) for the **live dashboard** - low latency, tolerates small inaccuracy from very late events. **Batch layer:** the same Kafka events land on **HDFS/S3 partitioned by date/hour**; a **Spark/Hive** job recomputes the *authoritative* hourly counts (all late data included, dedup, idempotent per partition) for **finance** - accurate, reproducible, backfillable. Serving reads speed for 'now' and batch for 'settled' hours. Address **skew** (hot cities -> finer keys/salt), **exactly-once** (Flink checkpoints + idempotent sink; batch MERGE/overwrite per partition), **schema evolution**, and **backfills** (re-run a date partition). The 'why': you can't get both seconds-latency and perfect accuracy from one path, so you combine a fast-but-approximate stream with a slow-but-correct batch. -> Revise: [streaming](#/cheat/streaming), [delivery semantics](#/lesson/sd-idempotency-delivery)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-airbnb",
+       "title": "Airbnb - DE interview playbook",
+       "minutes": 14,
+       "summary": "Airbnb's DE loop (SQL-heavy technical screen, then an onsite of advanced SQL, dimensional modeling, data quality/metrics, pipeline/Airflow design, and behavioral) - reflecting its Airflow + metrics-layer + data-quality culture, with questions, answers, and concept links.",
+       "concept": "**The loop:** recruiter -> **technical screen** (SQL-heavy + Python) -> **onsite**: advanced **SQL**, **dimensional modeling**, **data quality & metrics consistency**, **pipeline/Airflow design**, and behavioral. **Emphasis:** SQL depth, clean dimensional modeling, and a strong **data-quality / single-source-of-truth metrics** culture (Airbnb created **Airflow** and the **Minerva** metrics layer).\n\n### SQL round (advanced)\n**Q: Booking funnel conversion (search -> view -> book).** Cohort/funnel with conditional aggregation or window steps; ratios per stage. -> Revise: [window functions](#/lesson/sql-window)\n\n**Q: Occupancy rate per listing per month, filling zero-booking months.** Join to a **date spine**, `COALESCE` to 0, then aggregate. -> Revise: [SQL cram](#/cheat/databases-sql)\n\n### Data modeling round\n**Q: Design the 'bookings' star schema.** Grain = 'one booking'; measures (nights, price, fees); dims (guest, host, listing, date); **SCD2** on listing/host attributes (price tier, location changes). Emphasize **conformed dimensions** so every team's metrics agree. -> Revise: [star schema](#/lesson/model-star-schema), [SCD2](#/lesson/model-scd2)\n\n**Q: Why a central metrics layer?** So 'active listing' or 'booking' is defined **once** and reused - avoids conflicting numbers across dashboards. -> Revise: [modeling cram](#/cheat/data-modeling)\n\n### Data quality & pipeline (Airflow) round\n**Q: Design a reliable daily pipeline in Airflow.** DAG with idempotent, **date-partitioned** tasks; upstream **sensors**; **data-quality checks** (row counts, null keys, ranges) that block publish; retries + alerting; backfillable. -> Revise: [idempotency](#/lesson/pipe-idempotency), [scheduling & backfill](#/lesson/pipe-scheduling-backfill)\n\n**Q: A daily metric silently dropped 20%. How do you catch it before stakeholders?** Automated **anomaly/threshold checks** + freshness + volume tests in the pipeline (fail the DAG, alert, quarantine). -> Revise: [DataOps cram](#/cheat/dataops)\n\n### Behavioral\n**Q: 'A time you improved data trust / handled ambiguous requirements / worked cross-functionally.'** Airbnb values collaboration + being a 'host' - STAR with impact on data trust. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Airbnb question - 'design the bookings data model + a reliable Airflow pipeline, and guarantee the numbers are trustworthy.'** **Model:** `fact_booking` at booking grain (nights, price, fees, status) + conformed dims (guest, host, listing with **SCD2**, date); define measures once so all teams agree. **Pipeline:** an **Airflow** DAG - extract (incremental high-watermark) -> land date-partitioned -> transform to the star -> **idempotent** MERGE/partition-overwrite -> **data-quality gate** (row counts, not-null keys, referential checks, anomaly thresholds) that **blocks publish** on failure -> refresh the metrics layer. Add **sensors** for upstream readiness, **retries**, **alerting**, and **backfill** by re-running dates. Emphasize **data trust**: tests + a single metric definition prevent conflicting dashboards. This blends modeling, orchestration, and quality - Airbnb's core DE bar.",
+       "keypoints": [
+        "Loop: SQL-heavy technical screen -> onsite (advanced SQL, dimensional modeling, data quality/metrics, Airflow pipeline design, behavioral).",
+        "SQL: funnels/cohorts, occupancy over a date spine, window analytics - depth matters.",
+        "Modeling: booking-grain star schema, SCD2, and conformed dimensions for consistent metrics.",
+        "Metrics layer (Minerva-style): define each metric once = single source of truth, no conflicting numbers.",
+        "Airflow pipelines: idempotent date-partitioned tasks, sensors, retries, backfills.",
+        "Data quality is first-class: row/null/range/anomaly checks that block publish + alert."
+       ],
+       "quiz": [
+        {
+         "q": "Airbnb stresses a central metrics layer. What problem does it solve?",
+         "options": [
+          "Faster queries only",
+          "One canonical definition per metric so dashboards don't disagree",
+          "Removes the need for SQL",
+          "Replaces the warehouse"
+         ],
+         "answer": 1,
+         "explain": "A metrics layer defines 'booking'/'active listing' once and reuses it - eliminating conflicting numbers across teams."
+        },
+        {
+         "q": "Best way to compute monthly occupancy including months with zero bookings?",
+         "options": [
+          "Inner join bookings only",
+          "LEFT JOIN a date/listing spine and COALESCE missing counts to 0",
+          "Ignore empty months",
+          "Use DISTINCT"
+         ],
+         "answer": 1,
+         "explain": "Zero-activity months don't exist in the bookings table; join a complete spine and COALESCE to 0 so they're represented."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Airbnb-style SQL: compute search->book conversion rate per day (bookings / searches, same day).",
+         "hint": "Aggregate each event type per day, then divide.",
+         "solution": "```sql\nWITH s AS (SELECT DATE(ts) d, COUNT(*) searches FROM search_events GROUP BY DATE(ts)),\n     b AS (SELECT DATE(ts) d, COUNT(*) bookings FROM booking_events GROUP BY DATE(ts))\nSELECT s.d,\n       s.searches,\n       COALESCE(b.bookings,0) AS bookings,\n       ROUND(COALESCE(b.bookings,0)*1.0 / NULLIF(s.searches,0), 4) AS conv_rate\nFROM s LEFT JOIN b ON s.d = b.d\nORDER BY s.d;\n```\nAggregate each funnel stage per day in its own CTE, **LEFT JOIN** on date (so days with searches but zero bookings still appear), `COALESCE` bookings to 0, and divide with `NULLIF(searches,0)` to avoid divide-by-zero. Multiply by 1.0 to force float division. For a multi-step funnel (search->view->book) extend with more CTEs or conditional aggregation over a unified event table; watch **attribution** (same-day vs windowed) and define it explicitly. -> Revise: [window functions](#/lesson/sql-window), [SQL cram](#/cheat/databases-sql)"
+        },
+        {
+         "prompt": "Airbnb-style: design data-quality checks for a daily bookings pipeline so bad data never reaches dashboards.",
+         "hint": "Volume, nulls, referential, anomaly + block publish.",
+         "solution": "Add a **quality gate** as a task between transform and publish that fails the DAG (and alerts) on any breach: (1) **Volume/freshness** - today's row count within an expected band vs a trailing average, and data is present for the run date (catches upstream drops/late data). (2) **Not-null / uniqueness** - primary keys (`booking_id`) non-null and unique; required fields present. (3) **Referential integrity** - every `listing_id`/`guest_id` exists in its dimension (no orphan facts). (4) **Range/domain** - `nights > 0`, `price >= 0`, status in an allowed set. (5) **Anomaly** - key metrics (daily bookings, revenue) within a threshold of the trailing trend (catches the silent 20% drop). On failure: **block publish**, route bad rows to a **quarantine** table, alert on-call, and keep yesterday's good data live. Make checks **idempotent** and **backfill-aware** (evaluate per date partition). Frameworks: Great Expectations / dbt tests / Airflow sensors + a validation operator. The goal is **data trust** - stakeholders never see numbers that failed a check. -> Revise: [DataOps cram](#/cheat/dataops), [idempotency](#/lesson/pipe-idempotency)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-linkedin",
+       "title": "LinkedIn - DE interview playbook",
+       "minutes": 14,
+       "summary": "LinkedIn's DE loop (technical screen with SQL + coding, then a CS-heavy onsite of SQL, DSA coding, data modeling, streaming/pipeline system design, and values-based behavioral) reflecting its Kafka-origin streaming stack - questions, answers, code, and concept links.",
+       "concept": "**The loop:** recruiter -> **technical screen** (SQL + a coding problem) -> **onsite**: **SQL**, **coding/DSA** (LinkedIn is CS-heavy), **data modeling**, **streaming/pipeline system design**, and a **values-based** behavioral ('members first'). **Emphasis:** strong CS fundamentals and streaming/scale - LinkedIn **invented Kafka** and runs Samza/Brooklin/Pinot/Venice.\n\n### SQL round\n**Q: 2nd-degree connections / mutual connections.** Self-join the connections graph, exclude 1st-degree and self; count mutuals. -> Revise: [SQL cram](#/cheat/databases-sql)\n\n**Q: Most-viewed profiles per week, top 5.** Partitioned window rank over weekly aggregates. -> Revise: [window functions](#/lesson/sql-window)\n\n### Coding / DSA round\n**Q: Course/skill prerequisite ordering; detect impossible schedules.** **Topological sort** (Kahn's); a cycle = impossible. -> Revise: [topological sort](#/lesson/dsa-topo-sort)\n\n**Q: Longest substring / sliding-window and merge-K problems.** Two pointers / deque; heap for K-way merge. -> Revise: [two-pointer & window](#/lesson/dsa-two-pointer-window), [merge-K](#/lesson/dsa-merge-k)\n\n### Data modeling round\n**Q: Model the 'who viewed your profile' feed.** Fact at 'one profile-view event' grain + dims (viewer, viewee, date); aggregate for the feed; SCD2 on member attributes. -> Revise: [star schema](#/lesson/model-star-schema), [SCD2](#/lesson/model-scd2)\n\n### Streaming / system design round\n**Q: Design a real-time activity feed / notifications at LinkedIn scale.** Producers -> **Kafka** topics (partitioned by member) -> stream processors (Samza/Flink) fan-out/aggregate -> serving store (Pinot for analytics, key-value for feed); **CDC** from source DBs via Brooklin/Debezium into Kafka. Cover ordering per key, exactly-once, late data, and backpressure. -> Revise: [streaming cram](#/cheat/streaming), [CDC design](#/lesson/sd-design-cdc)\n\n### Behavioral (values)\n**Q: 'A time you put members/users first / collaborated / owned a hard problem.'** STAR aligned to LinkedIn values (members first, relationships matter, act like an owner) with impact. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature LinkedIn question - 'design a real-time system for who-viewed-your-profile / an activity feed at scale.'** Clarify volume (billions of events) and latency. Then: view/activity events -> **Kafka** topics **partitioned by member id** (preserves per-member ordering) -> a stream processor (**Samza/Flink**) aggregates counts and fans out to followers -> serve the feed from a low-latency KV store and analytics from **Pinot**; ingest source-DB changes via **CDC** (Brooklin/Debezium) into Kafka so derived views stay fresh. Discuss **partitioning/ordering** (per-key order via partition key), **exactly-once** (idempotent producers + transactional processing), **late/out-of-order** events, **backpressure**, and **hot members** (skew). This plays directly to LinkedIn's Kafka-native heritage - show you understand log-based streaming and CDC. -> Revise: [CDC design](#/lesson/sd-design-cdc)",
+       "keypoints": [
+        "Loop: SQL+coding technical screen -> CS-heavy onsite (SQL, DSA coding, modeling, streaming system design, values behavioral).",
+        "DSA is real: topological sort (prereqs/cycles), sliding window, heaps/merge-K, graphs - state complexity.",
+        "SQL: graph-style self-joins (mutual/2nd-degree connections), partitioned top-N.",
+        "Streaming heritage: Kafka (invented here), Samza/Flink, Brooklin CDC, Pinot serving.",
+        "System design: partition by key for ordering, exactly-once, CDC into Kafka, handle hot-member skew + backpressure.",
+        "Behavioral: STAR aligned to 'members first' / ownership values."
+       ],
+       "quiz": [
+        {
+         "q": "LinkedIn coding: given course prerequisites, output a valid order or detect it's impossible. Which algorithm?",
+         "options": [
+          "Binary search",
+          "Topological sort (Kahn's/DFS); a cycle means impossible",
+          "Quicksort",
+          "Dijkstra"
+         ],
+         "answer": 1,
+         "explain": "Prerequisite ordering is a DAG problem: topological sort yields a valid order, and a detected cycle means no valid schedule exists."
+        },
+        {
+         "q": "Why partition a Kafka activity topic by member id?",
+         "options": [
+          "To use less storage",
+          "To preserve per-member event ordering and parallelize by member",
+          "It's required for JSON",
+          "To avoid consumers"
+         ],
+         "answer": 1,
+         "explain": "Kafka guarantees order within a partition; keying by member id keeps each member's events ordered while parallelizing across members."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "LinkedIn-style coding: return a valid order to take courses given prerequisite pairs, or detect a cycle. Describe the algorithm + complexity.",
+         "hint": "Kahn's BFS on in-degrees.",
+         "solution": "Model courses as a **directed graph** (edge prereq -> course). **Kahn's algorithm:** compute each node's **in-degree**; push all in-degree-0 nodes to a queue; repeatedly pop a node, append it to the order, and decrement its neighbors' in-degrees, pushing any that hit 0. If the final order contains **all N nodes**, it's a valid topological order; if fewer (some nodes never reached 0), a **cycle** exists -> impossible schedule. **Complexity: O(V + E)** time, O(V + E) space (adjacency list + in-degree map + queue). DFS with a recursion stack + colors (white/gray/black) is the equivalent alternative and detects a **back edge** = cycle. Edge cases: disconnected graphs (multiple in-degree-0 starts), duplicate edges, self-loops (immediate cycle). This exact pattern powers **DAG scheduling** in Airflow/dbt/Spark. -> Revise: [topological sort](#/lesson/dsa-topo-sort)"
+        },
+        {
+         "prompt": "LinkedIn-style SQL: find 2nd-degree connections of a member (friends-of-friends, excluding direct connections and self).",
+         "hint": "Self-join the connections table twice.",
+         "solution": "```sql\nSELECT DISTINCT c2.connected_id AS second_degree\nFROM connections c1\nJOIN connections c2 ON c1.connected_id = c2.member_id\nWHERE c1.member_id = :me\n  AND c2.connected_id <> :me                                   -- not myself\n  AND c2.connected_id NOT IN (                                 -- not already a 1st-degree\n      SELECT connected_id FROM connections WHERE member_id = :me);\n```\nStart from my direct connections (`c1` where `member_id = me`), then hop again (`c2`) to *their* connections; those `c2.connected_id` are friends-of-friends. Exclude **myself** and anyone who is **already a 1st-degree** connection so only genuine 2nd-degree members remain; `DISTINCT` dedups people reachable via multiple mutual friends. To also rank by **mutual-connection count** (a 'People You May Know' signal), `GROUP BY second_degree` and `COUNT(*)`. Assumes the connections table stores each edge (often both directions); if stored one-way, union the reverse. -> Revise: [SQL cram](#/cheat/databases-sql)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-apple",
+       "title": "Apple - DE interview playbook",
+       "minutes": 13,
+       "summary": "Apple's team-dependent DE loop (technical screen, then an 'as-appropriate' onsite of SQL, Spark/coding, data modeling, pragmatic system design, and behavioral) with a privacy/quality bent - signature questions, answers, and concept links.",
+       "concept": "**The loop:** recruiter -> **technical screen** (SQL + coding) -> **onsite** (team-dependent, 4-6 rounds): **SQL**, **Spark/Python coding**, **data modeling**, **pragmatic pipeline/system design**, and behavioral. Apple is secretive and **team-specific**, so breadth + fundamentals matter; teams care about **data quality and privacy**. **Emphasis:** solid SQL, Spark at scale, clean modeling, and practical design.\n\n### SQL round\n**Q: Top-N per group and running totals.** Partitioned window rank; `SUM() OVER (ORDER BY ...)` for cumulative. -> Revise: [window functions](#/lesson/sql-window)\n\n**Q: Day-over-day change and 7-day moving average of a metric.** `LAG` + a windowed frame. -> Revise: [window functions](#/lesson/sql-window)\n\n### Spark / coding round\n**Q: Deduplicate a massive dataset keeping the latest per key in Spark.** `Window.partitionBy(key).orderBy(desc(ts))` + `row_number()==1`; mind **skew** and shuffle. -> Revise: [shuffle & partitions](#/lesson/bd-partitions-shuffle)\n\n**Q: Join a huge fact with a small dim efficiently.** Broadcast the small side; watch skew. -> Revise: [Spark cram](#/cheat/big-data-spark)\n\n### Data modeling round\n**Q: Model device/usage analytics with privacy in mind.** Fact at event grain + conformed dims; **aggregate/anonymize** (drop or hash PII, roll up to cohorts) so the serving layer holds no raw identifiers; SCD2 where attributes change. -> Revise: [star schema](#/lesson/model-star-schema), [SCD2](#/lesson/model-scd2)\n\n### System / pipeline design round\n**Q: Design a large-scale batch pipeline for device telemetry.** Ingest to a lake partitioned by date; Spark transform; **idempotent** partition loads; DQ + privacy filters; serve aggregates. Discuss scale, skew, backfills, and minimizing retained PII. -> Revise: [idempotency](#/lesson/pipe-idempotency), [system design](#/cheat/system-design)\n\n### Behavioral\n**Q: 'A time you dove deep to fix a quality issue / collaborated across secretive teams / raised the bar.'** STAR; Apple values **excellence, attention to detail, and discretion**. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Apple question - 'design a privacy-aware analytics pipeline for device telemetry at scale.'** Clarify what insight is needed vs what raw data must be retained. Then: ingest telemetry to a **date-partitioned lake**; a **Spark** job cleans, **anonymizes/aggregates** early (hash or drop identifiers, roll up to cohort level) so downstream tables hold **no raw PII**; **idempotent** per-date loads; **data-quality** + privacy checks gate publish; serve aggregates to analysts. Discuss **scale** (billions of events), **skew** (hot device types - salt/broadcast), **backfills** (reprocess a date), and **data minimization** (retain the least PII for the shortest time). Apple rewards strong fundamentals plus visible care for **quality and privacy**.",
+       "keypoints": [
+        "Loop is team-dependent: technical screen -> onsite (SQL, Spark/coding, modeling, pragmatic design, behavioral); breadth + fundamentals matter.",
+        "SQL: top-N per group, running totals, LAG deltas, moving averages.",
+        "Spark: dedup-latest via window row_number; broadcast small dims; manage skew/shuffle.",
+        "Modeling with privacy: anonymize/aggregate early, hash or drop PII, SCD2 for changing attributes.",
+        "Design: date-partitioned lake, idempotent loads, DQ + privacy gates, data minimization.",
+        "Behavioral: excellence, attention to detail, discretion - STAR with quantified impact."
+       ],
+       "quiz": [
+        {
+         "q": "Apple Spark round: keep only the latest record per key in a huge dataset. Idiomatic approach?",
+         "options": [
+          "collect() to the driver and dedup in Python",
+          "Window.partitionBy(key).orderBy(ts desc) + row_number()==1 (watch skew)",
+          "A cross join",
+          "Drop duplicates randomly"
+         ],
+         "answer": 1,
+         "explain": "A partitioned window ranked by descending timestamp keeps the latest per key at scale; be mindful of skew/shuffle."
+        },
+        {
+         "q": "What's a privacy-aware modeling choice for device analytics?",
+         "options": [
+          "Store all raw identifiers forever",
+          "Anonymize/aggregate early (hash or drop PII, roll up to cohorts) so serving tables hold no raw identifiers",
+          "Disable analytics",
+          "Put PII in the fact grain"
+         ],
+         "answer": 1,
+         "explain": "Data minimization: transform to anonymized/aggregated form early so downstream tables carry no raw PII."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Apple-style Spark (PySpark): dedup events keeping the latest row per user_id, and note the scale gotcha.",
+         "hint": "Window + row_number.",
+         "solution": "```python\nfrom pyspark.sql import Window, functions as F\nw = Window.partitionBy('user_id').orderBy(F.col('event_ts').desc())\nlatest = (events\n    .withColumn('rn', F.row_number().over(w))\n    .filter(F.col('rn') == 1)\n    .drop('rn'))\n```\nPartition by the key, order by **descending timestamp**, keep `row_number()==1` = the latest row per `user_id`. **Scale gotcha:** this is a **wide** operation - it shuffles all rows by `user_id`, so a **skewed** key (one user with a huge share of events) creates a long-tail task. Mitigations: enable **AQE** skew handling, **salt** the hot key, or pre-aggregate; and ensure the input is **partition-pruned** (filter to the needed dates) so you don't shuffle the whole history. If you only need the latest *value of a column* (not the whole row), a `groupBy(key).agg(F.max_by(...))` can avoid a full sort. -> Revise: [shuffle & partitions](#/lesson/bd-partitions-shuffle)"
+        },
+        {
+         "prompt": "Apple-style: design a telemetry pipeline that yields useful analytics while minimizing retained PII. Outline it.",
+         "hint": "Anonymize early, aggregate, minimize retention.",
+         "solution": "**Principle: data minimization** - collect and keep the least identifying data for the shortest time that still answers the questions. **Ingest:** raw telemetry lands in a short-retention, access-controlled **date-partitioned** raw zone. **Transform (Spark):** as early as possible, **strip or hash** direct identifiers, **coarsen** quasi-identifiers (bucket ages, truncate geo, generalize device models), and **aggregate to cohorts** (counts/rates per segment) so the analytics tables contain **no raw PII**; consider differential-privacy noise for sensitive aggregates. **Load:** **idempotent** per-date writes to the curated/gold layer; **DQ + privacy checks** (no forbidden fields, k-anonymity thresholds) that **block publish** on breach. **Retention:** auto-expire the raw zone (lifecycle policy); keep only aggregates long-term. **Access:** least-privilege on raw, broad on aggregates. This delivers analytics value while keeping identifiable data scarce, short-lived, and locked down - the Apple bar for quality + privacy. -> Revise: [idempotency](#/lesson/pipe-idempotency), [system design](#/cheat/system-design)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
+      },
+      {
+       "id": "ib-co-stripe",
+       "title": "Stripe - DE interview playbook",
+       "minutes": 14,
+       "summary": "Stripe's DE loop (practical technical screen, then an onsite of SQL, real-world coding, financial data modeling, correctness-obsessed system design, and operating-principles behavioral) where idempotency, exactly-once, and reconciliation are the whole game - questions, answers, code, and concept links.",
+       "concept": "**The loop:** recruiter -> **technical screen** (SQL + practical coding) -> **onsite**: **SQL**, **real-world coding** (parse/transform messy data, work with an API), **financial data modeling**, **correctness-first system design**, and an **operating-principles** behavioral. **Emphasis:** Stripe handles money, so **idempotency, exactly-once, reconciliation, and correctness** dominate - a duplicate or lost record is a real financial bug.\n\n### SQL round\n**Q: Daily net revenue = charges - refunds - disputes.** Aggregate signed amounts by day; careful with currency and timezones. -> Revise: [SQL cram](#/cheat/databases-sql)\n\n**Q: Running balance per merchant account (ledger).** `SUM(amount) OVER (PARTITION BY account ORDER BY ts)` - a running total over an ordered ledger. -> Revise: [window functions](#/lesson/sql-window)\n\n### Coding round (practical)\n**Q: Process a payments webhook/file with retries; don't double-count.** Dedup on an **idempotency key** (event id); upsert; treat delivery as **at-least-once** so your consumer must be idempotent. -> Revise: [idempotency](#/lesson/pipe-idempotency)\n\n### Financial data modeling round\n**Q: Model a double-entry ledger / payments fact.** Event-sourced, **append-only** entries (never mutate money records); fact at 'one ledger entry' grain; dims (account, merchant, currency, date); derive balances by aggregation. **Immutability + idempotency keys** guarantee auditability. -> Revise: [star schema](#/lesson/model-star-schema)\n\n**Q: Handle a correction?** Post a **reversing entry**, don't edit history (keeps the audit trail). -> Revise: [SCD2 / history](#/lesson/model-scd2)\n\n### System design round (correctness-first)\n**Q: Design a pipeline ingesting payment events into an analytics warehouse with exactly-once accuracy.** At-least-once delivery + **idempotent** sink (dedup on event id / MERGE) = effectively exactly-once; **reconcile** against source totals daily (control totals) and alert on drift; partition by date; backfill safely. -> Revise: [delivery semantics](#/lesson/sd-idempotency-delivery), [CDC design](#/lesson/sd-design-cdc)\n\n### Behavioral (operating principles)\n**Q: 'A time you caught a subtle correctness bug / raised the quality bar / acted like an owner.'** Stripe prizes **rigor and user-first thinking** - STAR with a concrete correctness/impact story. -> Revise: [behavioral prep](#/lesson/ib-behavioral)",
+       "example": "**Signature Stripe question - 'design a pipeline that ingests payment events into the warehouse with exactly-once accuracy and is auditable.'** Delivery is **at-least-once** (webhooks/queues retry), so the consumer must be **idempotent**: dedup on the **event/idempotency key** and **MERGE** into an **append-only, event-sourced** ledger table (never mutate money rows - post reversing entries for corrections). Partition by date; make each load **reproducible** and **backfillable**. Add a **daily reconciliation**: compare warehouse control totals (count and sum of amounts per day/currency) against the source-of-truth API/ledger and **alert on any drift** - because a single duplicated or dropped charge is a financial bug. Discuss currency/timezone handling, late events, and CDC from source DBs. The whole answer is about **correctness, idempotency, immutability, and reconciliation** - Stripe's core DE values.",
+       "keypoints": [
+        "Loop: practical SQL+coding screen -> onsite (SQL, real-world coding, financial modeling, correctness-first design, operating-principles behavioral).",
+        "Money means correctness: idempotency, exactly-once, and reconciliation dominate every round.",
+        "SQL: signed-amount aggregation (net revenue), running balances over an ordered ledger, currency/timezone care.",
+        "Modeling: append-only, event-sourced double-entry ledger; corrections via reversing entries (never mutate history).",
+        "Design: at-least-once delivery + idempotent/dedup sink = effectively exactly-once; daily control-total reconciliation + alerting.",
+        "Behavioral: rigor, ownership, user-first - STAR with a concrete correctness story."
+       ],
+       "quiz": [
+        {
+         "q": "A payments webhook may deliver the same event more than once. How do you avoid double-counting revenue?",
+         "options": [
+          "Trust that it fires once",
+          "Dedup on the idempotency/event key and upsert (idempotent consumer)",
+          "Add rows and fix later",
+          "Disable retries"
+         ],
+         "answer": 1,
+         "explain": "Delivery is at-least-once, so the consumer must be idempotent: dedup on the event/idempotency key and upsert so re-delivery is a no-op."
+        },
+        {
+         "q": "How should a financial ledger handle a correction to a past entry?",
+         "options": [
+          "UPDATE the original row",
+          "DELETE and re-insert",
+          "Post a reversing entry and a new correct entry (append-only, preserve history)",
+          "Ignore it"
+         ],
+         "answer": 2,
+         "explain": "Money records are immutable/auditable; corrections are new reversing + adjusting entries, never edits to history."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Stripe-style: write SQL for daily net revenue (charges minus refunds minus disputes) per currency.",
+         "hint": "Signed amounts, group by day + currency.",
+         "solution": "```sql\nSELECT DATE(created_at) AS d, currency,\n  SUM(CASE type\n        WHEN 'charge'  THEN amount\n        WHEN 'refund'  THEN -amount\n        WHEN 'dispute' THEN -amount\n        ELSE 0 END) AS net_revenue\nFROM transactions\nWHERE status = 'succeeded'\nGROUP BY DATE(created_at), currency\nORDER BY d, currency;\n```\nModel each transaction as a **signed contribution** (charges positive; refunds and disputes negative) and sum per **day + currency** - never mix currencies in one total. Filter to **settled** transactions (`status='succeeded'`) so pending/failed rows don't inflate revenue. Gotchas Stripe will probe: **timezone** (`DATE(created_at)` should use a defined zone, e.g. UTC, consistently), **amount units** (store minor units / integer cents to avoid float errors on money), and **partial refunds** (refund `amount` may be less than the charge). For reporting you'd often reconcile this against the ledger's control totals. -> Revise: [SQL cram](#/cheat/databases-sql), [window functions](#/lesson/sql-window)"
+        },
+        {
+         "prompt": "Stripe-style design: ingest payment events into the warehouse so totals are exactly-once and auditable. Describe the design + the check that proves it.",
+         "hint": "Idempotent sink + reconciliation.",
+         "solution": "**Delivery reality:** webhooks/queues are **at-least-once**, so assume duplicates and retries. **Idempotent sink:** each event carries a unique **event/idempotency key**; **MERGE** on that key into an **append-only, event-sourced** ledger table (insert if new, no-op if seen) - re-delivery changes nothing, giving **effectively exactly-once**. Never mutate money rows; corrections are **reversing entries**. **Reproducibility:** partition by date; each load is **idempotent** and **backfillable** (re-running a date reproduces identical results). **Ordering/late data:** key ordering where it matters; accept late events and reprocess the affected partition. **The proof = daily reconciliation:** compute **control totals** (row count and `SUM(amount)` per day and currency) in the warehouse and compare to the **source of truth** (Stripe's ledger/API); **any drift alerts** on-call and blocks downstream reporting. Optionally CDC source DBs into the stream for freshness. The reconciliation is what *demonstrates* correctness - in payments, 'probably right' isn't acceptable. -> Revise: [delivery semantics](#/lesson/sd-idempotency-delivery), [idempotency](#/lesson/pipe-idempotency)"
         }
        ],
        "diagram": "",
