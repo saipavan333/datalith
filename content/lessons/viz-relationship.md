@@ -22,6 +22,8 @@ A **trend line** (linear regression or LOESS smoother) summarizes the direction 
 
 Use channels in order of accuracy: **position (x, y) > size > color**. Don't push past ~4 variables in one scatter.
 
+@@diagram:dv-bubble
+
 ## 3. Over-plotting: when there are too many points
 
 Thousands of points collapse into a solid blob that hides density. Fixes:
@@ -46,6 +48,8 @@ A scatter shows **association**, never cause. Sales and ad-spend rising together
 ## 5. The correlation matrix (heatmap)
 
 To scan relationships among **many** variables, compute pairwise correlations and draw a **heatmap** with a **diverging** palette centered at 0 (see the principles lesson). It's a staple for **feature selection** (drop one of two highly correlated features) and **data profiling**.
+
+@@diagram:dv-heatmap
 
 ## Gotchas
 

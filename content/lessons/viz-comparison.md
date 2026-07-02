@@ -16,6 +16,10 @@ Cleveland & McGill's perception research ranks how accurately people decode visu
 - **Lollipop** — a thin line + dot; a cleaner ordered bar for **many** categories (less ink).
 - **Slope chart** — two time points connected per category; shows **rank change**.
 
+@@diagram:dv-grouped-bar
+
+@@diagram:dv-lollipop
+
 ## 3. The two rules that keep bars honest
 
 **Rule 1 — start the value axis at zero.** Bar length encodes value, so the bar from 0 to the value *is* the quantity. Truncate the axis and you break the proportion: a change from 102 to 106 can be made to look like a 5× jump. This is the single most common way charts mislead.

@@ -16,13 +16,19 @@ A box plot draws the **median** (line), the **interquartile range** (box: 25th�
 
 Its weakness: it **can't show bimodality**. Two very different distributions can produce identical boxes. When shape matters, reach for a violin.
 
+@@diagram:dv-boxplot
+
 ## 3. The violin / KDE — full shape
 
 A **violin** mirrors a smoothed **density** (KDE) around a center line, often with a mini box inside. It shows the **full shape**, including multiple humps, while staying compact enough to compare a handful of groups. A plain **KDE** overlays smooth density curves — good for comparing 2–4 distributions on one axis.
 
+@@diagram:dv-violin
+
 ## 4. The ECDF — read percentiles directly
 
 The **empirical cumulative distribution function** plots, for each value x, the fraction of data ≤ x. It needs **no bins**, and you can read any **percentile** straight off it: find 0.99 on the y-axis, read across to the x — that's your **p99**. It's the cleanest way to compare distributions and to reason about tails/SLAs.
+
+@@diagram:dv-ecdf
 
 ```python
 import seaborn as sns

@@ -10,6 +10,8 @@ Two related questions come up constantly: *"what share does each part contribute
 - **Treemap** — nested rectangles where **area = value**. Best for **many** parts or a **hierarchy** (storage by team → dataset → table). Handles dozens of categories a pie can't.
 - **Pie / donut** — acceptable only for **2–3 slices** where one clearly dominates. Beyond that, angle comparison fails.
 
+@@diagram:dv-pie
+
 The recurring fix: a many-slice pie → a **sorted bar** (if the question is really ranking) or a **100% stacked bar / treemap** (if it's really share).
 
 ## 2. Flow charts
@@ -17,6 +19,12 @@ The recurring fix: a many-slice pie → a **sorted bar** (if the question is rea
 - **Sankey** — shows **quantities flowing** between stages, with **ribbon width ∝ magnitude**. Perfect for traffic (source → landing page → conversion), budget allocation, or **ETL volumes** (raw → cleaned → rejected/loaded). It makes where volume concentrates and where it's lost visible at a glance.
 - **Funnel** — a stack of shrinking bars for **sequential steps** (visited → signed up → verified → purchased). The **biggest single drop** is where to focus.
 - **Waterfall** — shows how a **total is built up and down** by ordered **positive and negative contributions** (start + new + expansion − contraction − churn = end). It decomposes a **net change** into its drivers.
+
+@@diagram:dv-sankey
+
+@@diagram:dv-funnel
+
+@@diagram:dv-waterfall
 
 ## 3. Choosing among them
 

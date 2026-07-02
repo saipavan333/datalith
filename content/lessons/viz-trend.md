@@ -16,6 +16,8 @@ Time is **continuous and ordered**, and the segment between two points encodes t
 - **Candlestick / OHLC** — financial open-high-low-close per period.
 - **Small multiples** — one small line chart per series when a single chart would be spaghetti.
 
+@@diagram:dv-area
+
 ## 3. Axis rules that keep the slope honest
 
 - **Time on the x-axis**, left → right, with **even, proportional intervals**. If equal-duration periods are drawn at unequal widths, the slopes lie (a wider gap looks like slower change).
