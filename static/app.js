@@ -179,16 +179,22 @@ function renderHome() {
     sections += `<h2 class="phase-h">${label}</h2><div class="track-grid">${ts.map(card).join("")}</div>`;
   });
   if (byPhase[99]) sections += `<div class="track-grid">${byPhase[99].map(card).join("")}</div>`;
+  const startId = CURRICULUM.tracks[0].modules[0].lessons[0].id;
   const html = `
     <div class="home">
       <h1>Become a world-class<br/>Data Engineer.</h1>
       <p class="lead">${CURRICULUM.tagline} A complete roadmap — ${CURRICULUM.tracks.length} tracks,
         ${totalLessons} lessons — grouped into ${PHASES.length - 1} phases from foundations to interview-ready.
         Every concept in plain English, with real examples and a quiz.</p>
+      <div class="startpath">
+        <div class="sp-text"><b>New here? Follow the Golden Path.</b><span>Do the phases below in order. At <b>Cloud &amp; Platforms</b>, pick <b>one</b> stack; DSA, Data Viz &amp; cheat sheets are companions. ~83h to job-ready.</span></div>
+        <button class="sp-btn" data-go="${startId}">▶ Start the path</button>
+      </div>
       ${sections}
     </div>`;
   $("#content").innerHTML = html;
   $$(".track-card").forEach(c => c.addEventListener("click", () => location.hash = `#/lesson/${c.dataset.go}`));
+  $$(".sp-btn").forEach(b => b.addEventListener("click", () => location.hash = `#/lesson/${b.dataset.go}`));
   { const _c = document.getElementById("content"); if (_c) _c.scrollTop = 0; window.scrollTo(0, 0); }
 }
 
