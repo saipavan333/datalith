@@ -36,11 +36,16 @@ the job?** If not, it isn't gold standard yet.
 
 ## 2. Diagrams — maximize coverage, never ship a broken one
 
-> **Principle (added at the user's direction): use as many diagrams as needed to make every topic
-> clear. There is no cap on diagram count. If a second or third diagram makes a concept easier to
-> grasp — a flow, an architecture, a before/after, a comparison — add it.** A topic that has an
-> architecture or a flow *deserves* a diagram of that architecture or flow; missing one is a defect,
-> not a stylistic choice.
+> **Principle (reaffirmed at the user's explicit direction): there is NO restriction on the number of
+> diagrams — not per lesson, not per subtopic, not per topic, and not per track.** Use as many diagrams
+> as make the material clearer. If a second, third, or fifth diagram helps — a flow, an architecture, a
+> before/after, a comparison, a state machine, a worked example — add it. A single lesson may carry one
+> diagram or ten; a subtopic, topic, or track may carry as many as its ideas warrant. The only test is
+> whether each diagram **earns its place by aiding understanding** (and passes the quality bar below).
+> A topic that has an architecture or a flow *deserves* a diagram of that architecture or flow; missing
+> one is a defect, not a stylistic choice. When a concept is spatial or sequential, **draw it** — and if
+> one picture leaves something unclear, draw another. Never omit or merge a helpful diagram to "keep the
+> count down"; there is no count to keep down.
 
 Diagrams are a primary teaching tool here, not an afterthought. Concretely:
 
