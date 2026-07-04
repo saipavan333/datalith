@@ -29744,6 +29744,60 @@
        ],
        "diagram": "vector-search",
        "diagram_caption": "Chunk → embed → vector DB (ANN index) → similarity search → RAG context for an LLM"
+      },
+      {
+       "id": "ml-rag",
+       "title": "RAG data pipelines — retrieval-augmented generation",
+       "minutes": 13,
+       "summary": "How data engineers build the pipelines behind RAG — indexing documents into a vector store (load, chunk, embed) and serving retrieval at query time — plus the quality levers, freshness, and evaluation that make it a real data-engineering problem.",
+       "concept": "**Retrieval-Augmented Generation (RAG)** grounds an LLM in *your* data: instead of relying only on what the model memorized, you **retrieve relevant text at query time** and put it in the prompt. That means fewer hallucinations, current facts, and **citations** — without retraining the model. The model is off-the-shelf; the **data pipeline is the data engineer's job**, and its quality decides whether RAG works.\n\nRAG is really **two pipelines**.\n\n**1) The indexing pipeline (offline / batch)** turns documents into a searchable index:\n\n@@diagram:rag-index\n\nSource docs (PDF/HTML/DB/Confluence) -> **load & parse** to clean text -> **chunk** (split into passages with overlap) -> **embed** each chunk with an embedding model into a vector -> write vectors + **metadata** to a **vector store** (pgvector, Pinecone, Milvus, etc.). This is a normal batch/streaming job with all the usual concerns.\n\n**2) The query-time pipeline (online)** answers a question:\n\n@@diagram:rag-query\n\nUser query -> **embed** the query -> **vector search** for the top-k nearest chunks -> optional **rerank** -> **augment** a prompt template with the retrieved context -> **LLM** generates a grounded answer (with sources).\n\n**The quality levers** (where DEs earn their keep):\n- **Chunking** — size + overlap. Too small loses context; too large dilutes relevance and wastes tokens. Structural/semantic chunking usually beats naive fixed windows.\n- **Embedding model** — must match your domain and the query/document languages; the same model must embed both docs and queries.\n- **Retrieval** — top-k, metadata **filters** (tenant, date, permissions), **hybrid search** (keyword + vector), and a **reranker** to fix 'relevant-but-wrong-order'.\n\n**Why it's a data-engineering problem, not a prompt trick:** the index must stay **fresh** (re-embed changed docs — ideally via **CDC**, not full re-index), loads must be **idempotent** (upsert by `doc_id + chunk_id`), and you must handle **dedup, incremental indexing, permissions**, and **cost** (embedding calls + vector-store size + LLM tokens). And you must **evaluate** it: retrieval hit-rate/recall, and answer **groundedness** and **relevance** — RAG fails silently when retrieval is bad, so measure it.",
+       "example": "**A minimal internal-docs RAG, end to end.**\n\n```python\n# --- indexing (batch / on change) ---\nfor doc in changed_docs():                      # CDC, not full re-index\n    text = load_and_clean(doc)\n    chunks = split(text, size=500, overlap=50)   # ~500 tokens, 50 overlap\n    vecs = embed_model.embed([c.text for c in chunks])\n    store.upsert([                               # idempotent: keyed by doc+chunk\n        (f\"{doc.id}:{i}\", v, {\"doc_id\": doc.id, \"title\": doc.title})\n        for i, (c, v) in enumerate(zip(chunks, vecs))\n    ])\n\n# --- query time ---\ndef answer(q, user):\n    qv = embed_model.embed([q])[0]\n    hits = store.search(qv, top_k=5, filter={\"acl\": user.groups})  # permissions!\n    context = \"\\n\\n\".join(h.text for h in rerank(q, hits))\n    prompt = f\"Answer using ONLY the context. Cite titles.\\n\\nContext:\\n{context}\\n\\nQ: {q}\"\n    return llm(prompt), [h.metadata[\"title\"] for h in hits]\n```\n\nNote the DE concerns baked in: **CDC-driven re-index** (freshness), **upsert by doc+chunk** (idempotency), **ACL filter** (permissions/security), **top-k + rerank** (retrieval quality), and **'use ONLY the context' + cite** (grounding). Swap the model or vector store freely — the pipeline shape stays the same. -> Revise: [embeddings & vector DBs](#/lesson/ml-vectors)",
+       "keypoints": [
+        "RAG grounds an off-the-shelf LLM in your data by retrieving relevant text at query time — fewer hallucinations, current facts, citations, no retraining.",
+        "It's two pipelines: offline indexing (load -> chunk -> embed -> vector store) and online query (embed -> search top-k -> rerank -> augment prompt -> LLM).",
+        "Chunking (size + overlap) and the embedding model are the biggest quality levers; the same model must embed both documents and queries.",
+        "Retrieval quality comes from metadata filters, hybrid (keyword+vector) search, and a reranker — RAG fails silently when retrieval is bad.",
+        "Treat it as data engineering: freshness via CDC re-index, idempotent upsert by doc+chunk id, dedup, permissions, and cost control (embeddings + store + tokens).",
+        "Evaluate it: retrieval hit-rate/recall plus answer groundedness and relevance — measure, don't assume."
+       ],
+       "quiz": [
+        {
+         "q": "In RAG, what is the data engineer primarily responsible for?",
+         "options": [
+          "Training the LLM from scratch",
+          "The indexing and retrieval data pipeline (chunk, embed, store, search, keep fresh)",
+          "Writing the model's neural architecture",
+          "Nothing — RAG is just a prompt"
+         ],
+         "answer": 1,
+         "explain": "The LLM is off-the-shelf; the DE builds and operates the pipeline that indexes documents and retrieves relevant context — that's what determines RAG quality."
+        },
+        {
+         "q": "A RAG system gives confident but wrong answers. Where should you look first?",
+         "options": [
+          "Retrain the LLM",
+          "The retrieval step — chunking, the embedding model, top-k and reranking (bad context in = wrong answer out)",
+          "Increase the temperature",
+          "Add more GPUs"
+         ],
+         "answer": 1,
+         "explain": "RAG answers are only as good as the retrieved context; wrong/irrelevant chunks (poor chunking, wrong embeddings, no rerank) are the usual culprit — evaluate retrieval first."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Your RAG index must stay current as source docs change hourly. Full re-embedding of 2M chunks every hour is too slow and expensive. Design an incremental, idempotent update.",
+         "hint": "CDC + upsert by a stable key; delete removed chunks.",
+         "solution": "**Use change data capture, not full re-index.** (1) Detect changed/created/deleted docs since the last run (a `updated_at` watermark or a CDC stream from the source). (2) For each **changed** doc: re-chunk, re-embed only its chunks, and **upsert** into the vector store keyed by a **stable id** (`doc_id + chunk_id`) — upsert makes reruns **idempotent** (a retry overwrites the same vectors, no duplicates). (3) For **deleted** docs (or chunks that no longer exist because the doc got shorter): **delete** their vectors by `doc_id` prefix so stale content can't be retrieved. (4) Track the watermark transactionally (advance only on success) so a crash re-does, never skips. This turns an O(all docs) job into O(changed docs) and keeps the index correct. Bonus: batch the embedding calls (cost) and process deletes before upserts to avoid a window where old+new coexist. This is exactly the incremental/idempotent pattern from the pipelines track, applied to a vector index."
+        },
+        {
+         "prompt": "Retrieval quality is poor: relevant passages exist but aren't returned in the top-k. List three levers (beyond 'use a bigger LLM') and why each helps.",
+         "hint": "Chunking, embeddings, retrieval mechanics.",
+         "solution": "**(1) Fix chunking.** If chunks are too large, the relevant sentence is diluted by unrelated text and its embedding drifts; if too small, it lacks context. Switch to **structural/semantic chunking** with sensible size + overlap so each chunk is a coherent, retrievable unit. **(2) Better embeddings + hybrid search.** Use a domain-appropriate embedding model (and embed queries with the *same* model); add **keyword/BM25 hybrid search** so exact terms (IDs, product names) aren't lost by pure vector similarity. **(3) Add a reranker (and raise then trim top-k).** Retrieve a larger candidate set (e.g., top-50) with cheap vector search, then **rerank** with a cross-encoder to push the truly relevant passages to the top-5 that go in the prompt. Also apply **metadata filters** (date, tenant, permissions) to remove obviously-wrong candidates. Measure with **retrieval recall@k** before/after — the fix is almost always in retrieval, not the LLM. -> Revise: [embeddings & vector DBs](#/lesson/ml-vectors)"
+        }
+       ],
+       "diagram": "",
+       "diagram_caption": ""
       }
      ]
     },
