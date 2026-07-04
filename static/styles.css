@@ -112,7 +112,12 @@ body {
 .track.open .caret { transform: rotate(90deg); }
 .track-body { display: none; padding: 2px 0 6px 14px; }
 .track.open .track-body { display: block; }
-.module-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); padding: 8px 10px 4px; }
+.module-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); padding: 8px 10px 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.module-title .mt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mod-prog { display: flex; align-items: center; gap: 6px; flex-shrink: 0; letter-spacing: 0; }
+.mod-bar { width: 34px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.mod-bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+.mod-num { font-variant-numeric: tabular-nums; }
 .lesson-link {
   display: flex; align-items: center; gap: 9px; width: 100%;
   padding: 7px 10px; border-radius: var(--radius-sm); cursor: pointer;

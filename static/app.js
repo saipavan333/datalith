@@ -101,14 +101,20 @@ function buildSidebar() {
         <span class="caret">▶</span>
       </button>
       <div class="track-body">
-        ${track.modules.map(m => `
-          <div class="module-title">${m.title}</div>
+        ${track.modules.map((m, mi) => {
+          const mc = m.lessons.length, md = m.lessons.filter(l => progress.has(l.id)).length;
+          const mp = mc ? Math.round(md / mc * 100) : 0;
+          return `
+          <div class="module-title" data-mod="${track.id}#${mi}">
+            <span class="mt-name">${m.title}</span>
+            <span class="mod-prog"><span class="mod-bar"><i style="width:${mp}%"></i></span><span class="mod-num">${md}/${mc}</span></span>
+          </div>
           ${m.lessons.map(l => `
             <button class="lesson-link ${progress.has(l.id) ? "done" : ""}" data-lesson="${l.id}">
               <span class="check">${progress.has(l.id) ? "✓" : ""}</span>
               <span class="ltitle">${l.title}</span>
             </button>`).join("")}
-        `).join("")}
+        `;}).join("")}
       </div>`;
     el.querySelector(".track-head").addEventListener("click", () => el.classList.toggle("open"));
     $$(".lesson-link", el).forEach(b => b.addEventListener("click", () => { location.hash = `#/lesson/${b.dataset.lesson}`; }));
@@ -140,6 +146,15 @@ function markComplete(id, btn) {
     const count = l._track.modules.reduce((n, m) => n + m.lessons.length, 0);
     const done = l._track.modules.reduce((n, m) => n + m.lessons.filter(x => progress.has(x.id)).length, 0);
     trackEl.textContent = `${done}/${count}`;
+  }
+  const mi = l._track.modules.findIndex(m => m.lessons.some(x => x.id === id));
+  if (mi >= 0) {
+    const mod = l._track.modules[mi];
+    const mc = mod.lessons.length, md = mod.lessons.filter(x => progress.has(x.id)).length;
+    const barI = $(`.module-title[data-mod="${l._track.id}#${mi}"] .mod-bar i`);
+    const numE = $(`.module-title[data-mod="${l._track.id}#${mi}"] .mod-num`);
+    if (barI) barI.style.width = (mc ? Math.round(md / mc * 100) : 0) + "%";
+    if (numE) numE.textContent = `${md}/${mc}`;
   }
   if (btn) {
     btn.textContent = nowDone ? "✓ Completed — click to undo" : "Mark as complete";
