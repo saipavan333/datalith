@@ -27,33 +27,35 @@ Then open **http://localhost:8000** in your browser.
 
 ## What's inside
 
-- **13 tracks, 173 lessons** covering the full DE roadmap end to end:
-  Foundations · Databases & SQL · Python · Data Modeling & Warehousing · NoSQL ·
-  Big Data & Spark · Pipelines & Orchestration · Streaming · The Lakehouse ·
-  Cloud · DataOps · Governance & Security · System Design & Interview Mastery.
-  Every track is deep (9–21 lessons): SQL spans SELECT → joins → CTEs → window
+- **27 tracks, 546 lessons** covering the full DE roadmap end to end:
+  Foundations · Database Systems (DBMS) · RDBMS · Databases & SQL · Data Modeling &
+  Warehousing · Python · Unix & Shell · NoSQL · Big Data & Spark · Pipelines &
+  Orchestration · Streaming · The Lakehouse · Cloud · Snowflake · Databricks · AWS ·
+  GCP · DataOps · Governance & Security · Performance · ML for DE · Agentic AI ·
+  System Design · Interview Question Bank · Capstones · DSA for DE · Data Visualization.
+  Every track is deep (7–45 lessons): SQL spans SELECT → joins → CTEs → window
   functions → transactions/isolation → indexing & query tuning → normalization →
   views → JSON; Spark covers lazy evaluation, partitions/shuffle, join strategies,
   AQE, Structured Streaming, the Hadoop ecosystem, and Flink/Trino; plus storage
   engines (LSM), Kafka internals, Lambda/Kappa, table formats, cloud warehouses,
   data mesh, MDM, compliance, capacity estimation, and more.
-- **40 clean diagrams** — joins, star/snowflake schema, window vs GROUP BY, partitions
+- **450+ clean diagrams** (77 packs) — joins, star/snowflake schema, window vs GROUP BY, partitions
   & shuffle, the medallion & lakehouse, CAP, ETL/ELT, streaming windows & watermarks,
   Lambda/Kappa, LSM trees, Kafka, CDC, encryption, data mesh, cache-aside, Delta log,
   and more — rendered inline next to the explanation, and *embedded inside the
   in-depth tutorials* too.
 - **Plain-English lessons** — each with *the idea simply*, a *real-world example*,
   *key takeaways*, and a *quiz* with instant, explained feedback.
-- **32 "Go deeper" in-depth tutorials**, including full step-by-step guides to
+- **472 "Go deeper" in-depth tutorials**, including full step-by-step guides to
   **PySpark, dbt, Delta Lake, Apache Iceberg, Databricks, CI/CD for data, Data Vault,
   dimensional modeling, data warehousing, data lakes, end-to-end streaming, and
   database internals** — each with code, embedded diagrams, and an "interview check" —
   plus deep-dives on window functions, joins, CTEs, query tuning, watermarks,
   exactly-once, table formats, CAP, capacity estimation, and more.
-- **A hands-on exercise in every track (13)** — a real problem with a hint and a
-  reveal-able worked solution; SQL exercises open a starter straight in the playground.
+- **1,600+ hands-on practice problems (in every lesson)** — each a real problem with a
+  hint and a reveal-able worked solution; SQL exercises open a starter straight in the playground.
 - **Printable interview cheat sheet** — a one-click, print-optimized summary of the
-  highest-yield facts across all 13 tracks plus rapid-fire Q&A (topbar → 📄 Cheat
+  highest-yield facts across all 27 tracks plus rapid-fire Q&A (topbar → 📄 Cheat
   Sheet, or open `static/cheatsheet.html`; Ctrl/Cmd+P to save as PDF).
 - **Live SQL Playground** — write real SQL and run it against a sample shop
   database (customers, products, orders, order_items). Runs single queries *and*
@@ -129,7 +131,7 @@ datalith/
     lessons/          optional deep-dive markdown per lesson
   static/
     index.html · styles.css · app.js   the single-page frontend
-    diagrams.js · diagrams2.js         40 inline-SVG concept diagrams
+    diagrams*.js (77 packs)            450+ inline-SVG concept diagrams
     cheatsheet.html                    printable interview cheat sheet
   run.py · requirements.txt
 ```

@@ -155,25 +155,37 @@ function route() {
 function renderHome() {
   syncSidebarActive(null);
   const totalLessons = LESSONS.length;
-  const html = `
-    <div class="home">
-      <h1>Become a world-class<br/>Data Engineer.</h1>
-      <p class="lead">${CURRICULUM.tagline} A complete roadmap — ${CURRICULUM.tracks.length} tracks,
-        ${totalLessons} lessons — from databases and SQL all the way to streaming, the lakehouse, and the cloud.
-        Every concept in plain English, with real examples and a quiz.</p>
-      <div class="track-grid">
-        ${CURRICULUM.tracks.map(t => {
-          const count = t.modules.reduce((n, m) => n + m.lessons.length, 0);
-          const done = t.modules.reduce((n, m) => n + m.lessons.filter(l => progress.has(l.id)).length, 0);
-          const first = t.modules[0].lessons[0].id;
-          return `<div class="track-card" data-go="${first}">
+  const PHASES = ["Foundations", "Databases & SQL", "Programming & Tooling", "Modeling & Warehousing",
+    "Big Data · Pipelines · Streaming · Lakehouse", "Cloud & Platforms (electives)", "Operations & Quality",
+    "Specializations (electives)", "System Design & Interview", "Prove It", "Cross-cutting"];
+  const card = t => {
+    const count = t.modules.reduce((n, m) => n + m.lessons.length, 0);
+    const done = t.modules.reduce((n, m) => n + m.lessons.filter(l => progress.has(l.id)).length, 0);
+    const first = t.modules[0].lessons[0].id;
+    return `<div class="track-card" data-go="${first}">
             <div class="tc-icon">${t.icon}</div>
             <h3>${t.title}</h3>
             <p>${t.blurb}</p>
             <div class="tc-meta">${done}/${count} lessons${done === count && count ? " · ✓ done" : ""}</div>
           </div>`;
-        }).join("")}
-      </div>
+  };
+  const byPhase = {};
+  CURRICULUM.tracks.forEach(t => { const p = (t.phase == null ? 99 : t.phase); (byPhase[p] = byPhase[p] || []).push(t); });
+  let sections = "";
+  PHASES.forEach((title, i) => {
+    const ts = byPhase[i];
+    if (!ts || !ts.length) return;
+    const label = i === 10 ? "Cross-cutting" : `Phase ${i} · ${title}`;
+    sections += `<h2 class="phase-h">${label}</h2><div class="track-grid">${ts.map(card).join("")}</div>`;
+  });
+  if (byPhase[99]) sections += `<div class="track-grid">${byPhase[99].map(card).join("")}</div>`;
+  const html = `
+    <div class="home">
+      <h1>Become a world-class<br/>Data Engineer.</h1>
+      <p class="lead">${CURRICULUM.tagline} A complete roadmap — ${CURRICULUM.tracks.length} tracks,
+        ${totalLessons} lessons — grouped into ${PHASES.length - 1} phases from foundations to interview-ready.
+        Every concept in plain English, with real examples and a quiz.</p>
+      ${sections}
     </div>`;
   $("#content").innerHTML = html;
   $$(".track-card").forEach(c => c.addEventListener("click", () => location.hash = `#/lesson/${c.dataset.go}`));

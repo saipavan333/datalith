@@ -4,6 +4,7 @@
  "tracks": [
   {
    "id": "foundations",
+   "phase": 0,
    "title": "Foundations of Data",
    "icon": "🧱",
    "blurb": "What data engineering really is, and the raw ingredients: bytes, files, and formats.",
@@ -838,6 +839,7 @@
   },
   {
    "id": "dbms",
+   "phase": 1,
    "title": "Database Systems (DBMS)",
    "icon": "🗃️",
    "blurb": "How database management systems actually work — types, architecture, transactions/ACID, concurrency, recovery, storage, and query processing. The CS foundations under every data tool.",
@@ -1632,6 +1634,7 @@
   },
   {
    "id": "rdbms",
+   "phase": 1,
    "title": "RDBMS & the Relational Model",
    "icon": "🧮",
    "blurb": "The relational model in depth — relations, keys, integrity, relational algebra, ER design, normalization, and how real RDBMSs implement ACID. The theory that makes SQL make sense.",
@@ -2357,6 +2360,7 @@
   },
   {
    "id": "databases-sql",
+   "phase": 1,
    "title": "Databases & SQL",
    "icon": "🗄️",
    "blurb": "The relational model and SQL — the single most important skill in data engineering. Practice live in the SQL Playground.",
@@ -4325,6 +4329,7 @@
   },
   {
    "id": "data-modeling",
+   "phase": 3,
    "title": "Data Modeling & Warehousing",
    "icon": "📐",
    "blurb": "Design tables that are easy and fast to analyse — star schemas, slowly changing dimensions, warehouse vs lake.",
@@ -6065,6 +6070,7 @@
   },
   {
    "id": "python-de",
+   "phase": 2,
    "title": "Python for Data Engineering",
    "icon": "🐍",
    "blurb": "The language that glues every pipeline together — from basics to working with files and APIs.",
@@ -10393,6 +10399,7 @@
   },
   {
    "id": "unix-shell",
+   "phase": 2,
    "title": "Unix & Shell Scripting",
    "icon": "🐚",
    "blurb": "The command line every data engineer lives in: files, pipes, text tools, permissions, scripts, cron, and the CLI for data.",
@@ -10998,6 +11005,7 @@
   },
   {
    "id": "nosql",
+   "phase": 1,
    "title": "NoSQL & Unstructured Data",
    "icon": "🧩",
    "blurb": "When tables aren't the answer: key-value, document, and wide-column stores.",
@@ -11918,6 +11926,7 @@
   },
   {
    "id": "big-data-spark",
+   "phase": 4,
    "title": "Big Data & Apache Spark",
    "icon": "⚡",
    "blurb": "Process data too big for one machine. (Hands-on Spark coding lives in the SparkQuest app.)",
@@ -13633,6 +13642,7 @@
   },
   {
    "id": "pipelines",
+   "phase": 4,
    "title": "Pipelines & Orchestration",
    "icon": "🔧",
    "blurb": "Turn one-off scripts into reliable, scheduled pipelines with Airflow-style DAGs.",
@@ -15104,6 +15114,7 @@
   },
   {
    "id": "streaming",
+   "phase": 4,
    "title": "Streaming & Real-Time",
    "icon": "🌊",
    "blurb": "Process data the moment it arrives — Kafka, event time, and exactly-once.",
@@ -16099,6 +16110,7 @@
   },
   {
    "id": "lakehouse",
+   "phase": 4,
    "title": "The Lakehouse",
    "icon": "🏞️",
    "blurb": "Reliable, database-like tables on cheap storage — Delta Lake and Apache Iceberg.",
@@ -17108,6 +17120,7 @@
   },
   {
    "id": "cloud",
+   "phase": 5,
    "title": "Cloud Data Engineering",
    "icon": "☁️",
    "blurb": "Where modern data lives: object storage, cloud warehouses, and serverless pipelines.",
@@ -18239,6 +18252,7 @@
   },
   {
    "id": "platform-snowflake-track",
+   "phase": 5,
    "title": "Snowflake — complete course",
    "icon": "🏔️",
    "blurb": "Become great at Snowflake for data engineering: architecture, warehouses & cost, loading & continuous ingestion, performance, security & governance, and the modern stack (Snowpark, Iceberg, Dynamic Tables, Cortex).",
@@ -20053,6 +20067,7 @@
   },
   {
    "id": "platform-databricks-track",
+   "phase": 5,
    "title": "Databricks — complete course",
    "icon": "🧱",
    "blurb": "Become great at Databricks for data engineering: the lakehouse & Delta Lake, the platform & Photon, Unity Catalog governance, Lakeflow pipelines, performance & cost, and end-to-end medallion architecture.",
@@ -22181,6 +22196,7 @@
   },
   {
    "id": "platform-aws-track",
+   "phase": 5,
    "title": "AWS for Data Engineering — complete course",
    "icon": "☁️",
    "blurb": "Become great at data engineering on AWS: the serverless-lakehouse stack — S3 + Glue Data Catalog + Athena + Redshift + Kinesis — with real syntax, cost levers, and when to use which service. (More modules — EMR, streaming, orchestration, Lake Formation — coming next.)",
@@ -24672,6 +24688,7 @@
   },
   {
    "id": "platform-gcp-track",
+   "phase": 5,
    "title": "GCP for Data Engineering — complete course",
    "icon": "🟦",
    "blurb": "Become great at data engineering on Google Cloud: the BigQuery-centered serverless lakehouse — GCS, BigQuery (deep), Dataflow, Dataproc, Pub/Sub, Composer, Dataform, Datastream/Bigtable and Dataplex — with real syntax and when to use what.",
@@ -26396,6 +26413,7 @@
   },
   {
    "id": "dataops",
+   "phase": 6,
    "title": "DataOps & Infrastructure",
    "icon": "🛠️",
    "blurb": "Ship pipelines like software: containers, version control, CI/CD, and monitoring.",
@@ -27558,6 +27576,7 @@
   },
   {
    "id": "governance",
+   "phase": 6,
    "title": "Data Quality, Governance & Security",
    "icon": "🛡️",
    "blurb": "Make data trustworthy, discoverable, and safe — the things that separate pros from amateurs.",
@@ -28387,6 +28406,7 @@
   },
   {
    "id": "performance",
+   "phase": 6,
    "title": "Performance & Optimization",
    "icon": "🚀",
    "blurb": "Make pipelines and queries fast and cheap: measure first, scan less, tune Spark, lay out data well, cache, and right-size.",
@@ -28842,6 +28862,7 @@
   },
   {
    "id": "ml-de",
+   "phase": 7,
    "title": "Machine Learning for Data Engineers",
    "icon": "🤖",
    "summary": "The DE side of ML — data, features, training pipelines, serving, MLOps, and the vector/embedding layer.",
@@ -29820,6 +29841,7 @@
   },
   {
    "id": "agentic-ai",
+   "phase": 7,
    "title": "Agentic AI for Data Engineers",
    "icon": "🤖",
    "blurb": "Build with the 2026 agentic stack — MCP, A2A, LangGraph/CrewAI/Claude Agent SDK — and apply it to real data work: self-healing pipelines, text-to-SQL, and quality agents.",
@@ -30623,6 +30645,7 @@
   },
   {
    "id": "system-design",
+   "phase": 8,
    "title": "System Design & Interview Mastery",
    "icon": "🎯",
    "blurb": "Put it all together: design end-to-end pipelines and ace the senior interview.",
@@ -31845,6 +31868,7 @@
   },
   {
    "id": "interview-bank",
+   "phase": 8,
    "title": "Interview Question Bank (50LPA+)",
    "icon": "🎯",
    "blurb": "A research-backed bank of real questions from FAANG, Goldman Sachs and major banks — organized by round and by company (per-company playbooks for 16 top employers - Amazon, Google, Meta, Microsoft, Netflix, Databricks, Uber, Airbnb, LinkedIn, Apple, Stripe, plus banks/finance: Goldman Sachs, JPMorgan, Morgan Stanley, Capital One, Bloomberg), with detailed solutions, code, and links to the matching tutorials.",
@@ -33397,6 +33421,7 @@
   },
   {
    "id": "capstones",
+   "phase": 9,
    "title": "Capstone Projects",
    "icon": "🏗️",
    "summary": "End-to-end pipelines that combine the tools — from API ingestion to a published report.",
@@ -34581,6 +34606,7 @@
   },
   {
    "id": "dsa-de",
+   "phase": 2,
    "title": "DSA for Data Engineering",
    "icon": "🧮",
    "blurb": "The data structures & algorithms that actually matter for data engineering — complexity at scale, hashing/dedup, sorting & external merge, heaps/top-K, probabilistic structures (Bloom/HLL/Count-Min), storage-engine trees (B-tree/LSM), graphs/DAGs for pipeline scheduling, and the SQL/coding patterns DE interviews ask.",
@@ -35444,6 +35470,7 @@
   },
   {
    "id": "dataviz",
+   "phase": 10,
    "title": "Data Visualization & Diagrams",
    "icon": "📈",
    "blurb": "Turn data into charts that tell the truth clearly, and draw the architecture, ER, flow and sequence diagrams data engineers use to design and communicate systems.",
