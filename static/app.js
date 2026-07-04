@@ -128,9 +128,11 @@ function updateProgressUI() {
   $(".progress-ring").style.setProperty("--p", pct + "%");
 }
 function markComplete(id, btn) {
-  progress.add(id); saveProgress(); updateProgressUI();
+  const nowDone = !progress.has(id);         // toggle: complete <-> undo
+  if (nowDone) progress.add(id); else progress.delete(id);
+  saveProgress(); updateProgressUI();
   const link = $(`.lesson-link[data-lesson="${id}"]`);
-  if (link) { link.classList.add("done"); link.querySelector(".check").textContent = "✓"; }
+  if (link) { link.classList.toggle("done", nowDone); link.querySelector(".check").textContent = nowDone ? "✓" : ""; }
   // update track count
   const l = LESSON_BY_ID[id];
   const trackEl = $(`.track[data-track="${l._track.id}"] .tcount`);
@@ -139,7 +141,11 @@ function markComplete(id, btn) {
     const done = l._track.modules.reduce((n, m) => n + m.lessons.filter(x => progress.has(x.id)).length, 0);
     trackEl.textContent = `${done}/${count}`;
   }
-  if (btn) { btn.textContent = "✓ Completed"; btn.classList.add("good"); btn.disabled = true; }
+  if (btn) {
+    btn.textContent = nowDone ? "✓ Completed — click to undo" : "Mark as complete";
+    btn.classList.toggle("good", nowDone);
+    btn.classList.toggle("primary", !nowDone);
+  }
 }
 
 /* ---------------- routing ---------------- */
@@ -281,7 +287,7 @@ async function renderLesson(id) {
 
   html += `
       <div class="lesson-footer">
-        <button class="btn ${isDone ? "good" : "primary"}" id="complete" ${isDone ? "disabled" : ""}>${isDone ? "✓ Completed" : "Mark as complete"}</button>
+        <button class="btn ${isDone ? "good" : "primary"}" id="complete">${isDone ? "✓ Completed — click to undo" : "Mark as complete"}</button>
         <button class="btn ghost" id="cheat">📋 ${l._track.title} cheat sheet</button>
         <span class="spacer"></span>
         ${prev ? `<button class="btn ghost" id="prev">← ${prev.title.slice(0, 22)}</button>` : ""}
