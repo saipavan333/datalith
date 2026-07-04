@@ -27,9 +27,10 @@ Then open **http://localhost:8000** in your browser.
 
 ## What's inside
 
-- **27 tracks, 546 lessons** covering the full DE roadmap end to end:
+- **28 tracks, 546 lessons** covering the full DE roadmap end to end:
   Foundations · Database Systems (DBMS) · RDBMS · Databases & SQL · Data Modeling &
-  Warehousing · Python · Unix & Shell · NoSQL · Big Data & Spark · Pipelines &
+  Warehousing · Python · Python Data Libraries · Unix & Shell · NoSQL · Big Data &
+  Spark · Pipelines &
   Orchestration · Streaming · The Lakehouse · Cloud · Snowflake · Databricks · AWS ·
   GCP · DataOps · Governance & Security · Performance · ML for DE · Agentic AI ·
   System Design · Interview Question Bank · Capstones · DSA for DE · Data Visualization.
@@ -55,7 +56,7 @@ Then open **http://localhost:8000** in your browser.
 - **1,600+ hands-on practice problems (in every lesson)** — each a real problem with a
   hint and a reveal-able worked solution; SQL exercises open a starter straight in the playground.
 - **Printable interview cheat sheet** — a one-click, print-optimized summary of the
-  highest-yield facts across all 27 tracks plus rapid-fire Q&A (topbar → 📄 Cheat
+  highest-yield facts across all 28 tracks plus rapid-fire Q&A (topbar → 📄 Cheat
   Sheet, or open `static/cheatsheet.html`; Ctrl/Cmd+P to save as PDF).
 - **Live SQL Playground** — write real SQL and run it against a sample shop
   database (customers, products, orders, order_items). Runs single queries *and*

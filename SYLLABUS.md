@@ -1,6 +1,6 @@
 # Datalith — Full Syllabus
 
-_27 tracks · 148 modules · 546 lessons · 472 deep-dive tutorials · 1601 practice problems · 1389 quiz questions · 506 lessons with diagrams_
+_28 tracks · 148 modules · 546 lessons · 472 deep-dive tutorials · 1601 practice problems · 1389 quiz questions · 506 lessons with diagrams_
 
 
 Every lesson has a plain-English concept, a worked example, key points, a quiz, and practice problems with full solutions (SQL lessons include a live in-browser SQL playground). Lessons marked 🖼 include a diagram; lessons marked 📖 have a deep-dive tutorial under `content/lessons/`.
@@ -188,7 +188,7 @@ _24 lessons — Design tables that are easy and fast to analyse — star schemas
 
 
 ## 6. 🐍 Python for Data Engineering
-_60 lessons — The language that glues every pipeline together — from basics to working with files and APIs._
+_39 lessons — The language that glues every pipeline together — from basics to working with files and APIs._
 
 ### Python you'll actually use
 
@@ -235,6 +235,28 @@ _60 lessons — The language that glues every pipeline together — from basics 
 - **shutil, glob, tempfile & compression** (12 min · 4 practice) 🖼 📖 — High-level file operations: copy/move/archive, pattern-find files, safe temp space, and gzip/zip.
 - **typing & dataclasses — type hints & clean records** (13 min · 4 practice) 🖼 📖 — Annotate types to catch bugs and aid editors, and generate tidy record classes with no boilerplate.
 
+### Cloud & orchestration
+
+- **boto3 — the AWS SDK for Python** (13 min · 4 practice) 🖼 📖 — Talk to every AWS service from Python: S3 objects, presigned URLs, pagination, and credentials.
+- **fsspec, s3fs & gcsfs — one filesystem API** (12 min · 4 practice) 🖼 📖 — A single, portable interface over local disk and every cloud — and the engine pandas/Polars use for s3://.
+- **Prefect — modern Python orchestration** (13 min · 4 practice) 🖼 📖 — Turn plain Python functions into scheduled, observable, auto-retrying workflows — code-first orchestration.
+- **Apache Beam — unified batch & streaming** (13 min · 4 practice) 🖼 📖 — One programming model for both batch and streaming, portable across runners like Dataflow, Spark, and Flink.
+
+### Utilities & visualization
+
+- **Faker — realistic synthetic data** (12 min · 4 practice) 🖼 📖 — Generate names, addresses, emails, dates and more for tests, demos, and seeding dev databases.
+- **openpyxl & XlsxWriter — read & write Excel** (13 min · 4 practice) 🖼 📖 — Read, edit, and create .xlsx files — cells, formulas, styles, multiple sheets, and charts.
+- **matplotlib — the foundation of Python plotting** (13 min · 4 practice) 🖼 📖 — The Figure/Axes model and the full set of plot types, labels, sub-plots, and styling.
+- **seaborn — statistical visualization** (12 min · 4 practice) 🖼 📖 — DataFrame-aware statistical plots in one line: distributions, categories, relationships, and matrices.
+
+### Interview prep
+
+- **Python interview prep & cheat sheet** (15 min · 1 practice) 📖 — Consolidated rapid-review for the whole Python track: master cheat sheet, rapid-fire Q&A, and a 10-question mock interview.
+
+
+## 7. 🐼 Python Data Libraries
+_21 lessons — The Python data toolkit every data engineer reaches for — NumPy, pandas, Arrow/Parquet, Polars, DuckDB & Dask, plus SQLAlchemy, Pydantic, ingestion & data-quality libraries._
+
 ### NumPy — numerical computing
 
 - **NumPy — the ndarray, dtypes & memory** (13 min · 4 practice) 🖼 📖 — Why NumPy is fast: a contiguous block of one dtype, with views that share memory.
@@ -274,26 +296,8 @@ _60 lessons — The language that glues every pipeline together — from basics 
 - **Requests & httpx — calling HTTP APIs** (13 min · 4 practice) 🖼 📖 — The staple for ingesting from REST APIs — sessions, timeouts, retries, rate limits, and pagination.
 - **Great Expectations — data quality** (13 min · 4 practice) 🖼 📖 — Declarative "expectations" that validate data and gate pipelines, with human-readable Data Docs.
 
-### Cloud & orchestration
 
-- **boto3 — the AWS SDK for Python** (13 min · 4 practice) 🖼 📖 — Talk to every AWS service from Python: S3 objects, presigned URLs, pagination, and credentials.
-- **fsspec, s3fs & gcsfs — one filesystem API** (12 min · 4 practice) 🖼 📖 — A single, portable interface over local disk and every cloud — and the engine pandas/Polars use for s3://.
-- **Prefect — modern Python orchestration** (13 min · 4 practice) 🖼 📖 — Turn plain Python functions into scheduled, observable, auto-retrying workflows — code-first orchestration.
-- **Apache Beam — unified batch & streaming** (13 min · 4 practice) 🖼 📖 — One programming model for both batch and streaming, portable across runners like Dataflow, Spark, and Flink.
-
-### Utilities & visualization
-
-- **Faker — realistic synthetic data** (12 min · 4 practice) 🖼 📖 — Generate names, addresses, emails, dates and more for tests, demos, and seeding dev databases.
-- **openpyxl & XlsxWriter — read & write Excel** (13 min · 4 practice) 🖼 📖 — Read, edit, and create .xlsx files — cells, formulas, styles, multiple sheets, and charts.
-- **matplotlib — the foundation of Python plotting** (13 min · 4 practice) 🖼 📖 — The Figure/Axes model and the full set of plot types, labels, sub-plots, and styling.
-- **seaborn — statistical visualization** (12 min · 4 practice) 🖼 📖 — DataFrame-aware statistical plots in one line: distributions, categories, relationships, and matrices.
-
-### Interview prep
-
-- **Python interview prep & cheat sheet** (15 min · 1 practice) 📖 — Consolidated rapid-review for the whole Python track: master cheat sheet, rapid-fire Q&A, and a 10-question mock interview.
-
-
-## 7. 🐚 Unix & Shell Scripting
+## 8. 🐚 Unix & Shell Scripting
 _9 lessons — The command line every data engineer lives in: files, pipes, text tools, permissions, scripts, cron, and the CLI for data._
 
 ### The command line
@@ -315,7 +319,7 @@ _9 lessons — The command line every data engineer lives in: files, pipes, text
 - **Unix & Shell interview prep & cheat sheet** (12 min · 1 practice) 📖 — Consolidated rapid-review for the Unix & Shell track: master cheat sheet, rapid-fire Q&A, and a 10-question mock interview.
 
 
-## 8. 🧩 NoSQL & Unstructured Data
+## 9. 🧩 NoSQL & Unstructured Data
 _12 lessons — When tables aren't the answer: key-value, document, and wide-column stores._
 
 ### Beyond the relational table
@@ -346,7 +350,7 @@ _12 lessons — When tables aren't the answer: key-value, document, and wide-col
 - **NoSQL interview prep & cheat sheet** (12 min · 1 practice) 📖 — Consolidated rapid-review for the NoSQL track: high-frequency answers and a 10-question mock interview.
 
 
-## 9. ⚡ Big Data & Apache Spark
+## 10. ⚡ Big Data & Apache Spark
 _23 lessons — Process data too big for one machine. (Hands-on Spark coding lives in the SparkQuest app.)_
 
 ### The evolution of Big Data
@@ -394,7 +398,7 @@ _23 lessons — Process data too big for one machine. (Hands-on Spark coding liv
 - **Spark & Big Data interview prep & cheat sheet** (15 min · 1 practice) 📖 — Consolidated rapid-review for the Spark track: high-frequency answers and a 10-question mock interview.
 
 
-## 10. 🔧 Pipelines & Orchestration
+## 11. 🔧 Pipelines & Orchestration
 _20 lessons — Turn one-off scripts into reliable, scheduled pipelines with Airflow-style DAGs._
 
 ### Building reliable pipelines
@@ -436,7 +440,7 @@ _20 lessons — Turn one-off scripts into reliable, scheduled pipelines with Air
 - **Pipelines & Orchestration interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review for the Pipelines track: high-frequency answers and a 10-question mock interview.
 
 
-## 11. 🌊 Streaming & Real-Time
+## 12. 🌊 Streaming & Real-Time
 _13 lessons — Process data the moment it arrives — Kafka, event time, and exactly-once._
 
 ### Real-time foundations
@@ -468,7 +472,7 @@ _13 lessons — Process data the moment it arrives — Kafka, event time, and ex
 - **Streaming & Real-Time interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review for the Streaming track: high-frequency answers and a 10-question mock interview.
 
 
-## 12. 🏞️ The Lakehouse
+## 13. 🏞️ The Lakehouse
 _13 lessons — Reliable, database-like tables on cheap storage — Delta Lake and Apache Iceberg._
 
 ### Modern table formats
@@ -500,7 +504,7 @@ _13 lessons — Reliable, database-like tables on cheap storage — Delta Lake a
 - **Lakehouse interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review for the Lakehouse track: high-frequency answers and a 10-question mock interview.
 
 
-## 13. ☁️ Cloud Data Engineering
+## 14. ☁️ Cloud Data Engineering
 _16 lessons — Where modern data lives: object storage, cloud warehouses, and serverless pipelines._
 
 ### Cloud foundations
@@ -535,7 +539,7 @@ _16 lessons — Where modern data lives: object storage, cloud warehouses, and s
 - **Cloud Data Engineering interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review for the Cloud track: high-frequency answers and a 10-question mock interview.
 
 
-## 14. 🏔️ Snowflake — complete course
+## 15. 🏔️ Snowflake — complete course
 _31 lessons — Become great at Snowflake for data engineering: architecture, warehouses & cost, loading & continuous ingestion, performance, security & governance, and the modern stack (Snowpark, Iceberg, Dynamic Tables, Cortex)._
 
 ### Snowflake for Data Engineering
@@ -588,7 +592,7 @@ _31 lessons — Become great at Snowflake for data engineering: architecture, wa
 - **Apps & data products — Streamlit, Native Apps, Clean Rooms** (11 min · 2 practice) 🖼 📖 — Snowflake isn't only a warehouse — you can build and distribute on it. This lesson covers Streamlit in Snowflake (interactive apps on governed data), Native Apps (package and monetize data+logic), and Data Clean Rooms (privacy-preserving collaboration).
 
 
-## 15. 🧱 Databricks — complete course
+## 16. 🧱 Databricks — complete course
 _37 lessons — Become great at Databricks for data engineering: the lakehouse & Delta Lake, the platform & Photon, Unity Catalog governance, Lakeflow pipelines, performance & cost, and end-to-end medallion architecture._
 
 ### Databricks for Data Engineering
@@ -650,7 +654,7 @@ _37 lessons — Become great at Databricks for data engineering: the lakehouse &
 - **Performance tuning with the Spark UI** (13 min · 2 practice) 🖼 📖 — Most Spark slowness is skew, spill, shuffle, or small files; diagnose the real bottleneck in the Spark UI, then apply the matching fix — AQE, broadcast joins, repartition/salting, OPTIMIZE, caching, or Photon.
 
 
-## 16. ☁️ AWS for Data Engineering — complete course
+## 17. ☁️ AWS for Data Engineering — complete course
 _45 lessons — Become great at data engineering on AWS: the serverless-lakehouse stack — S3 + Glue Data Catalog + Athena + Redshift + Kinesis — with real syntax, cost levers, and when to use which service. (More modules — EMR, streaming, orchestration, Lake Formation — coming next.)_
 
 ### Core AWS data services
@@ -726,7 +730,7 @@ _45 lessons — Become great at data engineering on AWS: the serverless-lakehous
 - **Choosing an orchestrator** (10 min · 2 practice) 🖼 📖 — Match the orchestrator to the job: Step Functions for AWS-native serverless workflows, MWAA for complex/cross-system Airflow DAGs and portability, Glue Workflows for Glue-centric pipelines, and EventBridge+Lambda for lightweight event-driven triggers.
 
 
-## 17. 🟦 GCP for Data Engineering — complete course
+## 18. 🟦 GCP for Data Engineering — complete course
 _31 lessons — Become great at data engineering on Google Cloud: the BigQuery-centered serverless lakehouse — GCS, BigQuery (deep), Dataflow, Dataproc, Pub/Sub, Composer, Dataform, Datastream/Bigtable and Dataplex — with real syntax and when to use what._
 
 ### Core GCP data services
@@ -782,7 +786,7 @@ _31 lessons — Become great at data engineering on Google Cloud: the BigQuery-c
 - **Dataplex: lakehouse governance** (10 min · 2 practice) 🖼 📖 — Dataplex unifies governance across GCS and BigQuery: organize data into logical lakes/zones, auto-catalog and discover metadata with lineage, enforce data-quality rules, and centralize security/policy — governing the whole lakehouse from one control plane.
 
 
-## 18. 🛠️ DataOps & Infrastructure
+## 19. 🛠️ DataOps & Infrastructure
 _16 lessons — Ship pipelines like software: containers, version control, CI/CD, and monitoring._
 
 ### Engineering discipline
@@ -817,7 +821,7 @@ _16 lessons — Ship pipelines like software: containers, version control, CI/CD
 - **DataOps & Infrastructure interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review for the DataOps track: high-frequency answers and a 10-question mock interview.
 
 
-## 19. 🛡️ Data Quality, Governance & Security
+## 20. 🛡️ Data Quality, Governance & Security
 _11 lessons — Make data trustworthy, discoverable, and safe — the things that separate pros from amateurs._
 
 ### Trust & safety
@@ -844,7 +848,7 @@ _11 lessons — Make data trustworthy, discoverable, and safe — the things tha
 - **Governance, Quality & Security interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review for the Governance track: high-frequency answers and a 10-question mock interview.
 
 
-## 20. 🚀 Performance & Optimization
+## 21. 🚀 Performance & Optimization
 _7 lessons — Make pipelines and queries fast and cheap: measure first, scan less, tune Spark, lay out data well, cache, and right-size._
 
 ### Tuning fundamentals
@@ -864,7 +868,7 @@ _7 lessons — Make pipelines and queries fast and cheap: measure first, scan le
 - **Performance & Optimization interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review: high-frequency answers and a mock interview.
 
 
-## 21. 🤖 Machine Learning for Data Engineers
+## 22. 🤖 Machine Learning for Data Engineers
 _15 lessons — _
 
 ### ML foundations
@@ -901,7 +905,7 @@ _15 lessons — _
 - **ML for Data Engineers interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review: high-frequency answers and a mock interview.
 
 
-## 22. 🤖 Agentic AI for Data Engineers
+## 23. 🤖 Agentic AI for Data Engineers
 _11 lessons — Build with the 2026 agentic stack — MCP, A2A, LangGraph/CrewAI/Claude Agent SDK — and apply it to real data work: self-healing pipelines, text-to-SQL, and quality agents._
 
 ### Agentic foundations
@@ -931,7 +935,7 @@ _11 lessons — Build with the 2026 agentic stack — MCP, A2A, LangGraph/CrewAI
 - **Agentic AI interview prep & cheat sheet** (12 min · 3 practice) 📖 — The agentic concepts now showing up in 50LPA+ DE interviews — distilled to a one-page review with likely questions.
 
 
-## 23. 🎯 System Design & Interview Mastery
+## 24. 🎯 System Design & Interview Mastery
 _19 lessons — Put it all together: design end-to-end pipelines and ace the senior interview._
 
 ### Designing & interviewing
@@ -972,7 +976,7 @@ _19 lessons — Put it all together: design end-to-end pipelines and ace the sen
 - **System Design interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review: high-frequency answers and a mock interview.
 
 
-## 24. 🎯 Interview Question Bank (50LPA+)
+## 25. 🎯 Interview Question Bank (50LPA+)
 _25 lessons — A research-backed bank of real questions from FAANG, Goldman Sachs and major banks — organized by round and by company (per-company playbooks for 16 top employers - Amazon, Google, Meta, Microsoft, Netflix, Databricks, Uber, Airbnb, LinkedIn, Apple, Stripe, plus banks/finance: Goldman Sachs, JPMorgan, Morgan Stanley, Capital One, Bloomberg), with detailed solutions, code, and links to the matching tutorials._
 
 ### How the loop works
@@ -1013,7 +1017,7 @@ _25 lessons — A research-backed bank of real questions from FAANG, Goldman Sac
 - **Interview bank prep & cheat sheet** (12 min · 3 practice) 📖 — A consolidated study plan and one-page cheat sheet across all rounds — your final review before the loop.
 
 
-## 25. 🏗️ Capstone Projects
+## 26. 🏗️ Capstone Projects
 _16 lessons — _
 
 ### Real-world pipelines
@@ -1039,7 +1043,7 @@ _16 lessons — _
 - **Capstone projects interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review: high-frequency answers and a mock interview.
 
 
-## 26. 🧮 DSA for Data Engineering
+## 27. 🧮 DSA for Data Engineering
 _16 lessons — The data structures & algorithms that actually matter for data engineering — complexity at scale, hashing/dedup, sorting & external merge, heaps/top-K, probabilistic structures (Bloom/HLL/Count-Min), storage-engine trees (B-tree/LSM), graphs/DAGs for pipeline scheduling, and the SQL/coding patterns DE interviews ask._
 
 ### Complexity & core structures
@@ -1077,7 +1081,7 @@ _16 lessons — The data structures & algorithms that actually matter for data e
 - **DE coding interview patterns & strategy** (11 min · 1 practice) 🖼 📖 — DE coding interviews lean on a handful of patterns — hashing (dedup/group), two pointers/sliding window (ranges), heaps (top-K), sort/merge (order), graphs (dependencies), and sketches (scale) — plus a strategy: clarify, examples, brute force then optimize, state complexity, test edge cases.
 
 
-## 27. 📈 Data Visualization & Diagrams
+## 28. 📈 Data Visualization & Diagrams
 _16 lessons — Turn data into charts that tell the truth clearly, and draw the architecture, ER, flow and sequence diagrams data engineers use to design and communicate systems._
 
 ### Data visualization

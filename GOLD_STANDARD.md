@@ -115,7 +115,7 @@ is to **group tracks into phases** with a clear spine and mark what's **core** v
 |---|---|---|---|
 | **P0 · Foundations** | Foundations of Data | The vocabulary and mental models everything builds on | Core |
 | **P1 · Databases & SQL** | Database Systems (DBMS) · RDBMS & the Relational Model · Databases & SQL · NoSQL | How data is stored and queried; SQL to fluency | Core |
-| **P2 · Programming & Tooling** | Python for DE · Unix & Shell · DSA for DE | The languages/tools you build pipelines with | Core |
+| **P2 · Programming & Tooling** | Python for DE · Python Data Libraries · Unix & Shell · DSA for DE | The languages/tools you build pipelines with | Core |
 | **P3 · Modeling & Warehousing** | Data Modeling & Warehousing | Turn requirements into schemas that scale | Core |
 | **P4 · Big Data · Pipelines · Streaming · Lakehouse** | Big Data & Spark · Pipelines & Orchestration · Streaming & Real-Time · The Lakehouse | The heart of the job: move and transform data at scale | Core |
 | **P5 · Cloud & Platforms** | Cloud DE · Snowflake · Databricks · AWS · GCP | Where it all runs — **pick your stack, don't do all four** | Elective |

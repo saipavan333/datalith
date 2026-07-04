@@ -8119,6 +8119,687 @@
      ]
     },
     {
+     "title": "Cloud & orchestration",
+     "lessons": [
+      {
+       "id": "lib-boto3",
+       "title": "boto3 — the AWS SDK for Python",
+       "minutes": 13,
+       "summary": "Talk to every AWS service from Python: S3 objects, presigned URLs, pagination, and credentials.",
+       "concept": "**boto3** is the official **AWS SDK** for Python — your gateway to S3, Glue, Athena, DynamoDB, Lambda, SQS, and every other AWS service. Two interfaces: a low-level **`client`** (one method per API call) and a higher-level **`resource`** (object-oriented). Most data work uses the S3 client.\n\n**S3 — the operations you'll use daily:**\n```python\nimport boto3\ns3 = boto3.client('s3')\ns3.upload_file('local.csv', 'my-bucket', 'data/local.csv')\ns3.download_file('my-bucket', 'data/local.csv', 'local.csv')\ns3.put_object(Bucket='my-bucket', Key='k.json', Body=b'{...}')\nobj = s3.get_object(Bucket='my-bucket', Key='k.json')\nbody = obj['Body'].read()        # bytes\ns3.delete_object(Bucket='my-bucket', Key='old.csv')\ns3.head_object(Bucket='my-bucket', Key='k.json')   # metadata/size\n```\n\n**Paginate** large listings (S3 returns at most 1000 keys per call):\n```python\nfor page in s3.get_paginator('list_objects_v2').paginate(Bucket='b', Prefix='data/'):\n    for obj in page.get('Contents', []):\n        print(obj['Key'], obj['Size'])\n```\n\n**Presigned URLs** grant temporary, key-free access:\n```python\nurl = s3.generate_presigned_url('get_object',\n        Params={'Bucket':'b','Key':'report.pdf'}, ExpiresIn=3600)\n```\n\n**Credentials** are resolved automatically in this order: environment variables, the `~/.aws/credentials` profile, then an **IAM role** attached to the compute (the best option in production — short-lived, rotated, nothing in code). **Never hard-code keys.** Handle failures with `botocore.exceptions.ClientError`, and use **waiters** (`s3.get_waiter('object_exists').wait(...)`) to block until a resource is ready. The same client pattern (`boto3.client('glue')`, `'athena'`, `'dynamodb'`) drives every other service.",
+       "example": "import boto3\nfrom botocore.exceptions import ClientError\n\ns3 = boto3.client('s3')\n\n# list everything under a prefix (paginated), summing sizes\ntotal = 0\nfor page in s3.get_paginator('list_objects_v2').paginate(Bucket='lake', Prefix='raw/'):\n    for o in page.get('Contents', []):\n        total += o['Size']\nprint(f'{total/1e9:.1f} GB under raw/')\n\ntry:\n    s3.head_object(Bucket='lake', Key='raw/today.parquet')\nexcept ClientError as e:\n    if e.response['Error']['Code'] == '404':\n        print('today\\'s file has not landed yet')",
+       "keypoints": [
+        "boto3 is the AWS SDK: a low-level client or high-level resource for S3, Glue, Athena, DynamoDB, etc.",
+        "S3 basics: upload_file/download_file, put_object/get_object (Body), head_object, delete_object.",
+        "Paginate list_objects_v2 with a paginator — S3 returns at most 1000 keys per response.",
+        "generate_presigned_url grants temporary access without sharing credentials.",
+        "Credentials resolve from env → profile → IAM role; never hard-code keys (prefer roles in prod).",
+        "Catch botocore ClientError; use waiters to block until a resource exists; same pattern for all services."
+       ],
+       "quiz": [
+        {
+         "q": "Why use an IAM role instead of hard-coded keys for a job running on AWS?",
+         "options": [
+          "Roles are faster",
+          "A role provides short-lived, auto-rotated credentials with no secrets in code",
+          "Keys don't work on AWS",
+          "Roles are required for boto3"
+         ],
+         "answer": 1,
+         "explain": "An attached IAM role hands the SDK temporary, rotating credentials automatically — far safer than embedding static keys."
+        },
+        {
+         "q": "A bucket has 25,000 objects but list_objects_v2 returns only 1000. The fix?",
+         "options": [
+          "Nothing",
+          "Use a paginator to iterate all pages",
+          "Delete objects",
+          "Use get_object"
+         ],
+         "answer": 1,
+         "explain": "S3 caps each list response at 1000 keys; a paginator follows continuation tokens to return everything."
+        },
+        {
+         "q": "How do you give someone temporary download access to one private object?",
+         "options": [
+          "Make the bucket public",
+          "generate_presigned_url for get_object with an expiry",
+          "Email the key",
+          "head_object"
+         ],
+         "answer": 1,
+         "explain": "A presigned URL embeds time-limited permission for that one operation/object — no credential sharing needed."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Upload a local file to s3://my-bucket/data/f.csv.",
+         "hint": "upload_file(local, bucket, key).",
+         "solution": "import boto3\nboto3.client('s3').upload_file('f.csv','my-bucket','data/f.csv')"
+        },
+        {
+         "prompt": "List every key under the 'logs/' prefix in a large bucket.",
+         "hint": "Paginator over list_objects_v2.",
+         "solution": "s3=boto3.client('s3')\nfor pg in s3.get_paginator('list_objects_v2').paginate(Bucket='b',Prefix='logs/'):\n    for o in pg.get('Contents',[]): print(o['Key'])"
+        },
+        {
+         "prompt": "Read a small JSON object from S3 into bytes.",
+         "hint": "get_object then Body.read().",
+         "solution": "obj=boto3.client('s3').get_object(Bucket='b',Key='k.json')\ndata=obj['Body'].read()"
+        },
+        {
+         "prompt": "Generate a link that lets someone download report.pdf for one hour.",
+         "hint": "generate_presigned_url with ExpiresIn.",
+         "solution": "boto3.client('s3').generate_presigned_url('get_object',\n  Params={'Bucket':'b','Key':'report.pdf'}, ExpiresIn=3600)"
+        }
+       ],
+       "diagram": "boto3-clients",
+       "diagram_caption": "boto3.client(service) → AWS API calls; credentials from env/profile/IAM role"
+      },
+      {
+       "id": "lib-fsspec",
+       "title": "fsspec, s3fs & gcsfs — one filesystem API",
+       "minutes": 12,
+       "summary": "A single, portable interface over local disk and every cloud — and the engine pandas/Polars use for s3://.",
+       "concept": "**fsspec** gives one **filesystem API** that works the same over local disk, **S3, GCS, Azure, HTTP, FTP**, and more. Its real power: pandas, Polars, PyArrow, Dask, and DuckDB all use fsspec underneath, which is why `pd.read_parquet('s3://...')` just works. Backends are plug-ins: **s3fs** (S3), **gcsfs** (GCS), **adlfs** (Azure).\n\n**Open and read any URL like a local file:**\n```python\nimport fsspec\nwith fsspec.open('s3://bucket/data.csv', 'rt') as f:\n    text = f.read()\nwith fsspec.open('gcs://bucket/out.json', 'wt') as f:\n    f.write('{...}')\n# transparent (de)compression by extension:\nwith fsspec.open('s3://bucket/logs.json.gz', 'rt', compression='gzip') as f:\n    ...\n```\n\n**Get a filesystem object for richer operations:**\n```python\nfs = fsspec.filesystem('s3')        # or 'gcs', 'file', 'az'\nfs.ls('bucket/data/')               # list\nfs.glob('bucket/data/*.parquet')    # wildcard search\nfs.exists(path); fs.info(path)['size']\nfs.cat('bucket/k.json')             # read bytes\nfs.put('local.csv', 'bucket/k.csv') # upload\nfs.get('bucket/k.csv', 'local.csv') # download\nfs.makedirs('bucket/new/', exist_ok=True)\n```\n\n**Credentials & options** pass via `storage_options` (or the backend's env vars), so the same code targets any cloud:\n```python\nimport pandas as pd\npd.read_parquet('s3://bucket/sales/*.parquet',\n                storage_options={'key': AK, 'secret': SK})\npd.to_parquet('gcs://bucket/out.parquet',\n              storage_options={'token': 'service_account.json'})\n```\n\n**Why it matters:** write code once against `s3://`, `gcs://`, or a local path and switch by changing the URL. fsspec also offers **caching** (mirror remote files locally) and **`**` recursive globbing**. Use fsspec for portable file I/O; drop to **boto3** when you need AWS-specific control (bucket policies, presigned URLs, non-S3 services).",
+       "example": "import fsspec, pandas as pd\n\n# same code works for local, S3, or GCS — only the URL changes\nfor url in ['data/sales.parquet', 's3://lake/sales.parquet']:\n    df = pd.read_parquet(url)        # fsspec resolves the protocol\n\n# list and stream remote files directly\nfs = fsspec.filesystem('s3')\nfor path in fs.glob('lake/raw/2024/*.json.gz'):\n    with fs.open(path, 'rt', compression='gzip') as f:\n        process(f)\n\n# write a DataFrame straight to cloud storage\ndf.to_parquet('s3://lake/curated/sales.parquet',\n              storage_options={'profile': 'prod'})",
+       "keypoints": [
+        "fsspec is one filesystem API over local, S3, GCS, Azure, HTTP — backends: s3fs, gcsfs, adlfs.",
+        "fsspec.open('s3://...') reads/writes any URL like a local file (with transparent compression).",
+        "fsspec.filesystem('s3') gives ls/glob/exists/info/cat/put/get/makedirs for richer control.",
+        "pandas/Polars/PyArrow/Dask use fsspec, so read_parquet('s3://...') works with storage_options=.",
+        "Pass credentials via storage_options (or backend env vars); switch clouds by changing the URL.",
+        "Use fsspec for portable file I/O; use boto3 for AWS-specific features and non-S3 services."
+       ],
+       "quiz": [
+        {
+         "q": "Why does `pd.read_parquet('s3://bucket/f.parquet')` work without explicit download code?",
+         "options": [
+          "Magic",
+          "pandas uses fsspec/s3fs underneath to stream the object as if it were a local file",
+          "It can't",
+          "It always copies to disk first"
+         ],
+         "answer": 1,
+         "explain": "fsspec provides the filesystem abstraction; with s3fs installed, pandas reads the S3 URL directly through it."
+        },
+        {
+         "q": "What makes fsspec 'portable' across clouds?",
+         "options": [
+          "It only supports S3",
+          "One API + URL protocols (s3://, gcs://, file://) so the same code targets any backend",
+          "It rewrites your code",
+          "It needs no credentials"
+         ],
+         "answer": 1,
+         "explain": "You write against a single interface and switch storage by changing the URL scheme; the backend plug-in handles the rest."
+        },
+        {
+         "q": "When would you choose boto3 over fsspec?",
+         "options": [
+          "Never",
+          "For AWS-specific features (bucket policies, presigned URLs) or non-S3 services like DynamoDB",
+          "For reading CSVs",
+          "fsspec can't read S3"
+         ],
+         "answer": 1,
+         "explain": "fsspec is great for portable file I/O; boto3 exposes the full AWS API surface that fsspec doesn't cover."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Read every Parquet file under an s3 prefix into pandas, passing credentials.",
+         "hint": "read_parquet with s3 glob + storage_options.",
+         "solution": "import pandas as pd\npd.read_parquet('s3://bucket/sales/*.parquet',\n  storage_options={'key':AK,'secret':SK})"
+        },
+        {
+         "prompt": "List all .parquet files under a GCS prefix with fsspec.",
+         "hint": "filesystem('gcs').glob.",
+         "solution": "import fsspec\nfsspec.filesystem('gcs').glob('bucket/data/*.parquet')"
+        },
+        {
+         "prompt": "Open and read a gzipped JSON file on S3 line by line.",
+         "hint": "fsspec.open with compression.",
+         "solution": "import fsspec\nwith fsspec.open('s3://b/logs.json.gz','rt',compression='gzip') as f:\n    for line in f: ..."
+        },
+        {
+         "prompt": "Why is fsspec better than writing separate boto3/gcsfs code for a multi-cloud pipeline?",
+         "hint": "One API, change only the URL.",
+         "solution": "fsspec gives one interface for all backends, so the same read/write code runs against local, S3, or GCS by changing the URL/protocol — no per-cloud code paths."
+        }
+       ],
+       "diagram": "fsspec-abstraction",
+       "diagram_caption": "fsspec: one open()/ls()/glob() API over local, S3, GCS, and Azure backends"
+      },
+      {
+       "id": "lib-prefect",
+       "title": "Prefect — modern Python orchestration",
+       "minutes": 13,
+       "summary": "Turn plain Python functions into scheduled, observable, auto-retrying workflows — code-first orchestration.",
+       "concept": "**Prefect** is a workflow **orchestrator**: it schedules, runs, observes, and retries data pipelines. It's a **code-first, Pythonic** take on the job Airflow does — you write normal Python functions and add two decorators, rather than assembling a static DAG object.\n\n**Tasks and flows.** A **`@task`** is a unit of work (fetch, transform, load); a **`@flow`** is a function that calls tasks and defines the workflow. Because a flow is *just Python*, you use ordinary **loops and conditionals** — dynamic, data-dependent workflows that static DAGs handle awkwardly. Prefect tracks every run and gives each task automatic **state** (pending/running/completed/failed).\n\n**Reliability built in.** Add `@task(retries=3, retry_delay_seconds=10)` and transient failures retry themselves; results can be **cached** to skip recomputation; tasks submitted to a runner execute with **concurrency**. Flows take **parameters**, log automatically, and can send **notifications** on failure.\n\n**Running in production.** You create a **deployment** (a flow plus its **schedule** — cron or interval), and **workers** pull runs from **work pools** to execute them on your infrastructure. The **UI** (Prefect Cloud or self-hosted server) shows run history, logs, and failures — the **observability** that turns scripts into operable pipelines.\n\n**Prefect vs Airflow.** Prefect is lighter, code-first, and great for dynamic Python-native pipelines; **Airflow** (covered in the Pipelines track) is the incumbent with a vast operator ecosystem and is often mandated in enterprises. Dagster is a third option centered on data **assets**. They solve the same need: reliable scheduling, dependencies, retries, and visibility.\n\n**Maturity features.** Prefect **blocks** store reusable, secure configuration (credentials, storage, connections) outside code; **result persistence** plus **cache keys** let a re-run skip tasks whose inputs haven't changed; and **artifacts** surface tables and markdown in the UI. Introduce an orchestrator once you have several dependent steps, real schedules, or a need to observe and retry failures — before that, a script and cron may be enough.",
+       "example": "from prefect import flow, task\n\n@task(retries=3, retry_delay_seconds=10)\ndef extract(url): return fetch(url)          # auto-retries on failure\n\n@task\ndef transform(rows): return clean(rows)\n\n@task\ndef load(df): write_warehouse(df)\n\n@flow(name='daily-etl', log_prints=True)\ndef etl(sources: list[str]):\n    for src in sources:                       # dynamic: plain Python loop\n        load(transform(extract(src)))\n\nif __name__ == '__main__':\n    etl(['api/a', 'api/b'])   # run now; or deploy with a cron schedule",
+       "keypoints": [
+        "Prefect is a code-first orchestrator: schedule, run, observe, and retry Python workflows.",
+        "@task is a unit of work; @flow is a Python function that calls tasks to define the pipeline.",
+        "Flows are plain Python, so loops/conditionals give dynamic, data-dependent workflows.",
+        "Built-in reliability: retries with delay, result caching, concurrency, parameters, notifications.",
+        "Deployments add schedules; workers pull from work pools; the UI gives run history and logs.",
+        "Prefect is lighter/code-first vs Airflow's larger ecosystem; both provide scheduling+retries+visibility."
+       ],
+       "quiz": [
+        {
+         "q": "How does Prefect differ from a classic static-DAG tool for dynamic workflows?",
+         "options": [
+          "It can't schedule",
+          "Flows are plain Python, so you use real loops/conditionals for data-dependent logic",
+          "It only runs once",
+          "It needs Java"
+         ],
+         "answer": 1,
+         "explain": "Because a flow is ordinary Python, control flow is dynamic — easier than encoding data-dependent branching in a static DAG."
+        },
+        {
+         "q": "How do you make a flaky extract task survive transient API errors in Prefect?",
+         "options": [
+          "Pray",
+          "@task(retries=3, retry_delay_seconds=...) for automatic retries with backoff",
+          "Run it twice manually",
+          "Disable logging"
+         ],
+         "answer": 1,
+         "explain": "Prefect's task-level retries re-run on failure after a delay, handling transient errors without custom code."
+        },
+        {
+         "q": "What turns a Prefect flow into a scheduled production pipeline?",
+         "options": [
+          "Nothing",
+          "A deployment with a schedule, executed by workers pulling from a work pool",
+          "A spreadsheet",
+          "A bigger laptop"
+         ],
+         "answer": 1,
+         "explain": "Deployments attach a schedule and infrastructure; workers pick up runs from work pools and execute them."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Wrap an extract/transform/load as Prefect tasks inside a flow.",
+         "hint": "@task on each function, @flow calls them.",
+         "solution": "from prefect import flow, task\n@task\ndef e(): ...\n@task\ndef t(x): ...\n@task\ndef l(x): ...\n@flow\ndef etl(): l(t(e()))"
+        },
+        {
+         "prompt": "Make a task retry up to 5 times with a 30s delay.",
+         "hint": "retries and retry_delay_seconds args.",
+         "solution": "@task(retries=5, retry_delay_seconds=30)\ndef fetch(): ..."
+        },
+        {
+         "prompt": "Run the same flow over a list of sources dynamically.",
+         "hint": "A normal for-loop inside the flow.",
+         "solution": "@flow\ndef etl(srcs):\n    for s in srcs:\n        load(transform(extract(s)))"
+        },
+        {
+         "prompt": "Name one advantage of an orchestrator's UI over running a cron script.",
+         "hint": "Observability.",
+         "solution": "It shows run history, per-task logs, states, and failures in one place (with alerting), so you can see and debug pipeline health instead of digging through scattered cron logs."
+        }
+       ],
+       "diagram": "prefect-flow",
+       "diagram_caption": "A @flow calls @tasks; retries, scheduling, and a UI make it production-grade"
+      },
+      {
+       "id": "lib-beam",
+       "title": "Apache Beam — unified batch & streaming",
+       "minutes": 13,
+       "summary": "One programming model for both batch and streaming, portable across runners like Dataflow, Spark, and Flink.",
+       "concept": "**Apache Beam** gives you a **single programming model for both batch and streaming**, and lets the same pipeline run on different execution engines — **runners** — including Google Cloud **Dataflow**, **Spark**, **Flink**, and a local **Direct** runner. Write once, run anywhere; switch engines without rewriting.\n\n**The model.** A **`Pipeline`** is a graph of transforms. A **`PCollection`** is a distributed dataset flowing through it — **bounded** (a finite batch) or **unbounded** (an endless stream); the API is identical for both. A **`PTransform`** is an operation, and you chain them with the **pipe operator**: `Map`, `FlatMap`, `Filter`, `GroupByKey`, `CombinePerKey`, and the general-purpose `ParDo`. This is the same Map/Shuffle/Reduce shape as MapReduce, expressed compositionally.\n\n**Streaming semantics — Beam's real depth.** For unbounded data, Beam separates **event time** from processing time and groups records into **windows** (fixed, sliding, or session). **Watermarks** track how far event time has progressed, and **triggers** decide when to emit results for a window (and how to handle **late** data). This is the rigorous model most streaming systems borrowed, and it's why the *same* code can run as a nightly batch or a live stream.\n\n**Where it fits.** Choose Beam for **portable, large-scale, unified batch+stream** pipelines — especially on Google Cloud Dataflow, where it's the native SDK. It's heavier than single-node tools like DuckDB or Polars, so it earns its keep on big distributed workloads, not laptop-sized data.\n\n**Going deeper.** The general transform is **`ParDo`** (a `DoFn` you write), and **side inputs** feed a small lookup dataset into it; **`Combine`** does efficient associative aggregation. Beam ships **IO connectors** for Kafka, Pub/Sub, BigQuery, files, and JDBC, and **Beam SQL** lets you express transforms in SQL. On Dataflow it autoscales workers and manages shuffling, so you design the transform graph rather than the cluster.",
+       "example": "import apache_beam as beam\n\nwith beam.Pipeline() as p:           # runs on Direct/Dataflow/Spark/Flink\n    (p\n     | 'Read'   >> beam.io.ReadFromText('input.txt')\n     | 'Split'  >> beam.FlatMap(lambda line: line.split())\n     | 'Pair'   >> beam.Map(lambda w: (w, 1))\n     | 'Count'  >> beam.CombinePerKey(sum)        # GroupByKey + sum\n     | 'Write'  >> beam.io.WriteToText('counts'))\n# the classic word count — identical code for batch or streaming sources",
+       "keypoints": [
+        "Beam is one model for batch AND streaming, portable across runners (Dataflow/Spark/Flink/Direct).",
+        "A Pipeline chains PTransforms; a PCollection is the dataset, bounded (batch) or unbounded (stream).",
+        "Transforms (Map/FlatMap/Filter/GroupByKey/CombinePerKey/ParDo) chain with the pipe operator.",
+        "Streaming uses event-time windows (fixed/sliding/session) with watermarks and triggers for late data.",
+        "The same code runs as batch or stream — write once, switch the runner.",
+        "Best for portable, large-scale unified pipelines (esp. GCP Dataflow); heavier than DuckDB/Polars."
+       ],
+       "quiz": [
+        {
+         "q": "What is the core promise of Apache Beam?",
+         "options": [
+          "Fastest on a laptop",
+          "One model for batch+streaming that runs on multiple engines (runners)",
+          "A SQL database",
+          "A chart library"
+         ],
+         "answer": 1,
+         "explain": "Beam unifies batch and streaming and is portable: the same pipeline runs on Dataflow, Spark, Flink, or locally."
+        },
+        {
+         "q": "In Beam, what is a PCollection?",
+         "options": [
+          "A Python list",
+          "The distributed dataset (bounded or unbounded) flowing through the pipeline",
+          "A database table",
+          "A chart"
+         ],
+         "answer": 1,
+         "explain": "A PCollection is Beam's distributed dataset abstraction; bounded means batch, unbounded means a stream — same API."
+        },
+        {
+         "q": "Which concepts let Beam handle out-of-order streaming data correctly?",
+         "options": [
+          "Indexes",
+          "Event-time windows + watermarks + triggers",
+          "Foreign keys",
+          "Compression"
+         ],
+         "answer": 1,
+         "explain": "Windows group by event time, watermarks estimate completeness, and triggers decide when (and how) to emit, handling late data."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Sketch a Beam pipeline that reads lines, splits to words, and counts them.",
+         "hint": "ReadFromText | FlatMap split | Map (w,1) | CombinePerKey sum.",
+         "solution": "with beam.Pipeline() as p:\n  (p | beam.io.ReadFromText('in.txt')\n     | beam.FlatMap(lambda l: l.split())\n     | beam.Map(lambda w: (w,1))\n     | beam.CombinePerKey(sum)\n     | beam.io.WriteToText('out'))"
+        },
+        {
+         "prompt": "What changes in that pipeline to run on Google Cloud Dataflow instead of locally?",
+         "hint": "Only the runner/options, not the transforms.",
+         "solution": "Pass pipeline options selecting the DataflowRunner (project, region, temp_location). The transform code stays identical — that's Beam's portability."
+        },
+        {
+         "prompt": "Why does Beam separate event time from processing time?",
+         "hint": "Records arrive late/out of order.",
+         "solution": "Events can be delayed or reordered in transit; grouping by event time (with watermarks/triggers) produces correct windowed results regardless of when records actually arrive."
+        },
+        {
+         "prompt": "When is Beam overkill?",
+         "hint": "Small/single-node data.",
+         "solution": "For laptop-to-few-GB data, DuckDB/Polars/pandas are simpler and faster; Beam's distributed machinery pays off only on large-scale or truly streaming workloads."
+        }
+       ],
+       "diagram": "beam-pipeline",
+       "diagram_caption": "PCollection flows through PTransforms; one model runs batch or stream on any runner"
+      }
+     ]
+    },
+    {
+     "title": "Utilities & visualization",
+     "lessons": [
+      {
+       "id": "lib-faker",
+       "title": "Faker — realistic synthetic data",
+       "minutes": 12,
+       "summary": "Generate names, addresses, emails, dates and more for tests, demos, and seeding dev databases.",
+       "concept": "**Faker** generates **realistic fake data** so you can test, demo, and seed development databases without touching real customer data. You create one generator and call **providers** grouped by category.\n\n**Setup & basics:**\n```python\nfrom faker import Faker\nfake = Faker()                 # default locale en_US\nFaker.seed(42)                 # reproducible output across runs\nfake.name(); fake.first_name(); fake.last_name()\n```\n\n**Providers by category** (the syntax you'll reach for):\n```python\n# people & contact\nfake.name(); fake.email(); fake.phone_number(); fake.ssn()\n# location\nfake.address(); fake.city(); fake.country(); fake.zipcode(); fake.latitude()\n# internet & tech\nfake.user_name(); fake.url(); fake.ipv4(); fake.user_agent()\n# company & job\nfake.company(); fake.job(); fake.catch_phrase()\n# dates & numbers\nfake.date_between('-1y','today'); fake.date_time(); fake.unix_time()\nfake.random_int(0, 100); fake.pyfloat(); fake.boolean(chance_of_getting_true=70)\n# text & misc\nfake.text(); fake.sentence(); fake.uuid4(); fake.color_name()\n```\n\n**Locales** give region-appropriate data, and you can mix several:\n```python\nFaker('ja_JP').name()                 # Japanese names\nFaker(['en_US','fr_FR','de_DE'])      # randomly pick a locale\n```\n\n**Unique & custom.** `fake.unique.email()` guarantees no duplicates (e.g. for primary keys); `fake.random_element(['A','B','C'])` picks from your own list; and you can register custom providers for domain-specific data. Combine Faker with pandas and a loop or comprehension to build a synthetic dataset of any size — invaluable for **load-testing** a pipeline before real data exists.",
+       "example": "from faker import Faker\nimport pandas as pd\n\nfake = Faker(); Faker.seed(0)\nrows = [{\n    'id': fake.unique.random_int(1000, 9999),   # unique key\n    'name': fake.name(),\n    'email': fake.email(),\n    'country': fake.country(),\n    'signup': fake.date_between('-2y', 'today'),\n    'spend': round(fake.pyfloat(min_value=0, max_value=500), 2),\n    'active': fake.boolean(chance_of_getting_true=75),\n} for _ in range(1000)]\ndf = pd.DataFrame(rows)            # a 1000-row synthetic dataset",
+       "keypoints": [
+        "Faker generates realistic fake data for tests, demos, and seeding dev databases — no real PII.",
+        "Create Faker(); call providers: name/email/address/company/date_between/random_int/text/uuid4.",
+        "Faker.seed(n) makes output reproducible across runs.",
+        "Locales like Faker('ja_JP') or a list give region-appropriate (or mixed) data.",
+        "fake.unique.x() guarantees no duplicates (for keys); fake.random_element picks from your list.",
+        "Combine with pandas + a loop to build synthetic datasets of any size for load-testing."
+       ],
+       "quiz": [
+        {
+         "q": "Why seed Faker with Faker.seed(42)?",
+         "options": [
+          "It runs faster",
+          "It makes the generated data reproducible across runs",
+          "It enables locales",
+          "It validates data"
+         ],
+         "answer": 1,
+         "explain": "Seeding fixes the pseudo-random sequence so the same synthetic dataset is produced every run — important for repeatable tests."
+        },
+        {
+         "q": "You need 10,000 fake users each with a UNIQUE email. Which call?",
+         "options": [
+          "fake.email()",
+          "fake.unique.email()",
+          "fake.name()",
+          "fake.seed()"
+         ],
+         "answer": 1,
+         "explain": "fake.unique.<provider>() guarantees no repeats, which matters when the value is a key or must be distinct."
+        },
+        {
+         "q": "How do you get region-appropriate names and addresses for Japan?",
+         "options": [
+          "fake.japan()",
+          "Faker('ja_JP')",
+          "fake.locale='jp'",
+          "fake.country('Japan')"
+         ],
+         "answer": 1,
+         "explain": "Pass the locale code to Faker (e.g. Faker('ja_JP')); you can also pass a list to mix locales randomly."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Generate 500 fake (name, email, city) records into a pandas DataFrame, reproducibly.",
+         "hint": "Seed, build a list of dicts, DataFrame.",
+         "solution": "from faker import Faker; import pandas as pd\nf=Faker(); Faker.seed(1)\npd.DataFrame([{'name':f.name(),'email':f.email(),'city':f.city()} for _ in range(500)])"
+        },
+        {
+         "prompt": "Produce a random date within the last year.",
+         "hint": "date_between with relative strings.",
+         "solution": "fake.date_between(start_date='-1y', end_date='today')"
+        },
+        {
+         "prompt": "Pick a random status from your own list ['new','paid','shipped'].",
+         "hint": "random_element.",
+         "solution": "fake.random_element(['new','paid','shipped'])"
+        },
+        {
+         "prompt": "Why use Faker instead of real customer data to seed a staging database?",
+         "hint": "Privacy + volume.",
+         "solution": "It provides realistic, high-volume data with no privacy/compliance risk — you never expose real PII in dev/test/staging environments."
+        }
+       ],
+       "diagram": "faker-providers",
+       "diagram_caption": "Faker() → providers by category (person · location · internet · dates) → realistic rows"
+      },
+      {
+       "id": "lib-openpyxl",
+       "title": "openpyxl & XlsxWriter — read & write Excel",
+       "minutes": 13,
+       "summary": "Read, edit, and create .xlsx files — cells, formulas, styles, multiple sheets, and charts.",
+       "concept": "`.xlsx` is the format business users live in, and Python reads and writes it with **openpyxl** (read + write, edits existing files) and **XlsxWriter** (write-only, excellent formatting). You rarely call them directly — `pandas` uses them under the hood — but knowing the API lets you build polished deliverables.\n\n**Reading with openpyxl:**\n```python\nfrom openpyxl import load_workbook\nwb = load_workbook('report.xlsx', data_only=True)  # data_only reads cached formula values\nws = wb['Sheet1']             # or wb.active\nws['B2'].value                # one cell\nws.cell(row=2, column=2).value\nfor row in ws.iter_rows(min_row=2, values_only=True):  # stream rows as tuples\n    print(row)\nws.max_row, ws.max_column\n```\n\n**Writing with openpyxl:**\n```python\nfrom openpyxl import Workbook\nfrom openpyxl.styles import Font, PatternFill, Alignment\nwb = Workbook(); ws = wb.active; ws.title = 'Sales'\nws['A1'] = 'Region'; ws.append(['North', 100])      # append a whole row\nws['A1'].font = Font(bold=True, color='FFFFFF')\nws['A1'].fill = PatternFill('solid', fgColor='4472C4')\nws['C2'] = '=B2*1.2'                                 # a formula\nws.merge_cells('A1:C1'); ws.column_dimensions['A'].width = 18\nwb.save('out.xlsx')\n```\n\n**pandas is the fast path** for tabular data — it delegates to these engines:\n```python\nimport pandas as pd\ndf = pd.read_excel('in.xlsx', sheet_name='Q1')      # uses openpyxl\nwith pd.ExcelWriter('out.xlsx', engine='xlsxwriter') as xl:\n    df.to_excel(xl, sheet_name='data', index=False)\n    summary.to_excel(xl, sheet_name='summary')      # multiple sheets in one file\n```\n\n**Which engine?** Use **openpyxl** to *edit* an existing workbook or read cells; use **XlsxWriter** (via `ExcelWriter`) when you want rich formatting, conditional formats, or native charts in a brand-new file. Both can add **charts**; XlsxWriter's are more capable.",
+       "example": "from openpyxl import Workbook\nfrom openpyxl.styles import Font, PatternFill\n\nwb = Workbook(); ws = wb.active; ws.title = 'Summary'\nws.append(['Region', 'Revenue'])                 # header row\nfor cell in ws[1]:                               # style the header\n    cell.font = Font(bold=True, color='FFFFFF')\n    cell.fill = PatternFill('solid', fgColor='305496')\nfor region, rev in [('North', 1200), ('South', 900)]:\n    ws.append([region, rev])\nws['B4'] = '=SUM(B2:B3)'                          # total formula\nws.column_dimensions['A'].width = 16\nwb.save('summary.xlsx')",
+       "keypoints": [
+        "openpyxl reads AND writes .xlsx (and edits existing files); XlsxWriter is write-only with rich formatting.",
+        "Read: load_workbook(...); ws['B2'].value or ws.iter_rows(values_only=True) to stream rows.",
+        "Write: Workbook(); ws.append(row); ws['A1']=value; set formulas like ws['C2']='=B2*1.2'.",
+        "Style with Font/PatternFill/Alignment; merge_cells and column_dimensions control layout.",
+        "pandas read_excel/to_excel use these engines; ExcelWriter writes multiple sheets in one file.",
+        "Choose openpyxl to edit/read existing workbooks; XlsxWriter for richly formatted new files and charts."
+       ],
+       "quiz": [
+        {
+         "q": "Which library would you use to EDIT an existing .xlsx and re-save it?",
+         "options": [
+          "XlsxWriter (write-only)",
+          "openpyxl (reads and writes existing files)",
+          "csv",
+          "json"
+         ],
+         "answer": 1,
+         "explain": "XlsxWriter can only create new files; openpyxl can open, modify, and save existing workbooks."
+        },
+        {
+         "q": "When you call `df.to_excel('out.xlsx')`, what actually writes the file?",
+         "options": [
+          "pandas itself",
+          "An engine like openpyxl or XlsxWriter under the hood",
+          "Excel must be installed",
+          "The OS"
+         ],
+         "answer": 1,
+         "explain": "pandas delegates .xlsx I/O to openpyxl/XlsxWriter, which handle the workbook format, sheets, and formatting."
+        },
+        {
+         "q": "How do you write a DataFrame and a summary to two sheets of one file?",
+         "options": [
+          "Two separate files",
+          "pd.ExcelWriter with two to_excel calls (different sheet_name)",
+          "Not possible",
+          "Only with csv"
+         ],
+         "answer": 1,
+         "explain": "An ExcelWriter context lets you call to_excel multiple times with different sheet_name values into the same workbook."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Read the 'Q1' sheet of an Excel file into a pandas DataFrame.",
+         "hint": "read_excel with sheet_name.",
+         "solution": "import pandas as pd\npd.read_excel('book.xlsx', sheet_name='Q1')"
+        },
+        {
+         "prompt": "Create a new workbook, add a bold header row, and save it (openpyxl).",
+         "hint": "Workbook, append, Font(bold=True).",
+         "solution": "from openpyxl import Workbook\nfrom openpyxl.styles import Font\nwb=Workbook(); ws=wb.active\nws.append(['Name','Amount'])\nfor c in ws[1]: c.font=Font(bold=True)\nwb.save('out.xlsx')"
+        },
+        {
+         "prompt": "Stream all rows of a worksheet as plain tuples without loading styles.",
+         "hint": "iter_rows(values_only=True).",
+         "solution": "for row in ws.iter_rows(values_only=True):\n    print(row)"
+        },
+        {
+         "prompt": "Write three DataFrames to three sheets in one Excel file.",
+         "hint": "ExcelWriter + repeated to_excel.",
+         "solution": "with pd.ExcelWriter('multi.xlsx') as xl:\n    a.to_excel(xl,'a'); b.to_excel(xl,'b'); c.to_excel(xl,'c')"
+        }
+       ],
+       "diagram": "excel-workbook",
+       "diagram_caption": "Workbook → worksheets → cells (values, formulas, styles); pandas wraps it all"
+      },
+      {
+       "id": "lib-matplotlib",
+       "title": "matplotlib — the foundation of Python plotting",
+       "minutes": 13,
+       "summary": "The Figure/Axes model and the full set of plot types, labels, sub-plots, and styling.",
+       "concept": "**matplotlib** is the plotting library everything else builds on. Master its model and you can make (and fix) almost any chart in Python.\n\n**The model: a `Figure` holds one or more `Axes`** (each Axes is one plot). Always create them explicitly and call methods on the **Axes** (`ax.`) — the object-oriented API — rather than the global `plt.` state:\n```python\nimport matplotlib.pyplot as plt\nfig, ax = plt.subplots(figsize=(8, 4))\nax.plot(x, y)\nfig.savefig('chart.png', dpi=150, bbox_inches='tight')\n```\n\n**Plot types** (all are methods on `ax`):\n```python\nax.plot(x, y)            # line\nax.scatter(x, y)         # points\nax.bar(cats, vals); ax.barh(cats, vals)   # vertical / horizontal bars\nax.hist(data, bins=30)   # histogram\nax.boxplot(data)         # box-and-whisker\nax.pie(vals, labels=...) # pie\nax.imshow(matrix)        # heatmap/image\nax.fill_between(x, lo, hi)   # shaded band\n```\n\n**Labels, limits, legend, grid:**\n```python\nax.set_title('Revenue'); ax.set_xlabel('month'); ax.set_ylabel('$')\nax.set_xlim(0, 100); ax.set_ylim(bottom=0)\nax.legend(['2023', '2024']); ax.grid(True, alpha=0.3)\nax.tick_params(rotation=45)\n```\n\n**Multiple panels** — `plt.subplots(rows, cols)` returns a grid of Axes:\n```python\nfig, axes = plt.subplots(2, 2, figsize=(10, 8))\naxes[0, 0].plot(...); axes[1, 1].bar(...)\nfig.tight_layout()\n```\n\n**Styling** per call: `color`, `linestyle` (`'--'`), `marker` (`'o'`), `linewidth`, `alpha`, `label`. Apply a whole theme with `plt.style.use('seaborn-v0_8')`. For a second y-axis use `ax2 = ax.twinx()`. Save vector output with `.svg`/`.pdf` for crisp reports. This Figure/Axes vocabulary is also exactly what **seaborn** returns, so learning it makes every higher-level library tweakable.",
+       "example": "import matplotlib.pyplot as plt\n\nfig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4))\n\nax1.plot(months, rev_2023, marker='o', label='2023')\nax1.plot(months, rev_2024, marker='s', linestyle='--', label='2024')\nax1.set_title('Revenue by month'); ax1.set_ylabel('$'); ax1.legend(); ax1.grid(alpha=.3)\n\nax2.bar(regions, totals, color='#4472C4')\nax2.set_title('Total by region'); ax2.tick_params(axis='x', rotation=45)\n\nfig.tight_layout(); fig.savefig('report.png', dpi=150, bbox_inches='tight')",
+       "keypoints": [
+        "A Figure holds Axes (each Axes is one plot); create with fig, ax = plt.subplots().",
+        "Prefer the object-oriented ax. API over global plt. state — clearer and composes into grids.",
+        "Plot types are ax methods: plot, scatter, bar/barh, hist, boxplot, pie, imshow, fill_between.",
+        "Label/limit/annotate with set_title/set_xlabel/set_ylabel/set_xlim/legend/grid/tick_params.",
+        "plt.subplots(r, c) makes a panel grid; fig.tight_layout() spaces them; twinx() adds a second y-axis.",
+        "Style with color/linestyle/marker/alpha; plt.style.use(...) themes; savefig(dpi, bbox_inches='tight')."
+       ],
+       "quiz": [
+        {
+         "q": "What is the relationship between a Figure and an Axes in matplotlib?",
+         "options": [
+          "They are the same",
+          "A Figure is the canvas that contains one or more Axes (each Axes is a single plot)",
+          "Axes contain Figures",
+          "Neither exists"
+         ],
+         "answer": 1,
+         "explain": "A Figure is the whole canvas; each Axes is an individual plot inside it — a 2x2 grid has four Axes."
+        },
+        {
+         "q": "Why prefer `ax.plot(...)` over `plt.plot(...)`?",
+         "options": [
+          "It's faster",
+          "The object-oriented ax. API is explicit and composes cleanly into multi-panel figures",
+          "plt.plot is removed",
+          "Only ax can save"
+         ],
+         "answer": 1,
+         "explain": "Using explicit Axes objects avoids confusion about which plot you're drawing on and scales to subplot grids."
+        },
+        {
+         "q": "Which call makes a 2x2 grid of plots?",
+         "options": [
+          "plt.plot(2,2)",
+          "plt.subplots(2, 2)",
+          "ax.grid(2,2)",
+          "plt.figure(4)"
+         ],
+         "answer": 1,
+         "explain": "plt.subplots(2, 2) returns a Figure and a 2x2 array of Axes you index like axes[0,1]."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Create a single line chart of (x, y) with a title and axis labels, and save it.",
+         "hint": "subplots, ax.plot, set_*, savefig.",
+         "solution": "fig, ax = plt.subplots()\nax.plot(x, y)\nax.set_title('Trend'); ax.set_xlabel('t'); ax.set_ylabel('v')\nfig.savefig('trend.png', dpi=150, bbox_inches='tight')"
+        },
+        {
+         "prompt": "Plot two lines on the same Axes with a legend.",
+         "hint": "Two ax.plot calls with label=, then ax.legend().",
+         "solution": "ax.plot(x, a, label='A')\nax.plot(x, b, label='B')\nax.legend()"
+        },
+        {
+         "prompt": "Make a horizontal bar chart of category totals.",
+         "hint": "ax.barh.",
+         "solution": "fig, ax = plt.subplots()\nax.barh(categories, totals)"
+        },
+        {
+         "prompt": "Arrange a line plot and a histogram side by side.",
+         "hint": "subplots(1,2) and index the axes.",
+         "solution": "fig, (ax1, ax2) = plt.subplots(1, 2)\nax1.plot(x, y)\nax2.hist(data, bins=30)\nfig.tight_layout()"
+        }
+       ],
+       "diagram": "viz-anatomy",
+       "diagram_caption": "Figure (canvas) holds Axes (plots); call ax.plot/bar/hist and ax.set_* to build"
+      },
+      {
+       "id": "lib-seaborn",
+       "title": "seaborn — statistical visualization",
+       "minutes": 12,
+       "summary": "DataFrame-aware statistical plots in one line: distributions, categories, relationships, and matrices.",
+       "concept": "**seaborn** sits on top of matplotlib and is built for **statistical plots straight from a DataFrame**. You name columns and seaborn handles aggregation, grouping, and good defaults — and because it returns matplotlib Axes, you can fine-tune anything underneath.\n\n**The four plot families** (with the functions you'll use):\n```python\nimport seaborn as sns\n# 1) RELATIONAL — how two numerics relate\nsns.scatterplot(data=df, x='spend', y='revenue', hue='segment')\nsns.lineplot(data=df, x='date', y='sales')\n# 2) DISTRIBUTION — the shape of one/two variables\nsns.histplot(data=df, x='amount', bins=40, kde=True)\nsns.kdeplot(data=df, x='amount'); sns.ecdfplot(data=df, x='amount')\n# 3) CATEGORICAL — compare across groups\nsns.boxplot(data=df, x='region', y='amount')\nsns.violinplot(...); sns.barplot(...); sns.countplot(data=df, x='region')\n# 4) MATRIX — grids of values\nsns.heatmap(df.corr(), annot=True, cmap='coolwarm')\n```\n\n**Semantic mappings** turn one plot into many: `hue=` colors by a category, `size=` scales points, `style=` changes markers — all from column names:\n```python\nsns.scatterplot(data=df, x='x', y='y', hue='group', size='value', style='kind')\n```\n\n**Figure-level functions** add small-multiples with `col=`/`row=` (one panel per category):\n```python\nsns.relplot(data=df, x='x', y='y', col='region', hue='segment', kind='scatter')\nsns.displot(data=df, x='amount', col='year')          # grid of histograms\nsns.catplot(data=df, x='region', y='amt', kind='box') # grid of boxplots\nsns.lmplot(data=df, x='x', y='y')                     # with a regression line\n```\n(Axes-level functions like `scatterplot` draw on one Axes you pass via `ax=`; figure-level like `relplot` create their own grid.)\n\n**Polish:** `sns.set_theme(style='whitegrid')`, a `palette=`, and `pairplot`/`jointplot` for quick multi-variable overviews. seaborn is the fastest way to *see* your data during EDA and data-quality checks.",
+       "example": "import seaborn as sns, matplotlib.pyplot as plt\nsns.set_theme(style='whitegrid')\n\n# distribution with a density curve\nsns.histplot(data=df, x='amount', bins=40, kde=True)\n\n# compare a metric across groups, split by a second category\nsns.boxplot(data=df, x='region', y='amount', hue='segment')\n\n# correlation heatmap for quick EDA\nsns.heatmap(df.select_dtypes('number').corr(), annot=True, cmap='coolwarm')\n\n# small multiples: one scatter panel per region\nsns.relplot(data=df, x='spend', y='revenue', col='region', hue='segment')\nplt.show()",
+       "keypoints": [
+        "seaborn is a statistical layer over matplotlib that plots directly from DataFrames with good defaults.",
+        "Four families: relational (scatter/line), distribution (hist/kde/ecdf), categorical (box/violin/bar/count), matrix (heatmap).",
+        "Semantic mappings hue=/size=/style= split a plot by columns into a rich, grouped view.",
+        "Figure-level functions (relplot/displot/catplot/lmplot) make small-multiple grids via col=/row=.",
+        "Axes-level functions take ax=; figure-level functions build their own figure — know which you're calling.",
+        "set_theme/palette style everything; pairplot/jointplot give fast multi-variable overviews for EDA."
+       ],
+       "quiz": [
+        {
+         "q": "What is seaborn's main advantage over raw matplotlib?",
+         "options": [
+          "3D plots",
+          "A statistical, DataFrame-aware API with good defaults — one-line grouped plots from column names",
+          "It's the only way to plot",
+          "It replaces pandas"
+         ],
+         "answer": 1,
+         "explain": "seaborn maps DataFrame columns to a plot (with hue/col grouping and sensible styling), so common statistical charts take one line."
+        },
+        {
+         "q": "How do you color a scatter plot by a category column `segment`?",
+         "options": [
+          "color='segment'",
+          "hue='segment'",
+          "group='segment'",
+          "by='segment'"
+         ],
+         "answer": 1,
+         "explain": "The hue= argument maps a categorical column to color, automatically adding a legend."
+        },
+        {
+         "q": "Which makes a GRID of one histogram per year?",
+         "options": [
+          "sns.histplot(col='year')",
+          "sns.displot(data=df, x='amount', col='year')",
+          "sns.heatmap",
+          "plt.hist"
+         ],
+         "answer": 1,
+         "explain": "Figure-level displot with col='year' creates a small-multiple grid; the axes-level histplot draws a single panel."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Plot the distribution of an 'amount' column with a density curve.",
+         "hint": "histplot with kde=True.",
+         "solution": "import seaborn as sns\nsns.histplot(data=df, x='amount', kde=True)"
+        },
+        {
+         "prompt": "Compare 'salary' across 'department', split by 'level', in one call.",
+         "hint": "boxplot with x, y, hue.",
+         "solution": "sns.boxplot(data=df, x='department', y='salary', hue='level')"
+        },
+        {
+         "prompt": "Draw a correlation heatmap of the numeric columns with annotations.",
+         "hint": "heatmap of df.corr().",
+         "solution": "sns.heatmap(df.select_dtypes('number').corr(), annot=True, cmap='coolwarm')"
+        },
+        {
+         "prompt": "Make one scatter panel per 'region' (small multiples).",
+         "hint": "Figure-level relplot with col=.",
+         "solution": "sns.relplot(data=df, x='x', y='y', col='region', kind='scatter')"
+        }
+       ],
+       "diagram": "seaborn-gallery",
+       "diagram_caption": "seaborn families: relational · distribution · categorical · matrix — from DataFrame columns"
+      }
+     ]
+    },
+    {
+     "id": "py-interview",
+     "title": "Interview prep",
+     "lessons": [
+      {
+       "id": "python-interview-prep",
+       "title": "Python interview prep & cheat sheet",
+       "minutes": 15,
+       "summary": "Consolidated rapid-review for the whole Python track: master cheat sheet, rapid-fire Q&A, and a 10-question mock interview.",
+       "concept": "This is the **rapid-review page** for the entire Python-for-DE track. The companion **Go deeper** guide has the full master sheet, rapid-fire Q&A, and a 10-question mock; here are the anchors.\n\n### High-frequency answers\n- **list vs set membership** → set/dict O(1), list O(n); convert for repeated lookups.\n- **mutable default arg** → `def f(x, acc=[])` shares one list across calls; use None.\n- **generator vs list** → generator is lazy, memory-flat, single-pass → streams data bigger than RAM.\n- **the GIL** → one thread runs Python at a time → I/O-bound: threads/async; CPU-bound: multiprocessing.\n- **decorator** → wraps a function to add behavior (retry, cache, timing) without changing it.\n- **loc vs iloc** → label (inclusive) vs integer position (exclusive).\n- **vectorize** → never iterrows; column ops are 10–100× faster.\n- **parameterized queries** → values sent apart from SQL → prevents injection.\n\nEvery individual Python lesson also has its own '💼 Interview questions' panel and a cheat-sheet button.",
+       "keypoints": [
+        "Core gotchas: set vs list membership (O(1) vs O(n)), mutable default args, the GIL.",
+        "Generators stream lazily → process data bigger than RAM; comprehensions are readable map/filter.",
+        "GIL → threads/async for I/O-bound, multiprocessing for CPU-bound.",
+        "pandas: .loc (label) vs .iloc (position); vectorize, never iterrows; move to Polars/DuckDB when too slow/big.",
+        "Always use parameterized queries (no f-string SQL) and bulk loads (COPY/executemany)."
+       ],
+       "quiz": [
+        {
+         "q": "Why can a 100-line loop using `x in big_list` be slow, and the fix?",
+         "options": [
+          "Lists are broken",
+          "`in` on a list is O(n); convert to a set for O(1) membership",
+          "Use more RAM",
+          "Loops are always slow"
+         ],
+         "answer": 1,
+         "explain": "Membership on a list scans linearly; a set/dict hashes in O(1), turning O(n·m) into O(n)."
+        },
+        {
+         "q": "You have CPU-bound work (heavy parsing). Which concurrency model?",
+         "options": [
+          "Threads",
+          "asyncio",
+          "multiprocessing (separate processes bypass the GIL)",
+          "None"
+         ],
+         "answer": 2,
+         "explain": "The GIL blocks threads for CPU work; multiprocessing gives true parallelism. Threads/async are for I/O-bound work."
+        },
+        {
+         "q": "What's the difference between .loc and .iloc in pandas?",
+         "options": [
+          "No difference",
+          "loc = label-based (inclusive slices), iloc = integer-position (exclusive slices)",
+          "Both are positional",
+          "Both are label-based"
+         ],
+         "answer": 1,
+         "explain": "Confusing them is the #1 pandas selection bug — loc for names, iloc for positions."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Do the 10-question Python mock interview (in the Go-deeper guide) out loud, no notes.",
+         "hint": "set vs list, mutable default, generators, GIL, decorators, loc/iloc, iterrows, axis, parameterized queries, leaving pandas.",
+         "solution": "Self-assess: any shaky answer → reread that lesson's deep-dive and interview panel, then retry until crisp."
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "python-data-libs",
+   "phase": 2,
+   "title": "Python Data Libraries",
+   "icon": "🐼",
+   "blurb": "The Python data toolkit every data engineer reaches for — NumPy, pandas, Arrow/Parquet, Polars, DuckDB & Dask, plus SQLAlchemy, Pydantic, ingestion & data-quality libraries.",
+   "modules": [
+    {
      "title": "NumPy — numerical computing",
      "lessons": [
       {
@@ -9720,678 +10401,6 @@
        ],
        "diagram": "ge-validation",
        "diagram_caption": "Batch + Expectation Suite → Checkpoint → pass/fail results + Data Docs gate"
-      }
-     ]
-    },
-    {
-     "title": "Cloud & orchestration",
-     "lessons": [
-      {
-       "id": "lib-boto3",
-       "title": "boto3 — the AWS SDK for Python",
-       "minutes": 13,
-       "summary": "Talk to every AWS service from Python: S3 objects, presigned URLs, pagination, and credentials.",
-       "concept": "**boto3** is the official **AWS SDK** for Python — your gateway to S3, Glue, Athena, DynamoDB, Lambda, SQS, and every other AWS service. Two interfaces: a low-level **`client`** (one method per API call) and a higher-level **`resource`** (object-oriented). Most data work uses the S3 client.\n\n**S3 — the operations you'll use daily:**\n```python\nimport boto3\ns3 = boto3.client('s3')\ns3.upload_file('local.csv', 'my-bucket', 'data/local.csv')\ns3.download_file('my-bucket', 'data/local.csv', 'local.csv')\ns3.put_object(Bucket='my-bucket', Key='k.json', Body=b'{...}')\nobj = s3.get_object(Bucket='my-bucket', Key='k.json')\nbody = obj['Body'].read()        # bytes\ns3.delete_object(Bucket='my-bucket', Key='old.csv')\ns3.head_object(Bucket='my-bucket', Key='k.json')   # metadata/size\n```\n\n**Paginate** large listings (S3 returns at most 1000 keys per call):\n```python\nfor page in s3.get_paginator('list_objects_v2').paginate(Bucket='b', Prefix='data/'):\n    for obj in page.get('Contents', []):\n        print(obj['Key'], obj['Size'])\n```\n\n**Presigned URLs** grant temporary, key-free access:\n```python\nurl = s3.generate_presigned_url('get_object',\n        Params={'Bucket':'b','Key':'report.pdf'}, ExpiresIn=3600)\n```\n\n**Credentials** are resolved automatically in this order: environment variables, the `~/.aws/credentials` profile, then an **IAM role** attached to the compute (the best option in production — short-lived, rotated, nothing in code). **Never hard-code keys.** Handle failures with `botocore.exceptions.ClientError`, and use **waiters** (`s3.get_waiter('object_exists').wait(...)`) to block until a resource is ready. The same client pattern (`boto3.client('glue')`, `'athena'`, `'dynamodb'`) drives every other service.",
-       "example": "import boto3\nfrom botocore.exceptions import ClientError\n\ns3 = boto3.client('s3')\n\n# list everything under a prefix (paginated), summing sizes\ntotal = 0\nfor page in s3.get_paginator('list_objects_v2').paginate(Bucket='lake', Prefix='raw/'):\n    for o in page.get('Contents', []):\n        total += o['Size']\nprint(f'{total/1e9:.1f} GB under raw/')\n\ntry:\n    s3.head_object(Bucket='lake', Key='raw/today.parquet')\nexcept ClientError as e:\n    if e.response['Error']['Code'] == '404':\n        print('today\\'s file has not landed yet')",
-       "keypoints": [
-        "boto3 is the AWS SDK: a low-level client or high-level resource for S3, Glue, Athena, DynamoDB, etc.",
-        "S3 basics: upload_file/download_file, put_object/get_object (Body), head_object, delete_object.",
-        "Paginate list_objects_v2 with a paginator — S3 returns at most 1000 keys per response.",
-        "generate_presigned_url grants temporary access without sharing credentials.",
-        "Credentials resolve from env → profile → IAM role; never hard-code keys (prefer roles in prod).",
-        "Catch botocore ClientError; use waiters to block until a resource exists; same pattern for all services."
-       ],
-       "quiz": [
-        {
-         "q": "Why use an IAM role instead of hard-coded keys for a job running on AWS?",
-         "options": [
-          "Roles are faster",
-          "A role provides short-lived, auto-rotated credentials with no secrets in code",
-          "Keys don't work on AWS",
-          "Roles are required for boto3"
-         ],
-         "answer": 1,
-         "explain": "An attached IAM role hands the SDK temporary, rotating credentials automatically — far safer than embedding static keys."
-        },
-        {
-         "q": "A bucket has 25,000 objects but list_objects_v2 returns only 1000. The fix?",
-         "options": [
-          "Nothing",
-          "Use a paginator to iterate all pages",
-          "Delete objects",
-          "Use get_object"
-         ],
-         "answer": 1,
-         "explain": "S3 caps each list response at 1000 keys; a paginator follows continuation tokens to return everything."
-        },
-        {
-         "q": "How do you give someone temporary download access to one private object?",
-         "options": [
-          "Make the bucket public",
-          "generate_presigned_url for get_object with an expiry",
-          "Email the key",
-          "head_object"
-         ],
-         "answer": 1,
-         "explain": "A presigned URL embeds time-limited permission for that one operation/object — no credential sharing needed."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Upload a local file to s3://my-bucket/data/f.csv.",
-         "hint": "upload_file(local, bucket, key).",
-         "solution": "import boto3\nboto3.client('s3').upload_file('f.csv','my-bucket','data/f.csv')"
-        },
-        {
-         "prompt": "List every key under the 'logs/' prefix in a large bucket.",
-         "hint": "Paginator over list_objects_v2.",
-         "solution": "s3=boto3.client('s3')\nfor pg in s3.get_paginator('list_objects_v2').paginate(Bucket='b',Prefix='logs/'):\n    for o in pg.get('Contents',[]): print(o['Key'])"
-        },
-        {
-         "prompt": "Read a small JSON object from S3 into bytes.",
-         "hint": "get_object then Body.read().",
-         "solution": "obj=boto3.client('s3').get_object(Bucket='b',Key='k.json')\ndata=obj['Body'].read()"
-        },
-        {
-         "prompt": "Generate a link that lets someone download report.pdf for one hour.",
-         "hint": "generate_presigned_url with ExpiresIn.",
-         "solution": "boto3.client('s3').generate_presigned_url('get_object',\n  Params={'Bucket':'b','Key':'report.pdf'}, ExpiresIn=3600)"
-        }
-       ],
-       "diagram": "boto3-clients",
-       "diagram_caption": "boto3.client(service) → AWS API calls; credentials from env/profile/IAM role"
-      },
-      {
-       "id": "lib-fsspec",
-       "title": "fsspec, s3fs & gcsfs — one filesystem API",
-       "minutes": 12,
-       "summary": "A single, portable interface over local disk and every cloud — and the engine pandas/Polars use for s3://.",
-       "concept": "**fsspec** gives one **filesystem API** that works the same over local disk, **S3, GCS, Azure, HTTP, FTP**, and more. Its real power: pandas, Polars, PyArrow, Dask, and DuckDB all use fsspec underneath, which is why `pd.read_parquet('s3://...')` just works. Backends are plug-ins: **s3fs** (S3), **gcsfs** (GCS), **adlfs** (Azure).\n\n**Open and read any URL like a local file:**\n```python\nimport fsspec\nwith fsspec.open('s3://bucket/data.csv', 'rt') as f:\n    text = f.read()\nwith fsspec.open('gcs://bucket/out.json', 'wt') as f:\n    f.write('{...}')\n# transparent (de)compression by extension:\nwith fsspec.open('s3://bucket/logs.json.gz', 'rt', compression='gzip') as f:\n    ...\n```\n\n**Get a filesystem object for richer operations:**\n```python\nfs = fsspec.filesystem('s3')        # or 'gcs', 'file', 'az'\nfs.ls('bucket/data/')               # list\nfs.glob('bucket/data/*.parquet')    # wildcard search\nfs.exists(path); fs.info(path)['size']\nfs.cat('bucket/k.json')             # read bytes\nfs.put('local.csv', 'bucket/k.csv') # upload\nfs.get('bucket/k.csv', 'local.csv') # download\nfs.makedirs('bucket/new/', exist_ok=True)\n```\n\n**Credentials & options** pass via `storage_options` (or the backend's env vars), so the same code targets any cloud:\n```python\nimport pandas as pd\npd.read_parquet('s3://bucket/sales/*.parquet',\n                storage_options={'key': AK, 'secret': SK})\npd.to_parquet('gcs://bucket/out.parquet',\n              storage_options={'token': 'service_account.json'})\n```\n\n**Why it matters:** write code once against `s3://`, `gcs://`, or a local path and switch by changing the URL. fsspec also offers **caching** (mirror remote files locally) and **`**` recursive globbing**. Use fsspec for portable file I/O; drop to **boto3** when you need AWS-specific control (bucket policies, presigned URLs, non-S3 services).",
-       "example": "import fsspec, pandas as pd\n\n# same code works for local, S3, or GCS — only the URL changes\nfor url in ['data/sales.parquet', 's3://lake/sales.parquet']:\n    df = pd.read_parquet(url)        # fsspec resolves the protocol\n\n# list and stream remote files directly\nfs = fsspec.filesystem('s3')\nfor path in fs.glob('lake/raw/2024/*.json.gz'):\n    with fs.open(path, 'rt', compression='gzip') as f:\n        process(f)\n\n# write a DataFrame straight to cloud storage\ndf.to_parquet('s3://lake/curated/sales.parquet',\n              storage_options={'profile': 'prod'})",
-       "keypoints": [
-        "fsspec is one filesystem API over local, S3, GCS, Azure, HTTP — backends: s3fs, gcsfs, adlfs.",
-        "fsspec.open('s3://...') reads/writes any URL like a local file (with transparent compression).",
-        "fsspec.filesystem('s3') gives ls/glob/exists/info/cat/put/get/makedirs for richer control.",
-        "pandas/Polars/PyArrow/Dask use fsspec, so read_parquet('s3://...') works with storage_options=.",
-        "Pass credentials via storage_options (or backend env vars); switch clouds by changing the URL.",
-        "Use fsspec for portable file I/O; use boto3 for AWS-specific features and non-S3 services."
-       ],
-       "quiz": [
-        {
-         "q": "Why does `pd.read_parquet('s3://bucket/f.parquet')` work without explicit download code?",
-         "options": [
-          "Magic",
-          "pandas uses fsspec/s3fs underneath to stream the object as if it were a local file",
-          "It can't",
-          "It always copies to disk first"
-         ],
-         "answer": 1,
-         "explain": "fsspec provides the filesystem abstraction; with s3fs installed, pandas reads the S3 URL directly through it."
-        },
-        {
-         "q": "What makes fsspec 'portable' across clouds?",
-         "options": [
-          "It only supports S3",
-          "One API + URL protocols (s3://, gcs://, file://) so the same code targets any backend",
-          "It rewrites your code",
-          "It needs no credentials"
-         ],
-         "answer": 1,
-         "explain": "You write against a single interface and switch storage by changing the URL scheme; the backend plug-in handles the rest."
-        },
-        {
-         "q": "When would you choose boto3 over fsspec?",
-         "options": [
-          "Never",
-          "For AWS-specific features (bucket policies, presigned URLs) or non-S3 services like DynamoDB",
-          "For reading CSVs",
-          "fsspec can't read S3"
-         ],
-         "answer": 1,
-         "explain": "fsspec is great for portable file I/O; boto3 exposes the full AWS API surface that fsspec doesn't cover."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Read every Parquet file under an s3 prefix into pandas, passing credentials.",
-         "hint": "read_parquet with s3 glob + storage_options.",
-         "solution": "import pandas as pd\npd.read_parquet('s3://bucket/sales/*.parquet',\n  storage_options={'key':AK,'secret':SK})"
-        },
-        {
-         "prompt": "List all .parquet files under a GCS prefix with fsspec.",
-         "hint": "filesystem('gcs').glob.",
-         "solution": "import fsspec\nfsspec.filesystem('gcs').glob('bucket/data/*.parquet')"
-        },
-        {
-         "prompt": "Open and read a gzipped JSON file on S3 line by line.",
-         "hint": "fsspec.open with compression.",
-         "solution": "import fsspec\nwith fsspec.open('s3://b/logs.json.gz','rt',compression='gzip') as f:\n    for line in f: ..."
-        },
-        {
-         "prompt": "Why is fsspec better than writing separate boto3/gcsfs code for a multi-cloud pipeline?",
-         "hint": "One API, change only the URL.",
-         "solution": "fsspec gives one interface for all backends, so the same read/write code runs against local, S3, or GCS by changing the URL/protocol — no per-cloud code paths."
-        }
-       ],
-       "diagram": "fsspec-abstraction",
-       "diagram_caption": "fsspec: one open()/ls()/glob() API over local, S3, GCS, and Azure backends"
-      },
-      {
-       "id": "lib-prefect",
-       "title": "Prefect — modern Python orchestration",
-       "minutes": 13,
-       "summary": "Turn plain Python functions into scheduled, observable, auto-retrying workflows — code-first orchestration.",
-       "concept": "**Prefect** is a workflow **orchestrator**: it schedules, runs, observes, and retries data pipelines. It's a **code-first, Pythonic** take on the job Airflow does — you write normal Python functions and add two decorators, rather than assembling a static DAG object.\n\n**Tasks and flows.** A **`@task`** is a unit of work (fetch, transform, load); a **`@flow`** is a function that calls tasks and defines the workflow. Because a flow is *just Python*, you use ordinary **loops and conditionals** — dynamic, data-dependent workflows that static DAGs handle awkwardly. Prefect tracks every run and gives each task automatic **state** (pending/running/completed/failed).\n\n**Reliability built in.** Add `@task(retries=3, retry_delay_seconds=10)` and transient failures retry themselves; results can be **cached** to skip recomputation; tasks submitted to a runner execute with **concurrency**. Flows take **parameters**, log automatically, and can send **notifications** on failure.\n\n**Running in production.** You create a **deployment** (a flow plus its **schedule** — cron or interval), and **workers** pull runs from **work pools** to execute them on your infrastructure. The **UI** (Prefect Cloud or self-hosted server) shows run history, logs, and failures — the **observability** that turns scripts into operable pipelines.\n\n**Prefect vs Airflow.** Prefect is lighter, code-first, and great for dynamic Python-native pipelines; **Airflow** (covered in the Pipelines track) is the incumbent with a vast operator ecosystem and is often mandated in enterprises. Dagster is a third option centered on data **assets**. They solve the same need: reliable scheduling, dependencies, retries, and visibility.\n\n**Maturity features.** Prefect **blocks** store reusable, secure configuration (credentials, storage, connections) outside code; **result persistence** plus **cache keys** let a re-run skip tasks whose inputs haven't changed; and **artifacts** surface tables and markdown in the UI. Introduce an orchestrator once you have several dependent steps, real schedules, or a need to observe and retry failures — before that, a script and cron may be enough.",
-       "example": "from prefect import flow, task\n\n@task(retries=3, retry_delay_seconds=10)\ndef extract(url): return fetch(url)          # auto-retries on failure\n\n@task\ndef transform(rows): return clean(rows)\n\n@task\ndef load(df): write_warehouse(df)\n\n@flow(name='daily-etl', log_prints=True)\ndef etl(sources: list[str]):\n    for src in sources:                       # dynamic: plain Python loop\n        load(transform(extract(src)))\n\nif __name__ == '__main__':\n    etl(['api/a', 'api/b'])   # run now; or deploy with a cron schedule",
-       "keypoints": [
-        "Prefect is a code-first orchestrator: schedule, run, observe, and retry Python workflows.",
-        "@task is a unit of work; @flow is a Python function that calls tasks to define the pipeline.",
-        "Flows are plain Python, so loops/conditionals give dynamic, data-dependent workflows.",
-        "Built-in reliability: retries with delay, result caching, concurrency, parameters, notifications.",
-        "Deployments add schedules; workers pull from work pools; the UI gives run history and logs.",
-        "Prefect is lighter/code-first vs Airflow's larger ecosystem; both provide scheduling+retries+visibility."
-       ],
-       "quiz": [
-        {
-         "q": "How does Prefect differ from a classic static-DAG tool for dynamic workflows?",
-         "options": [
-          "It can't schedule",
-          "Flows are plain Python, so you use real loops/conditionals for data-dependent logic",
-          "It only runs once",
-          "It needs Java"
-         ],
-         "answer": 1,
-         "explain": "Because a flow is ordinary Python, control flow is dynamic — easier than encoding data-dependent branching in a static DAG."
-        },
-        {
-         "q": "How do you make a flaky extract task survive transient API errors in Prefect?",
-         "options": [
-          "Pray",
-          "@task(retries=3, retry_delay_seconds=...) for automatic retries with backoff",
-          "Run it twice manually",
-          "Disable logging"
-         ],
-         "answer": 1,
-         "explain": "Prefect's task-level retries re-run on failure after a delay, handling transient errors without custom code."
-        },
-        {
-         "q": "What turns a Prefect flow into a scheduled production pipeline?",
-         "options": [
-          "Nothing",
-          "A deployment with a schedule, executed by workers pulling from a work pool",
-          "A spreadsheet",
-          "A bigger laptop"
-         ],
-         "answer": 1,
-         "explain": "Deployments attach a schedule and infrastructure; workers pick up runs from work pools and execute them."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Wrap an extract/transform/load as Prefect tasks inside a flow.",
-         "hint": "@task on each function, @flow calls them.",
-         "solution": "from prefect import flow, task\n@task\ndef e(): ...\n@task\ndef t(x): ...\n@task\ndef l(x): ...\n@flow\ndef etl(): l(t(e()))"
-        },
-        {
-         "prompt": "Make a task retry up to 5 times with a 30s delay.",
-         "hint": "retries and retry_delay_seconds args.",
-         "solution": "@task(retries=5, retry_delay_seconds=30)\ndef fetch(): ..."
-        },
-        {
-         "prompt": "Run the same flow over a list of sources dynamically.",
-         "hint": "A normal for-loop inside the flow.",
-         "solution": "@flow\ndef etl(srcs):\n    for s in srcs:\n        load(transform(extract(s)))"
-        },
-        {
-         "prompt": "Name one advantage of an orchestrator's UI over running a cron script.",
-         "hint": "Observability.",
-         "solution": "It shows run history, per-task logs, states, and failures in one place (with alerting), so you can see and debug pipeline health instead of digging through scattered cron logs."
-        }
-       ],
-       "diagram": "prefect-flow",
-       "diagram_caption": "A @flow calls @tasks; retries, scheduling, and a UI make it production-grade"
-      },
-      {
-       "id": "lib-beam",
-       "title": "Apache Beam — unified batch & streaming",
-       "minutes": 13,
-       "summary": "One programming model for both batch and streaming, portable across runners like Dataflow, Spark, and Flink.",
-       "concept": "**Apache Beam** gives you a **single programming model for both batch and streaming**, and lets the same pipeline run on different execution engines — **runners** — including Google Cloud **Dataflow**, **Spark**, **Flink**, and a local **Direct** runner. Write once, run anywhere; switch engines without rewriting.\n\n**The model.** A **`Pipeline`** is a graph of transforms. A **`PCollection`** is a distributed dataset flowing through it — **bounded** (a finite batch) or **unbounded** (an endless stream); the API is identical for both. A **`PTransform`** is an operation, and you chain them with the **pipe operator**: `Map`, `FlatMap`, `Filter`, `GroupByKey`, `CombinePerKey`, and the general-purpose `ParDo`. This is the same Map/Shuffle/Reduce shape as MapReduce, expressed compositionally.\n\n**Streaming semantics — Beam's real depth.** For unbounded data, Beam separates **event time** from processing time and groups records into **windows** (fixed, sliding, or session). **Watermarks** track how far event time has progressed, and **triggers** decide when to emit results for a window (and how to handle **late** data). This is the rigorous model most streaming systems borrowed, and it's why the *same* code can run as a nightly batch or a live stream.\n\n**Where it fits.** Choose Beam for **portable, large-scale, unified batch+stream** pipelines — especially on Google Cloud Dataflow, where it's the native SDK. It's heavier than single-node tools like DuckDB or Polars, so it earns its keep on big distributed workloads, not laptop-sized data.\n\n**Going deeper.** The general transform is **`ParDo`** (a `DoFn` you write), and **side inputs** feed a small lookup dataset into it; **`Combine`** does efficient associative aggregation. Beam ships **IO connectors** for Kafka, Pub/Sub, BigQuery, files, and JDBC, and **Beam SQL** lets you express transforms in SQL. On Dataflow it autoscales workers and manages shuffling, so you design the transform graph rather than the cluster.",
-       "example": "import apache_beam as beam\n\nwith beam.Pipeline() as p:           # runs on Direct/Dataflow/Spark/Flink\n    (p\n     | 'Read'   >> beam.io.ReadFromText('input.txt')\n     | 'Split'  >> beam.FlatMap(lambda line: line.split())\n     | 'Pair'   >> beam.Map(lambda w: (w, 1))\n     | 'Count'  >> beam.CombinePerKey(sum)        # GroupByKey + sum\n     | 'Write'  >> beam.io.WriteToText('counts'))\n# the classic word count — identical code for batch or streaming sources",
-       "keypoints": [
-        "Beam is one model for batch AND streaming, portable across runners (Dataflow/Spark/Flink/Direct).",
-        "A Pipeline chains PTransforms; a PCollection is the dataset, bounded (batch) or unbounded (stream).",
-        "Transforms (Map/FlatMap/Filter/GroupByKey/CombinePerKey/ParDo) chain with the pipe operator.",
-        "Streaming uses event-time windows (fixed/sliding/session) with watermarks and triggers for late data.",
-        "The same code runs as batch or stream — write once, switch the runner.",
-        "Best for portable, large-scale unified pipelines (esp. GCP Dataflow); heavier than DuckDB/Polars."
-       ],
-       "quiz": [
-        {
-         "q": "What is the core promise of Apache Beam?",
-         "options": [
-          "Fastest on a laptop",
-          "One model for batch+streaming that runs on multiple engines (runners)",
-          "A SQL database",
-          "A chart library"
-         ],
-         "answer": 1,
-         "explain": "Beam unifies batch and streaming and is portable: the same pipeline runs on Dataflow, Spark, Flink, or locally."
-        },
-        {
-         "q": "In Beam, what is a PCollection?",
-         "options": [
-          "A Python list",
-          "The distributed dataset (bounded or unbounded) flowing through the pipeline",
-          "A database table",
-          "A chart"
-         ],
-         "answer": 1,
-         "explain": "A PCollection is Beam's distributed dataset abstraction; bounded means batch, unbounded means a stream — same API."
-        },
-        {
-         "q": "Which concepts let Beam handle out-of-order streaming data correctly?",
-         "options": [
-          "Indexes",
-          "Event-time windows + watermarks + triggers",
-          "Foreign keys",
-          "Compression"
-         ],
-         "answer": 1,
-         "explain": "Windows group by event time, watermarks estimate completeness, and triggers decide when (and how) to emit, handling late data."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Sketch a Beam pipeline that reads lines, splits to words, and counts them.",
-         "hint": "ReadFromText | FlatMap split | Map (w,1) | CombinePerKey sum.",
-         "solution": "with beam.Pipeline() as p:\n  (p | beam.io.ReadFromText('in.txt')\n     | beam.FlatMap(lambda l: l.split())\n     | beam.Map(lambda w: (w,1))\n     | beam.CombinePerKey(sum)\n     | beam.io.WriteToText('out'))"
-        },
-        {
-         "prompt": "What changes in that pipeline to run on Google Cloud Dataflow instead of locally?",
-         "hint": "Only the runner/options, not the transforms.",
-         "solution": "Pass pipeline options selecting the DataflowRunner (project, region, temp_location). The transform code stays identical — that's Beam's portability."
-        },
-        {
-         "prompt": "Why does Beam separate event time from processing time?",
-         "hint": "Records arrive late/out of order.",
-         "solution": "Events can be delayed or reordered in transit; grouping by event time (with watermarks/triggers) produces correct windowed results regardless of when records actually arrive."
-        },
-        {
-         "prompt": "When is Beam overkill?",
-         "hint": "Small/single-node data.",
-         "solution": "For laptop-to-few-GB data, DuckDB/Polars/pandas are simpler and faster; Beam's distributed machinery pays off only on large-scale or truly streaming workloads."
-        }
-       ],
-       "diagram": "beam-pipeline",
-       "diagram_caption": "PCollection flows through PTransforms; one model runs batch or stream on any runner"
-      }
-     ]
-    },
-    {
-     "title": "Utilities & visualization",
-     "lessons": [
-      {
-       "id": "lib-faker",
-       "title": "Faker — realistic synthetic data",
-       "minutes": 12,
-       "summary": "Generate names, addresses, emails, dates and more for tests, demos, and seeding dev databases.",
-       "concept": "**Faker** generates **realistic fake data** so you can test, demo, and seed development databases without touching real customer data. You create one generator and call **providers** grouped by category.\n\n**Setup & basics:**\n```python\nfrom faker import Faker\nfake = Faker()                 # default locale en_US\nFaker.seed(42)                 # reproducible output across runs\nfake.name(); fake.first_name(); fake.last_name()\n```\n\n**Providers by category** (the syntax you'll reach for):\n```python\n# people & contact\nfake.name(); fake.email(); fake.phone_number(); fake.ssn()\n# location\nfake.address(); fake.city(); fake.country(); fake.zipcode(); fake.latitude()\n# internet & tech\nfake.user_name(); fake.url(); fake.ipv4(); fake.user_agent()\n# company & job\nfake.company(); fake.job(); fake.catch_phrase()\n# dates & numbers\nfake.date_between('-1y','today'); fake.date_time(); fake.unix_time()\nfake.random_int(0, 100); fake.pyfloat(); fake.boolean(chance_of_getting_true=70)\n# text & misc\nfake.text(); fake.sentence(); fake.uuid4(); fake.color_name()\n```\n\n**Locales** give region-appropriate data, and you can mix several:\n```python\nFaker('ja_JP').name()                 # Japanese names\nFaker(['en_US','fr_FR','de_DE'])      # randomly pick a locale\n```\n\n**Unique & custom.** `fake.unique.email()` guarantees no duplicates (e.g. for primary keys); `fake.random_element(['A','B','C'])` picks from your own list; and you can register custom providers for domain-specific data. Combine Faker with pandas and a loop or comprehension to build a synthetic dataset of any size — invaluable for **load-testing** a pipeline before real data exists.",
-       "example": "from faker import Faker\nimport pandas as pd\n\nfake = Faker(); Faker.seed(0)\nrows = [{\n    'id': fake.unique.random_int(1000, 9999),   # unique key\n    'name': fake.name(),\n    'email': fake.email(),\n    'country': fake.country(),\n    'signup': fake.date_between('-2y', 'today'),\n    'spend': round(fake.pyfloat(min_value=0, max_value=500), 2),\n    'active': fake.boolean(chance_of_getting_true=75),\n} for _ in range(1000)]\ndf = pd.DataFrame(rows)            # a 1000-row synthetic dataset",
-       "keypoints": [
-        "Faker generates realistic fake data for tests, demos, and seeding dev databases — no real PII.",
-        "Create Faker(); call providers: name/email/address/company/date_between/random_int/text/uuid4.",
-        "Faker.seed(n) makes output reproducible across runs.",
-        "Locales like Faker('ja_JP') or a list give region-appropriate (or mixed) data.",
-        "fake.unique.x() guarantees no duplicates (for keys); fake.random_element picks from your list.",
-        "Combine with pandas + a loop to build synthetic datasets of any size for load-testing."
-       ],
-       "quiz": [
-        {
-         "q": "Why seed Faker with Faker.seed(42)?",
-         "options": [
-          "It runs faster",
-          "It makes the generated data reproducible across runs",
-          "It enables locales",
-          "It validates data"
-         ],
-         "answer": 1,
-         "explain": "Seeding fixes the pseudo-random sequence so the same synthetic dataset is produced every run — important for repeatable tests."
-        },
-        {
-         "q": "You need 10,000 fake users each with a UNIQUE email. Which call?",
-         "options": [
-          "fake.email()",
-          "fake.unique.email()",
-          "fake.name()",
-          "fake.seed()"
-         ],
-         "answer": 1,
-         "explain": "fake.unique.<provider>() guarantees no repeats, which matters when the value is a key or must be distinct."
-        },
-        {
-         "q": "How do you get region-appropriate names and addresses for Japan?",
-         "options": [
-          "fake.japan()",
-          "Faker('ja_JP')",
-          "fake.locale='jp'",
-          "fake.country('Japan')"
-         ],
-         "answer": 1,
-         "explain": "Pass the locale code to Faker (e.g. Faker('ja_JP')); you can also pass a list to mix locales randomly."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Generate 500 fake (name, email, city) records into a pandas DataFrame, reproducibly.",
-         "hint": "Seed, build a list of dicts, DataFrame.",
-         "solution": "from faker import Faker; import pandas as pd\nf=Faker(); Faker.seed(1)\npd.DataFrame([{'name':f.name(),'email':f.email(),'city':f.city()} for _ in range(500)])"
-        },
-        {
-         "prompt": "Produce a random date within the last year.",
-         "hint": "date_between with relative strings.",
-         "solution": "fake.date_between(start_date='-1y', end_date='today')"
-        },
-        {
-         "prompt": "Pick a random status from your own list ['new','paid','shipped'].",
-         "hint": "random_element.",
-         "solution": "fake.random_element(['new','paid','shipped'])"
-        },
-        {
-         "prompt": "Why use Faker instead of real customer data to seed a staging database?",
-         "hint": "Privacy + volume.",
-         "solution": "It provides realistic, high-volume data with no privacy/compliance risk — you never expose real PII in dev/test/staging environments."
-        }
-       ],
-       "diagram": "faker-providers",
-       "diagram_caption": "Faker() → providers by category (person · location · internet · dates) → realistic rows"
-      },
-      {
-       "id": "lib-openpyxl",
-       "title": "openpyxl & XlsxWriter — read & write Excel",
-       "minutes": 13,
-       "summary": "Read, edit, and create .xlsx files — cells, formulas, styles, multiple sheets, and charts.",
-       "concept": "`.xlsx` is the format business users live in, and Python reads and writes it with **openpyxl** (read + write, edits existing files) and **XlsxWriter** (write-only, excellent formatting). You rarely call them directly — `pandas` uses them under the hood — but knowing the API lets you build polished deliverables.\n\n**Reading with openpyxl:**\n```python\nfrom openpyxl import load_workbook\nwb = load_workbook('report.xlsx', data_only=True)  # data_only reads cached formula values\nws = wb['Sheet1']             # or wb.active\nws['B2'].value                # one cell\nws.cell(row=2, column=2).value\nfor row in ws.iter_rows(min_row=2, values_only=True):  # stream rows as tuples\n    print(row)\nws.max_row, ws.max_column\n```\n\n**Writing with openpyxl:**\n```python\nfrom openpyxl import Workbook\nfrom openpyxl.styles import Font, PatternFill, Alignment\nwb = Workbook(); ws = wb.active; ws.title = 'Sales'\nws['A1'] = 'Region'; ws.append(['North', 100])      # append a whole row\nws['A1'].font = Font(bold=True, color='FFFFFF')\nws['A1'].fill = PatternFill('solid', fgColor='4472C4')\nws['C2'] = '=B2*1.2'                                 # a formula\nws.merge_cells('A1:C1'); ws.column_dimensions['A'].width = 18\nwb.save('out.xlsx')\n```\n\n**pandas is the fast path** for tabular data — it delegates to these engines:\n```python\nimport pandas as pd\ndf = pd.read_excel('in.xlsx', sheet_name='Q1')      # uses openpyxl\nwith pd.ExcelWriter('out.xlsx', engine='xlsxwriter') as xl:\n    df.to_excel(xl, sheet_name='data', index=False)\n    summary.to_excel(xl, sheet_name='summary')      # multiple sheets in one file\n```\n\n**Which engine?** Use **openpyxl** to *edit* an existing workbook or read cells; use **XlsxWriter** (via `ExcelWriter`) when you want rich formatting, conditional formats, or native charts in a brand-new file. Both can add **charts**; XlsxWriter's are more capable.",
-       "example": "from openpyxl import Workbook\nfrom openpyxl.styles import Font, PatternFill\n\nwb = Workbook(); ws = wb.active; ws.title = 'Summary'\nws.append(['Region', 'Revenue'])                 # header row\nfor cell in ws[1]:                               # style the header\n    cell.font = Font(bold=True, color='FFFFFF')\n    cell.fill = PatternFill('solid', fgColor='305496')\nfor region, rev in [('North', 1200), ('South', 900)]:\n    ws.append([region, rev])\nws['B4'] = '=SUM(B2:B3)'                          # total formula\nws.column_dimensions['A'].width = 16\nwb.save('summary.xlsx')",
-       "keypoints": [
-        "openpyxl reads AND writes .xlsx (and edits existing files); XlsxWriter is write-only with rich formatting.",
-        "Read: load_workbook(...); ws['B2'].value or ws.iter_rows(values_only=True) to stream rows.",
-        "Write: Workbook(); ws.append(row); ws['A1']=value; set formulas like ws['C2']='=B2*1.2'.",
-        "Style with Font/PatternFill/Alignment; merge_cells and column_dimensions control layout.",
-        "pandas read_excel/to_excel use these engines; ExcelWriter writes multiple sheets in one file.",
-        "Choose openpyxl to edit/read existing workbooks; XlsxWriter for richly formatted new files and charts."
-       ],
-       "quiz": [
-        {
-         "q": "Which library would you use to EDIT an existing .xlsx and re-save it?",
-         "options": [
-          "XlsxWriter (write-only)",
-          "openpyxl (reads and writes existing files)",
-          "csv",
-          "json"
-         ],
-         "answer": 1,
-         "explain": "XlsxWriter can only create new files; openpyxl can open, modify, and save existing workbooks."
-        },
-        {
-         "q": "When you call `df.to_excel('out.xlsx')`, what actually writes the file?",
-         "options": [
-          "pandas itself",
-          "An engine like openpyxl or XlsxWriter under the hood",
-          "Excel must be installed",
-          "The OS"
-         ],
-         "answer": 1,
-         "explain": "pandas delegates .xlsx I/O to openpyxl/XlsxWriter, which handle the workbook format, sheets, and formatting."
-        },
-        {
-         "q": "How do you write a DataFrame and a summary to two sheets of one file?",
-         "options": [
-          "Two separate files",
-          "pd.ExcelWriter with two to_excel calls (different sheet_name)",
-          "Not possible",
-          "Only with csv"
-         ],
-         "answer": 1,
-         "explain": "An ExcelWriter context lets you call to_excel multiple times with different sheet_name values into the same workbook."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Read the 'Q1' sheet of an Excel file into a pandas DataFrame.",
-         "hint": "read_excel with sheet_name.",
-         "solution": "import pandas as pd\npd.read_excel('book.xlsx', sheet_name='Q1')"
-        },
-        {
-         "prompt": "Create a new workbook, add a bold header row, and save it (openpyxl).",
-         "hint": "Workbook, append, Font(bold=True).",
-         "solution": "from openpyxl import Workbook\nfrom openpyxl.styles import Font\nwb=Workbook(); ws=wb.active\nws.append(['Name','Amount'])\nfor c in ws[1]: c.font=Font(bold=True)\nwb.save('out.xlsx')"
-        },
-        {
-         "prompt": "Stream all rows of a worksheet as plain tuples without loading styles.",
-         "hint": "iter_rows(values_only=True).",
-         "solution": "for row in ws.iter_rows(values_only=True):\n    print(row)"
-        },
-        {
-         "prompt": "Write three DataFrames to three sheets in one Excel file.",
-         "hint": "ExcelWriter + repeated to_excel.",
-         "solution": "with pd.ExcelWriter('multi.xlsx') as xl:\n    a.to_excel(xl,'a'); b.to_excel(xl,'b'); c.to_excel(xl,'c')"
-        }
-       ],
-       "diagram": "excel-workbook",
-       "diagram_caption": "Workbook → worksheets → cells (values, formulas, styles); pandas wraps it all"
-      },
-      {
-       "id": "lib-matplotlib",
-       "title": "matplotlib — the foundation of Python plotting",
-       "minutes": 13,
-       "summary": "The Figure/Axes model and the full set of plot types, labels, sub-plots, and styling.",
-       "concept": "**matplotlib** is the plotting library everything else builds on. Master its model and you can make (and fix) almost any chart in Python.\n\n**The model: a `Figure` holds one or more `Axes`** (each Axes is one plot). Always create them explicitly and call methods on the **Axes** (`ax.`) — the object-oriented API — rather than the global `plt.` state:\n```python\nimport matplotlib.pyplot as plt\nfig, ax = plt.subplots(figsize=(8, 4))\nax.plot(x, y)\nfig.savefig('chart.png', dpi=150, bbox_inches='tight')\n```\n\n**Plot types** (all are methods on `ax`):\n```python\nax.plot(x, y)            # line\nax.scatter(x, y)         # points\nax.bar(cats, vals); ax.barh(cats, vals)   # vertical / horizontal bars\nax.hist(data, bins=30)   # histogram\nax.boxplot(data)         # box-and-whisker\nax.pie(vals, labels=...) # pie\nax.imshow(matrix)        # heatmap/image\nax.fill_between(x, lo, hi)   # shaded band\n```\n\n**Labels, limits, legend, grid:**\n```python\nax.set_title('Revenue'); ax.set_xlabel('month'); ax.set_ylabel('$')\nax.set_xlim(0, 100); ax.set_ylim(bottom=0)\nax.legend(['2023', '2024']); ax.grid(True, alpha=0.3)\nax.tick_params(rotation=45)\n```\n\n**Multiple panels** — `plt.subplots(rows, cols)` returns a grid of Axes:\n```python\nfig, axes = plt.subplots(2, 2, figsize=(10, 8))\naxes[0, 0].plot(...); axes[1, 1].bar(...)\nfig.tight_layout()\n```\n\n**Styling** per call: `color`, `linestyle` (`'--'`), `marker` (`'o'`), `linewidth`, `alpha`, `label`. Apply a whole theme with `plt.style.use('seaborn-v0_8')`. For a second y-axis use `ax2 = ax.twinx()`. Save vector output with `.svg`/`.pdf` for crisp reports. This Figure/Axes vocabulary is also exactly what **seaborn** returns, so learning it makes every higher-level library tweakable.",
-       "example": "import matplotlib.pyplot as plt\n\nfig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4))\n\nax1.plot(months, rev_2023, marker='o', label='2023')\nax1.plot(months, rev_2024, marker='s', linestyle='--', label='2024')\nax1.set_title('Revenue by month'); ax1.set_ylabel('$'); ax1.legend(); ax1.grid(alpha=.3)\n\nax2.bar(regions, totals, color='#4472C4')\nax2.set_title('Total by region'); ax2.tick_params(axis='x', rotation=45)\n\nfig.tight_layout(); fig.savefig('report.png', dpi=150, bbox_inches='tight')",
-       "keypoints": [
-        "A Figure holds Axes (each Axes is one plot); create with fig, ax = plt.subplots().",
-        "Prefer the object-oriented ax. API over global plt. state — clearer and composes into grids.",
-        "Plot types are ax methods: plot, scatter, bar/barh, hist, boxplot, pie, imshow, fill_between.",
-        "Label/limit/annotate with set_title/set_xlabel/set_ylabel/set_xlim/legend/grid/tick_params.",
-        "plt.subplots(r, c) makes a panel grid; fig.tight_layout() spaces them; twinx() adds a second y-axis.",
-        "Style with color/linestyle/marker/alpha; plt.style.use(...) themes; savefig(dpi, bbox_inches='tight')."
-       ],
-       "quiz": [
-        {
-         "q": "What is the relationship between a Figure and an Axes in matplotlib?",
-         "options": [
-          "They are the same",
-          "A Figure is the canvas that contains one or more Axes (each Axes is a single plot)",
-          "Axes contain Figures",
-          "Neither exists"
-         ],
-         "answer": 1,
-         "explain": "A Figure is the whole canvas; each Axes is an individual plot inside it — a 2x2 grid has four Axes."
-        },
-        {
-         "q": "Why prefer `ax.plot(...)` over `plt.plot(...)`?",
-         "options": [
-          "It's faster",
-          "The object-oriented ax. API is explicit and composes cleanly into multi-panel figures",
-          "plt.plot is removed",
-          "Only ax can save"
-         ],
-         "answer": 1,
-         "explain": "Using explicit Axes objects avoids confusion about which plot you're drawing on and scales to subplot grids."
-        },
-        {
-         "q": "Which call makes a 2x2 grid of plots?",
-         "options": [
-          "plt.plot(2,2)",
-          "plt.subplots(2, 2)",
-          "ax.grid(2,2)",
-          "plt.figure(4)"
-         ],
-         "answer": 1,
-         "explain": "plt.subplots(2, 2) returns a Figure and a 2x2 array of Axes you index like axes[0,1]."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Create a single line chart of (x, y) with a title and axis labels, and save it.",
-         "hint": "subplots, ax.plot, set_*, savefig.",
-         "solution": "fig, ax = plt.subplots()\nax.plot(x, y)\nax.set_title('Trend'); ax.set_xlabel('t'); ax.set_ylabel('v')\nfig.savefig('trend.png', dpi=150, bbox_inches='tight')"
-        },
-        {
-         "prompt": "Plot two lines on the same Axes with a legend.",
-         "hint": "Two ax.plot calls with label=, then ax.legend().",
-         "solution": "ax.plot(x, a, label='A')\nax.plot(x, b, label='B')\nax.legend()"
-        },
-        {
-         "prompt": "Make a horizontal bar chart of category totals.",
-         "hint": "ax.barh.",
-         "solution": "fig, ax = plt.subplots()\nax.barh(categories, totals)"
-        },
-        {
-         "prompt": "Arrange a line plot and a histogram side by side.",
-         "hint": "subplots(1,2) and index the axes.",
-         "solution": "fig, (ax1, ax2) = plt.subplots(1, 2)\nax1.plot(x, y)\nax2.hist(data, bins=30)\nfig.tight_layout()"
-        }
-       ],
-       "diagram": "viz-anatomy",
-       "diagram_caption": "Figure (canvas) holds Axes (plots); call ax.plot/bar/hist and ax.set_* to build"
-      },
-      {
-       "id": "lib-seaborn",
-       "title": "seaborn — statistical visualization",
-       "minutes": 12,
-       "summary": "DataFrame-aware statistical plots in one line: distributions, categories, relationships, and matrices.",
-       "concept": "**seaborn** sits on top of matplotlib and is built for **statistical plots straight from a DataFrame**. You name columns and seaborn handles aggregation, grouping, and good defaults — and because it returns matplotlib Axes, you can fine-tune anything underneath.\n\n**The four plot families** (with the functions you'll use):\n```python\nimport seaborn as sns\n# 1) RELATIONAL — how two numerics relate\nsns.scatterplot(data=df, x='spend', y='revenue', hue='segment')\nsns.lineplot(data=df, x='date', y='sales')\n# 2) DISTRIBUTION — the shape of one/two variables\nsns.histplot(data=df, x='amount', bins=40, kde=True)\nsns.kdeplot(data=df, x='amount'); sns.ecdfplot(data=df, x='amount')\n# 3) CATEGORICAL — compare across groups\nsns.boxplot(data=df, x='region', y='amount')\nsns.violinplot(...); sns.barplot(...); sns.countplot(data=df, x='region')\n# 4) MATRIX — grids of values\nsns.heatmap(df.corr(), annot=True, cmap='coolwarm')\n```\n\n**Semantic mappings** turn one plot into many: `hue=` colors by a category, `size=` scales points, `style=` changes markers — all from column names:\n```python\nsns.scatterplot(data=df, x='x', y='y', hue='group', size='value', style='kind')\n```\n\n**Figure-level functions** add small-multiples with `col=`/`row=` (one panel per category):\n```python\nsns.relplot(data=df, x='x', y='y', col='region', hue='segment', kind='scatter')\nsns.displot(data=df, x='amount', col='year')          # grid of histograms\nsns.catplot(data=df, x='region', y='amt', kind='box') # grid of boxplots\nsns.lmplot(data=df, x='x', y='y')                     # with a regression line\n```\n(Axes-level functions like `scatterplot` draw on one Axes you pass via `ax=`; figure-level like `relplot` create their own grid.)\n\n**Polish:** `sns.set_theme(style='whitegrid')`, a `palette=`, and `pairplot`/`jointplot` for quick multi-variable overviews. seaborn is the fastest way to *see* your data during EDA and data-quality checks.",
-       "example": "import seaborn as sns, matplotlib.pyplot as plt\nsns.set_theme(style='whitegrid')\n\n# distribution with a density curve\nsns.histplot(data=df, x='amount', bins=40, kde=True)\n\n# compare a metric across groups, split by a second category\nsns.boxplot(data=df, x='region', y='amount', hue='segment')\n\n# correlation heatmap for quick EDA\nsns.heatmap(df.select_dtypes('number').corr(), annot=True, cmap='coolwarm')\n\n# small multiples: one scatter panel per region\nsns.relplot(data=df, x='spend', y='revenue', col='region', hue='segment')\nplt.show()",
-       "keypoints": [
-        "seaborn is a statistical layer over matplotlib that plots directly from DataFrames with good defaults.",
-        "Four families: relational (scatter/line), distribution (hist/kde/ecdf), categorical (box/violin/bar/count), matrix (heatmap).",
-        "Semantic mappings hue=/size=/style= split a plot by columns into a rich, grouped view.",
-        "Figure-level functions (relplot/displot/catplot/lmplot) make small-multiple grids via col=/row=.",
-        "Axes-level functions take ax=; figure-level functions build their own figure — know which you're calling.",
-        "set_theme/palette style everything; pairplot/jointplot give fast multi-variable overviews for EDA."
-       ],
-       "quiz": [
-        {
-         "q": "What is seaborn's main advantage over raw matplotlib?",
-         "options": [
-          "3D plots",
-          "A statistical, DataFrame-aware API with good defaults — one-line grouped plots from column names",
-          "It's the only way to plot",
-          "It replaces pandas"
-         ],
-         "answer": 1,
-         "explain": "seaborn maps DataFrame columns to a plot (with hue/col grouping and sensible styling), so common statistical charts take one line."
-        },
-        {
-         "q": "How do you color a scatter plot by a category column `segment`?",
-         "options": [
-          "color='segment'",
-          "hue='segment'",
-          "group='segment'",
-          "by='segment'"
-         ],
-         "answer": 1,
-         "explain": "The hue= argument maps a categorical column to color, automatically adding a legend."
-        },
-        {
-         "q": "Which makes a GRID of one histogram per year?",
-         "options": [
-          "sns.histplot(col='year')",
-          "sns.displot(data=df, x='amount', col='year')",
-          "sns.heatmap",
-          "plt.hist"
-         ],
-         "answer": 1,
-         "explain": "Figure-level displot with col='year' creates a small-multiple grid; the axes-level histplot draws a single panel."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Plot the distribution of an 'amount' column with a density curve.",
-         "hint": "histplot with kde=True.",
-         "solution": "import seaborn as sns\nsns.histplot(data=df, x='amount', kde=True)"
-        },
-        {
-         "prompt": "Compare 'salary' across 'department', split by 'level', in one call.",
-         "hint": "boxplot with x, y, hue.",
-         "solution": "sns.boxplot(data=df, x='department', y='salary', hue='level')"
-        },
-        {
-         "prompt": "Draw a correlation heatmap of the numeric columns with annotations.",
-         "hint": "heatmap of df.corr().",
-         "solution": "sns.heatmap(df.select_dtypes('number').corr(), annot=True, cmap='coolwarm')"
-        },
-        {
-         "prompt": "Make one scatter panel per 'region' (small multiples).",
-         "hint": "Figure-level relplot with col=.",
-         "solution": "sns.relplot(data=df, x='x', y='y', col='region', kind='scatter')"
-        }
-       ],
-       "diagram": "seaborn-gallery",
-       "diagram_caption": "seaborn families: relational · distribution · categorical · matrix — from DataFrame columns"
-      }
-     ]
-    },
-    {
-     "id": "py-interview",
-     "title": "Interview prep",
-     "lessons": [
-      {
-       "id": "python-interview-prep",
-       "title": "Python interview prep & cheat sheet",
-       "minutes": 15,
-       "summary": "Consolidated rapid-review for the whole Python track: master cheat sheet, rapid-fire Q&A, and a 10-question mock interview.",
-       "concept": "This is the **rapid-review page** for the entire Python-for-DE track. The companion **Go deeper** guide has the full master sheet, rapid-fire Q&A, and a 10-question mock; here are the anchors.\n\n### High-frequency answers\n- **list vs set membership** → set/dict O(1), list O(n); convert for repeated lookups.\n- **mutable default arg** → `def f(x, acc=[])` shares one list across calls; use None.\n- **generator vs list** → generator is lazy, memory-flat, single-pass → streams data bigger than RAM.\n- **the GIL** → one thread runs Python at a time → I/O-bound: threads/async; CPU-bound: multiprocessing.\n- **decorator** → wraps a function to add behavior (retry, cache, timing) without changing it.\n- **loc vs iloc** → label (inclusive) vs integer position (exclusive).\n- **vectorize** → never iterrows; column ops are 10–100× faster.\n- **parameterized queries** → values sent apart from SQL → prevents injection.\n\nEvery individual Python lesson also has its own '💼 Interview questions' panel and a cheat-sheet button.",
-       "keypoints": [
-        "Core gotchas: set vs list membership (O(1) vs O(n)), mutable default args, the GIL.",
-        "Generators stream lazily → process data bigger than RAM; comprehensions are readable map/filter.",
-        "GIL → threads/async for I/O-bound, multiprocessing for CPU-bound.",
-        "pandas: .loc (label) vs .iloc (position); vectorize, never iterrows; move to Polars/DuckDB when too slow/big.",
-        "Always use parameterized queries (no f-string SQL) and bulk loads (COPY/executemany)."
-       ],
-       "quiz": [
-        {
-         "q": "Why can a 100-line loop using `x in big_list` be slow, and the fix?",
-         "options": [
-          "Lists are broken",
-          "`in` on a list is O(n); convert to a set for O(1) membership",
-          "Use more RAM",
-          "Loops are always slow"
-         ],
-         "answer": 1,
-         "explain": "Membership on a list scans linearly; a set/dict hashes in O(1), turning O(n·m) into O(n)."
-        },
-        {
-         "q": "You have CPU-bound work (heavy parsing). Which concurrency model?",
-         "options": [
-          "Threads",
-          "asyncio",
-          "multiprocessing (separate processes bypass the GIL)",
-          "None"
-         ],
-         "answer": 2,
-         "explain": "The GIL blocks threads for CPU work; multiprocessing gives true parallelism. Threads/async are for I/O-bound work."
-        },
-        {
-         "q": "What's the difference between .loc and .iloc in pandas?",
-         "options": [
-          "No difference",
-          "loc = label-based (inclusive slices), iloc = integer-position (exclusive slices)",
-          "Both are positional",
-          "Both are label-based"
-         ],
-         "answer": 1,
-         "explain": "Confusing them is the #1 pandas selection bug — loc for names, iloc for positions."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Do the 10-question Python mock interview (in the Go-deeper guide) out loud, no notes.",
-         "hint": "set vs list, mutable default, generators, GIL, decorators, loc/iloc, iterrows, axis, parameterized queries, leaving pandas.",
-         "solution": "Self-assess: any shaky answer → reread that lesson's deep-dive and interview panel, then retry until crisp."
-        }
-       ]
       }
      ]
     }
