@@ -11,6 +11,8 @@ The two planes, the compute types, and the config that controls cost.
 
 So Databricks runs the platform; your data and (with classic compute) the VMs live in your account.
 
+@@diagram:dbx-arch
+
 ## 2. Compute types — and when to use each
 
 **All-purpose cluster** (interactive, dev/notebooks):
