@@ -27340,6 +27340,188 @@
      ]
     },
     {
+     "title": "The DE craft & career",
+     "lessons": [
+      {
+       "id": "de-design-docs",
+       "title": "Design docs & RFCs for data systems",
+       "minutes": 12,
+       "summary": "How senior data engineers align on a system before building it — the design doc / RFC, its sections, the options trade-off table that drives the decision, and the ADR that records the why.",
+       "concept": "Senior engineers are hired for **judgment**, and the design doc (or RFC) is where judgment becomes visible. Its purpose is to **align people before code is written**, create a **durable record of why** a decision was made, and let reviewers catch problems while they are still cheap to fix. Writing one also forces you to think in **trade-offs** instead of jumping to your favorite tool.\n\n**When to write one:** anything cross-team, expensive, or hard to reverse — a new pipeline, a schema change many teams depend on, a batch-vs-streaming choice, a migration. A one-day task does not need a doc; a one-quarter commitment does.\n\n**The anatomy** (keep it in this order so reviewers can follow your reasoning):\n1. **Context & problem** — what is broken or needed, and why now. Written for a smart reader who lacks your context.\n2. **Goals & non-goals** — what success means, and explicitly what you are *not* solving (non-goals prevent scope creep).\n3. **Options + trade-offs** — 2-4 real options, each scored against the same criteria (cost, latency, complexity, risk, operability) in a **trade-off table**.\n4. **Decision & rationale** — the recommendation, stated plainly, **citing a row** of the table.\n5. **Risks & mitigations** — what could go wrong and how you would catch/limit it.\n6. **Rollout & validation** — how you ship it safely (phased, backfill, shadow) and how you will know it worked.\n\nThe **trade-off table** is the heart of the doc: options as rows, criteria as columns. It moves the review from opinions ('I prefer Kafka') to evidence ('streaming wins on latency but costs 3x and adds on-call load — and we do not need sub-minute freshness'). Reviewers argue the table.\n\nRecord the outcome as an **ADR (Architecture Decision Record)** — a short, immutable note: context, decision, consequences. Six months later, when someone asks 'why did we do it this way?', the ADR answers without a meeting. Good doc etiquette: state your **assumptions**, make the **recommendation explicit**, and keep it as short as it can be while still defensible.",
+       "example": "**Mini design doc — 'How should we compute the DAU metric?'**\n\n*Context:* the DAU dashboard is 6 hours stale; product wants it fresher. *Goals:* DAU within 15 min, correct to the daily grain. *Non-goals:* per-second real-time; other metrics.\n\n*Options (trade-off table):*\n\n| Option | Cost | Latency | Complexity | Risk |\n|---|---|---|---|---|\n| Nightly batch | Low | ~24h | Low | Low |\n| 15-min micro-batch | Med | ~15m | Med | Low |\n| Streaming (Flink) | High | ~seconds | High | Med (new on-call) |\n\n*Decision:* **15-min micro-batch** — it meets the 15-minute goal at moderate cost without a new streaming system to operate. Streaming is over-built for a daily-grain metric (cited: it wins latency we do not need, at 3x cost + on-call).\n\n*Risks:* late events near midnight → mitigate by keying on event date and reprocessing the boundary partition. *Rollout:* run micro-batch in shadow next to nightly for a week, compare, then cut over.",
+       "keypoints": [
+        "A design doc aligns people before code, records the 'why', and forces trade-off thinking — write one for anything cross-team or hard to reverse.",
+        "Order matters: Context → Goals/Non-goals → Options+trade-offs → Decision → Risks → Rollout.",
+        "Non-goals are as important as goals — they stop scope creep.",
+        "The trade-off table (options × criteria) turns review from opinion into evidence; the decision cites a row.",
+        "Record the outcome as an ADR (context, decision, consequences) so the reasoning outlives the meeting.",
+        "Write for a smart reader who lacks your context: state assumptions, make the recommendation explicit, keep it short."
+       ],
+       "quiz": [
+        {
+         "q": "What is the single most important element that moves a design review from opinion to evidence?",
+         "options": [
+          "A long prose justification",
+          "The options trade-off table (each option scored on the same criteria)",
+          "The list of goals",
+          "The author's seniority"
+         ],
+         "answer": 1,
+         "explain": "The trade-off table lets reviewers compare options on shared criteria and argue the table, not personal preference; the decision then cites a row."
+        },
+        {
+         "q": "Why include explicit 'non-goals' in a design doc?",
+         "options": [
+          "To make the doc longer",
+          "To prevent scope creep by stating what you are deliberately not solving",
+          "They are required by law",
+          "To hide weaknesses"
+         ],
+         "answer": 1,
+         "explain": "Non-goals bound the problem and stop reviewers from expanding scope into things you intentionally deferred."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "You must choose where to store 5 years of event data for ad-hoc analytics: (a) Postgres, (b) Parquet on S3 + Athena, (c) a Snowflake warehouse. Draft the trade-off table (criteria: cost, query latency, scale, ops burden) and a one-line decision.",
+         "hint": "Rows = options; columns = criteria; decision cites a row.",
+         "solution": "| Option | Cost | Query latency | Scale (5yr events) | Ops burden |\n|---|---|---|---|---|\n| Postgres | Low at small size, **poor at scale** | Fast on small data, degrades | **Poor** (single node) | Low |\n| Parquet on S3 + Athena | **Low** (pay per scan) | Med (seconds-min) | **Excellent** | **Low** (serverless) |\n| Snowflake | Med-High (compute credits) | **Fast** | Excellent | Low-Med |\n\n**Decision:** **Parquet on S3 + Athena** for cost-efficient, scalable ad-hoc analytics on 5 years of events — cited: it wins on scale and ops burden at low cost, and Postgres fails the scale column. If interactive BI latency becomes a requirement, revisit Snowflake (it wins the latency column at higher cost). The point of the exercise: a defensible choice comes from the **column that matters most for this use case** (here, scale + cost for ad-hoc), not from a favorite tool."
+        },
+        {
+         "prompt": "Write a 3-line ADR for the decision above.",
+         "hint": "Context, Decision, Consequences.",
+         "solution": "**ADR-014: Storage for 5-year event analytics.**\n**Context:** We need cheap, scalable ad-hoc SQL over 5 years of event data; interactive BI latency is not required.\n**Decision:** Store as partitioned Parquet on S3, queried with Athena.\n**Consequences:** Very low cost (pay-per-scan) and serverless ops; queries are seconds-to-minutes, not sub-second — if a low-latency BI use case appears, we will layer Snowflake or a serving store on top rather than replace this. Partitioning by event date is required to keep scan costs down."
+        },
+        {
+         "prompt": "A teammate's design doc jumps straight to 'we'll use Kafka + Flink' with no alternatives. What one change most improves it, and why?",
+         "hint": "Think about what reviewers can and cannot challenge.",
+         "solution": "**Add an options section with a trade-off table** (at minimum: batch vs micro-batch vs streaming) scored on cost, latency, complexity, and on-call burden. Right now the doc presents a **conclusion with no reasoning**, so a reviewer can only agree or veto — they cannot engage with *why* Kafka+Flink beats the alternatives, or whether the latency it buys is even needed. Forcing the options table often reveals that a simpler option meets the real requirement (e.g., a daily-grain metric does not need sub-second streaming), and it gives the team a durable record of the trade-off. Secondary improvement: state the **latency/freshness requirement as a goal** so the streaming choice can be justified against a number, not a vibe."
+        }
+       ],
+       "diagram": "craft-designdoc",
+       "diagram_caption": "A design doc's six sections, with the options trade-off table that the decision cites."
+      },
+      {
+       "id": "de-stakeholders",
+       "title": "Stakeholder communication & the translation job",
+       "minutes": 12,
+       "summary": "A data engineer's real job is translation — turning fuzzy business asks into metric definitions, schemas, and pipelines, and communicating clearly with analysts, scientists, PMs and engineers.",
+       "concept": "Most data-engineering failures are not technical — they are **communication** failures: a pipeline built to the wrong definition, a metric that means different things to two teams, a stakeholder surprised by a delay. The DE sits at the center of many roles, and the core skill is **translation**: turning a vague ask into something precise and buildable.\n\n**Who you work with, and what each needs:**\n- **Data / BI analysts** — reliable, well-modeled tables and clear metric definitions; they consume what you build.\n- **Data scientists** — clean features, correct history/labels, no leakage.\n- **Product managers** — honest estimates, trade-offs, and status they can plan around.\n- **Software engineers** — stable schemas, contracts, and change notice (their events are your source).\n\n**The translation chain** — every request should be pushed through it: **business ask → metric definition → schema → pipeline**. Most asks arrive at the left ('who are our best customers?') and your job is to move them right by asking the right questions.\n\n**Requirements gathering — the questions to ask:** Who consumes this and to make what decision? What exactly does the metric mean (grain, window, filters, edge cases)? How fresh must it be? What is the cost of being wrong or late? These questions prevent 80% of rework.\n\n**Writing for non-technical readers:** lead with the **answer or decision**, then the detail; cut jargon; use a number and a picture. A stakeholder update is 'DAU is up 4% WoW; the dip on Tuesday was a logging bug, now fixed' — not a query plan.\n\n**Managing scope & expectations:** say what you **will not** do and by when; a clear 'not this sprint' beats a silent slip. **Incident/status comms** follow a template: what happened, who/what is affected, ETA, and when the next update comes — send it early, even before you have the fix.",
+       "example": "**Ask:** 'Can you tell us who our best customers are?'\n\nA junior DE builds a `top_customers` table by lifetime revenue and ships it. A senior DE **translates first**:\n- *Who consumes it and why?* Marketing, to target a retention campaign.\n- *What does 'best' mean?* → agree a **metric definition**: highest **trailing-12-month margin** (not lifetime revenue — a big one-time buyer years ago is not a good target), excluding refunded orders.\n- *Grain & freshness?* one row per customer, refreshed daily.\n- → **Schema:** `dim_customer` + `fact_customer_month` (margin per customer per month); the metric is a windowed sum.\n- → **Pipeline:** daily job, idempotent, with a data-quality check on margin sign.\n\nSame five-word ask; a completely different (and correct) build — because the definition was pinned down before code.",
+       "keypoints": [
+        "Most pipeline failures are communication failures — the DE's core skill is translating fuzzy asks into precise, buildable specs.",
+        "Push every request through the chain: business ask → metric definition → schema → pipeline.",
+        "Ask who consumes it, what the metric precisely means (grain/window/edge cases), and how fresh it must be — this prevents most rework.",
+        "Each role needs something specific: analysts want clean tables + definitions; scientists want leak-free features; PMs want honest estimates; SWEs want stable contracts.",
+        "Write for the reader: lead with the answer/decision, cut jargon, use a number and a picture.",
+        "Manage expectations explicitly (a clear 'not this sprint' beats a silent slip); send incident comms early with impact + ETA + next-update time."
+       ],
+       "quiz": [
+        {
+         "q": "A PM asks for 'a dashboard of our best customers.' What should the DE do first?",
+         "options": [
+          "Build it immediately by lifetime revenue",
+          "Clarify the metric definition, consumer, grain and freshness before building",
+          "Escalate to a manager",
+          "Refuse until they write SQL"
+         ],
+         "answer": 1,
+         "explain": "'Best' is undefined; pinning the definition, consumer, grain and freshness up front prevents building the wrong thing — the translation step."
+        },
+        {
+         "q": "What is the right way to open a data-incident status update to stakeholders?",
+         "options": [
+          "Wait until it's fully fixed, then explain the root cause in depth",
+          "Lead with what happened, who/what is affected, and an ETA + next-update time — sent early",
+          "Send the stack trace",
+          "Say nothing to avoid alarm"
+         ],
+         "answer": 1,
+         "explain": "Stakeholders need impact and timing to make decisions; communicate early with what/impact/ETA/next-update, even before the fix is known."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Translate this ask into a metric definition + schema + pipeline sketch: 'How engaged are our users?' List the clarifying questions first.",
+         "hint": "Engagement is undefined — pin it down.",
+         "solution": "**Clarifying questions:** Who consumes 'engagement' and to decide what? Is it per user or overall? Over what window? Which actions count (opens? posts? time-in-app?)? Real-time or daily? \n**Metric definition (agreed):** *weekly active engagement = a user who performed ≥1 core action (post, comment, or react) in a 7-day window*; report **WAU** and **stickiness = DAU/WAU**. \n**Schema:** `fact_user_action` at grain 'one core action' (FKs: user, date; type) + `dim_user` (SCD2). \n**Pipeline:** daily idempotent job aggregating actions → a `user_engagement_daily` table; DQ checks on action counts and null users; served to the dashboard. The lesson: 'engaged' became a *testable definition* (which actions, which window) before any table was designed — different reasonable definitions yield different pipelines, so the definition is the deliverable to agree on first."
+        },
+        {
+         "prompt": "Rewrite this update for a non-technical PM: 'The Airflow DAG failed on the dedup task due to a skew in the join key, so gold.orders is stale; re-running after a repartition.'",
+         "hint": "Lead with impact + ETA, drop jargon.",
+         "solution": "**Rewrite:** 'Heads-up: the **Orders dashboard is showing yesterday's data** (today's refresh hit an error). No data is lost. I've identified the cause and a fix is running now — I expect it **current by 11:00**, and I'll confirm when it's done.' \nWhy: the PM needs **what's affected (Orders dashboard), the impact (one day stale, nothing lost), and when it'll be fixed (ETA + follow-up)** — not the internal cause (skew/repartition/DAG), which is for the engineering channel. Lead with impact, give a time, promise a next update."
+        },
+        {
+         "prompt": "An analyst and a finance team report different 'revenue' numbers and both are angry. As the DE, what's the root cause likely to be, and how do you resolve it durably?",
+         "hint": "Think definitions and source of truth.",
+         "solution": "**Likely root cause:** two **different definitions** of revenue (e.g., gross vs net of refunds, booked vs recognized, or different date attribution — order date vs ship date), each computed in a separate query. It is rarely a 'bug'; it's an **undefined metric**. \n**Durable resolution:** (1) get both parties to agree a **single canonical definition** (write it down — this is a metric/semantic-layer entry, e.g. 'net revenue = succeeded charges − refunds − disputes, attributed to order date, in the order's currency'); (2) implement it **once** in a shared, tested model (dbt/metrics layer) that both dashboards read; (3) deprecate the ad-hoc queries. Now the numbers agree because there is **one source of truth**, not two. This is exactly why conformed dimensions + a metrics layer exist — and why the DE's translation/definition work prevents these fires."
+        }
+       ],
+       "diagram": "craft-stakeholders",
+       "diagram_caption": "The DE between analyst, scientist, PM and SWE — translating each ask into metric → schema → pipeline."
+      },
+      {
+       "id": "de-career",
+       "title": "The DE career map — leveling, resume & negotiation",
+       "minutes": 12,
+       "summary": "How data-engineering careers progress from junior to staff — what each level owns — and how to build a resume, portfolio and negotiation that reflect it.",
+       "concept": "Careers advance by **scope of ownership and ambiguity handled**, not years served. Knowing the ladder tells you what to demonstrate to level up.\n\n**The ladder:**\n- **Junior** — owns a **task**: implements well-specified work, learns the stack, needs review.\n- **Mid** — owns a **feature/pipeline** end to end: designs within a known system, operates what they build.\n- **Senior** — owns a **system**: makes design trade-offs, sets patterns, is trusted with ambiguity, mentors.\n- **Staff / Principal** — owns a **domain / org-level** outcome: sets technical direction across teams, multiplies others.\n\nPromotion comes from **operating at the next level before you have the title** — take a fuzzy problem, structure it, drive it to a result, and make others better.\n\n**Portfolio > tutorials.** Two or three **end-to-end projects** that show real trade-offs beat a pile of course certificates. A great portfolio project: ingests real data, models it, is orchestrated and tested, and has a **README that explains the decisions** (why this design, what you'd do at 100x scale). It demonstrates exactly the judgment interviews probe.\n\n**Resume that passes screens.** Lead with **impact and scope**, quantified — not a tool list. 'Cut warehouse spend 40% ($12k/mo) by repartitioning and pruning scans' beats 'Used Spark, Airflow, dbt, Snowflake.' Tools are table-stakes; **outcomes** differentiate. One page, reverse-chronological, every bullet is action + result + number.\n\n**The search & negotiation.** Tailor the resume to each role's keywords (screens filter on them). In interviews, **narrate your reasoning** (see the design-doc and translation lessons). On offers: try to have **more than one** (leverage), understand the **components** (base, bonus, equity, sign-on), **never accept on the spot** ('thank you, I'm excited — can I get the details in writing and respond by Friday?'), and negotiate the **whole package**, not just base. Being underpaid at the offer compounds for years, so this conversation is worth the small discomfort.",
+       "example": "**Resume bullet — before and after:**\n\n*Before:* 'Responsible for ETL pipelines using Python, Airflow, and Spark.'\n\n*After:* 'Built and operated 20+ Airflow pipelines feeding the exec dashboard; **cut nightly runtime 3h → 40m** by fixing a skewed join and right-sizing partitions, and **added data-quality gates that caught 12 bad loads** before they reached stakeholders.'\n\nThe 'after' shows **scope** (20+ pipelines, exec-facing), **impact with numbers** (3h→40m, 12 catches), and **judgment** (skew, DQ) — the signals of a senior hire. Same job; a completely different signal.",
+       "keypoints": [
+        "Levels are defined by scope of ownership and ambiguity handled — task (junior) → feature (mid) → system (senior) → domain/org (staff) — not years.",
+        "You get promoted by operating at the next level before the title: take an ambiguous problem, structure it, deliver, and lift others.",
+        "A portfolio of 2-3 end-to-end projects (with a README explaining decisions) beats a stack of certificates.",
+        "Resumes should lead with quantified impact and scope, not a tool list — 'cut cost 40%' beats 'used Spark'.",
+        "Tailor to each role's keywords (screens filter on them); one page, action + result + number per bullet.",
+        "On offers: get leverage (multiple offers), understand base/bonus/equity/sign-on, never accept on the spot, and negotiate the whole package."
+       ],
+       "quiz": [
+        {
+         "q": "What most distinguishes a Senior from a Mid data engineer?",
+         "options": [
+          "More years of experience",
+          "Owns a whole system and its design trade-offs under ambiguity, and mentors others",
+          "Knows more tools",
+          "Writes faster code"
+         ],
+         "answer": 1,
+         "explain": "Levels track scope of ownership and ambiguity handled: Mid owns a feature/pipeline; Senior owns a system, sets patterns, and is trusted with ambiguity."
+        },
+        {
+         "q": "Which resume bullet signals a stronger hire?",
+         "options": [
+          "'Used Spark, Airflow, dbt, and Snowflake'",
+          "'Cut warehouse spend 40% ($12k/mo) by repartitioning and pruning scans'",
+          "'Responsible for data pipelines'",
+          "'Familiar with big data technologies'"
+         ],
+         "answer": 1,
+         "explain": "Quantified impact + scope differentiates; tool lists are table-stakes that every candidate has."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Rewrite this weak resume bullet into a strong one (invent reasonable numbers): 'Worked on data quality for our pipelines.'",
+         "hint": "Action + result + number + scope.",
+         "solution": "**Strong version:** 'Designed and rolled out automated data-quality checks (row-count, null-key, and anomaly gates) across **30+ production pipelines**, **blocking ~15 bad loads/quarter** before they reached dashboards and **cutting data-incident tickets 60%**.' \nWhy it works: it names the **action** (designed/rolled out DQ gates), the **scope** (30+ pipelines), and **quantified results** (15 catches/quarter, 60% fewer incidents). It signals ownership beyond a single task (senior signal). When you don't have exact numbers, use defensible estimates and be ready to explain them — the habit of **quantifying impact** is what interviewers reward."
+        },
+        {
+         "prompt": "You get a verbal offer on a call and the recruiter asks you to accept now. What do you say, and why?",
+         "hint": "Don't accept on the spot; buy time; keep it warm.",
+         "solution": "**Say:** 'Thank you — I'm genuinely excited about this. Could you send the full details in writing (base, bonus, equity, sign-on, start date)? I'd like to review everything and get back to you by [a specific day, e.g. Friday].' \n**Why:** (1) **Never accept on the spot** — decisions this large deserve review, and accepting instantly forfeits negotiating leverage. (2) Get it **in writing** so you can evaluate the *whole package*, not just the base number said aloud. (3) Set a **specific date** so you're not stalling — this keeps the offer warm while you (ideally) let other processes catch up to create leverage. (4) Stay **warm and positive** — negotiation is not adversarial; you're aligning on a package you'll both be happy with. Being underpaid at offer compounds through every future raise, so this small, polite pushback is high-ROI."
+        },
+        {
+         "prompt": "You're a mid-level DE aiming for senior. Name two concrete things you can do in your current role to demonstrate senior-level scope.",
+         "hint": "Ambiguity + systems + multiplying others.",
+         "solution": "**Two high-signal moves:** (1) **Take an ambiguous, cross-team problem and drive it end to end** — e.g., 'our metrics disagree across teams': write a design doc, define the canonical metrics/semantic layer, get buy-in, implement it, and land the result. This shows you handle **ambiguity and own a system**, not just a task. (2) **Multiply others** — introduce a pattern or tool that lifts the team (a reusable DQ framework, a pipeline template, a design-doc/ADR practice, or mentoring a junior to independence). Senior/Staff impact is measured partly by **how much better you make the people and systems around you**, not just your own output. Bonus: **document and socialize** both (a design doc, a tech-talk) so the impact is visible at promotion time — invisible senior work rarely gets promoted."
+        }
+       ],
+       "diagram": "craft-career",
+       "diagram_caption": "The DE ladder: scope of ownership grows task → feature → system → domain, and comp follows."
+      }
+     ]
+    },
+    {
      "id": "dataops-interview",
      "title": "Interview prep",
      "lessons": [

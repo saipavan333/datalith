@@ -249,7 +249,26 @@ flowchart LR
 
 ## 7. What to add — 2026 job-readiness gaps
 
-Mentor's view of what a strong 2026 DE is expected to know that the curriculum under-covers today:
+Mentor's view of what a strong 2026 DE is expected to know.
+
+> **Correction (post-audit, same session).** A follow-up structure audit — grepping the actual
+> `curriculum.json` rather than trusting the first-pass list — found the curriculum **already covers
+> most of the items below as lessons**: schema registry & evolution (`stream-schema-registry`,
+> `lake-schema-evolution`), data contracts (`dataops-data-contracts`, `pipe-dbt-tests`,
+> `agentic-data-quality`, `cap-data-contracts`), observability (`dataops-observability`,
+> `pipe-monitoring-alerting`), lineage (`gov-lineage-catalog`, `dbx-uc-governance`), embeddings & vector
+> DBs (`ml-vectors`, `nosql-search-vector`), feature stores (`ml-features`), FinOps (`cloud-cost-finops`,
+> `dbx-cost`), CDC (`pipe-ingestion-tools`, `lake-streaming-ingest`, `snow-streams-tasks`), Medallion /
+> Lambda-vs-Kappa / Iceberg-vs-Delta-vs-Hudi (`lake-medallion`, `stream-lambda-kappa`,
+> `lake-format-comparison`), Great Expectations (`lib-great-expectations`), Dagster/Prefect
+> (`pipe-orchestrators`), and data mesh (`gov-data-mesh`). **So read the table below as "deepen where
+> thin," not "missing"** — and adding duplicate modules would violate §6's no-redundancy rule.
+>
+> The one genuinely-absent, high-value area was **the DE craft & career** (design docs, stakeholder
+> communication, leveling/resume/negotiation) — now **added** as a new DataOps module
+> (`de-design-docs`, `de-stakeholders`, `de-career`, each with a verified diagram). Remaining true
+> thin-spots worth a single lesson or deep-dive: an explicit **RAG-as-a-data-pipeline** lesson and
+> **OpenLineage** as a named standard. _This is the sanity check working as intended._
 
 ```mermaid
 flowchart TB
