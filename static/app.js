@@ -1,4 +1,4 @@
-/* ===================== Datalith — frontend ===================== */
+/* ===================== Datalith — frontend (SPA) ===================== */
 const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 const PROGRESS_KEY = "dfa-progress-v1";
@@ -163,6 +163,7 @@ function renderHome() {
     const done = t.modules.reduce((n, m) => n + m.lessons.filter(l => progress.has(l.id)).length, 0);
     const first = t.modules[0].lessons[0].id;
     return `<div class="track-card" data-go="${first}">
+            <a class="tc-cheat" data-cheat="${t.id}" title="Cram sheet">📄</a>
             <div class="tc-icon">${t.icon}</div>
             <h3>${t.title}</h3>
             <p>${t.blurb}</p>
@@ -176,7 +177,10 @@ function renderHome() {
     const ts = byPhase[i];
     if (!ts || !ts.length) return;
     const label = i === 10 ? "Cross-cutting" : `Phase ${i} · ${title}`;
-    sections += `<h2 class="phase-h">${label}</h2><div class="track-grid">${ts.map(card).join("")}</div>`;
+    const tot = ts.reduce((n, t) => n + t.modules.reduce((a, m) => a + m.lessons.length, 0), 0);
+    const dn = ts.reduce((n, t) => n + t.modules.reduce((a, m) => a + m.lessons.filter(l => progress.has(l.id)).length, 0), 0);
+    const pct = tot ? Math.round(dn / tot * 100) : 0;
+    sections += `<div class="phase-h"><span>${label}</span><span class="phase-meta"><span class="phase-bar"><i style="width:${pct}%"></i></span>${dn}/${tot}</span></div><div class="track-grid">${ts.map(card).join("")}</div>`;
   });
   if (byPhase[99]) sections += `<div class="track-grid">${byPhase[99].map(card).join("")}</div>`;
   const startId = LESSONS[0].id;
@@ -214,6 +218,7 @@ function renderHome() {
   $("#content").innerHTML = html;
   $$(".track-card").forEach(c => c.addEventListener("click", () => location.hash = `#/lesson/${c.dataset.go}`));
   $$(".sp-btn").forEach(b => b.addEventListener("click", () => location.hash = `#/lesson/${b.dataset.go}`));
+  $$(".tc-cheat").forEach(a => a.addEventListener("click", (e) => { e.stopPropagation(); location.hash = `#/cheat/${a.dataset.cheat}`; }));
   { const _c = document.getElementById("content"); if (_c) _c.scrollTop = 0; window.scrollTo(0, 0); }
 }
 
@@ -433,6 +438,7 @@ async function runSql() {
 
 /* ---------------- chrome: theme, search, AI drawer ---------------- */
 function wireChrome() {
+  $(".brand")?.addEventListener("click", () => { location.hash = "#/home"; });
   $("#btn-theme").addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme");
     const next = cur === "dark" ? "light" : "dark";

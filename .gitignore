@@ -7,6 +7,10 @@ venv/
 env/
 .pytest_cache/
 
+# Node (local tooling only — not part of the static site)
+node_modules/
+package-lock.json
+
 # OS / editor
 .DS_Store
 Thumbs.db
