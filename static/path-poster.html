@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Datalith — The Golden Path (printable)</title>
+<style>
+  @page { size: A4 portrait; margin: 11mm; }
+  :root{
+    --ink:#16202e; --dim:#5b6675; --faint:#8a94a3; --line:#dfe4ea; --bg:#fff;
+    --accent:#2f6bff; --accent2:#7c5cff; --soft:#eef3ff; --good:#0e8a5f; --goodsoft:#e8f6ef;
+    --amber:#b26a00; --ambersoft:#fdf2e1;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:#f3f5f8; }
+  body{ font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); padding:22px; }
+  .poster{ max-width:840px; margin:0 auto; background:var(--bg); border:1px solid var(--line); border-radius:14px; padding:30px 34px 24px; }
+  header{ display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid var(--ink); padding-bottom:12px; margin-bottom:18px; gap:16px; }
+  .brand{ font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); font-weight:700; }
+  h1{ font-size:27px; margin:4px 0 0; letter-spacing:-0.02em; }
+  h1 b{ color:var(--accent); }
+  .meta{ text-align:right; font-size:12.5px; color:var(--dim); line-height:1.5; }
+  .meta b{ color:var(--ink); font-size:15px; }
+  .steps{ position:relative; margin:0; padding:0; list-style:none; }
+  .steps::before{ content:""; position:absolute; left:15px; top:8px; bottom:8px; width:2px; background:var(--line); }
+  .step{ position:relative; display:flex; gap:14px; align-items:flex-start; padding:7px 0; }
+  .num{ flex:0 0 32px; width:32px; height:32px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center; z-index:1; box-shadow:0 0 0 4px var(--bg); }
+  .step.branch .num{ background:var(--amber); }
+  .step.finish .num{ background:var(--good); }
+  .body{ flex:1; padding-top:3px; }
+  .body .t{ font-weight:700; font-size:15px; }
+  .body .t .h{ color:var(--dim); font-weight:600; font-size:12.5px; }
+  .body .d{ font-size:12.5px; color:var(--dim); margin-top:1px; }
+  .plats{ display:flex; gap:8px; margin-top:7px; flex-wrap:wrap; }
+  .plat{ font-size:11.5px; border:1px solid var(--line); border-radius:7px; padding:4px 9px; background:#fafbfc; }
+  .plat b{ color:var(--ink); }
+  .row2{ display:flex; gap:12px; margin-top:16px; }
+  .box{ flex:1; border:1px solid var(--line); border-radius:10px; padding:11px 13px; }
+  .box.companions{ background:var(--soft); border-color:#d6e2ff; }
+  .box.optional{ background:#fafbfc; }
+  .box h3{ margin:0 0 6px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); }
+  .box p{ margin:0; font-size:12.5px; color:var(--ink); line-height:1.55; }
+  .box p b{ color:var(--accent); }
+  footer{ margin-top:16px; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px; color:var(--faint); display:flex; justify-content:space-between; }
+  .printbtn{ position:fixed; right:20px; bottom:20px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:none; border-radius:9px; padding:11px 18px; font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 6px 18px rgba(47,107,255,.35); }
+  @media print{ html,body{ background:#fff; padding:0; } .poster{ border:none; border-radius:0; padding:0; max-width:none; } .printbtn{ display:none; } }
+</style>
+</head>
+<body>
+  <div class="poster">
+    <header>
+      <div>
+        <div class="brand">Datalith</div>
+        <h1>The <b>Golden Path</b> to Data Engineer</h1>
+      </div>
+      <div class="meta"><b>~83h core</b><br/>28 tracks · pick one platform<br/>≈ 8–10 weeks @ 1–1.5h/day</div>
+    </header>
+
+    <ol class="steps">
+      <li class="step"><div class="num">1</div><div class="body">
+        <div class="t">Foundations of Data <span class="h">· 1.8h</span></div>
+        <div class="d">The vocabulary & mental models everything builds on — role, data shapes, formats, OLTP vs OLAP, the lifecycle, data quality.</div></div></li>
+      <li class="step"><div class="num">2</div><div class="body">
+        <div class="t">Databases & SQL <span class="h">· 11.8h</span></div>
+        <div class="d">DBMS → RDBMS → <b>SQL to fluency</b> (joins, windows, transactions, indexing) → NoSQL. The most-used skill on the job — over-invest.</div></div></li>
+      <li class="step"><div class="num">3</div><div class="body">
+        <div class="t">Python + Data Libraries + Unix <span class="h">· 14.5h</span></div>
+        <div class="d">The language & engineering practices, then NumPy / pandas / Arrow / Polars / DuckDB + SQLAlchemy / Pydantic / ingestion. What you build with.</div></div></li>
+      <li class="step"><div class="num">4</div><div class="body">
+        <div class="t">Data Modeling & Warehousing <span class="h">· 4.8h</span></div>
+        <div class="d">Turn requirements into schemas that scale — dimensional modeling, star schemas, SCD, grain, the semantic layer.</div></div></li>
+      <li class="step"><div class="num">5</div><div class="body">
+        <div class="t">Big Data · Pipelines · Streaming · Lakehouse <span class="h">· 13.7h</span></div>
+        <div class="d">The heart of the job — Spark & internals, reliable orchestrated pipelines, real-time streaming, and the lakehouse (Delta/Iceberg, medallion).</div></div></li>
+      <li class="step branch"><div class="num">6</div><div class="body">
+        <div class="t">Pick <b>ONE</b> cloud platform <span class="h">· ~7h · the branch</span></div>
+        <div class="d">Learn Cloud DE (provider-agnostic) first, then go deep on the one your target jobs use. Skim a second later.</div>
+        <div class="plats">
+          <span class="plat"><b>Databricks</b> 7.7h · Spark/lakehouse shops</span>
+          <span class="plat"><b>Snowflake</b> 6.8h · warehouse-first</span>
+          <span class="plat"><b>AWS</b> 8.7h · most common</span>
+          <span class="plat"><b>GCP</b> 6.1h · BigQuery shops</span>
+        </div></div></li>
+      <li class="step"><div class="num">7</div><div class="body">
+        <div class="t">Operations & Quality <span class="h">· 6.4h</span></div>
+        <div class="d">DataOps (Git, CI/CD, IaC, containers, observability, contracts + the DE craft & career), Governance & Security, Performance. Makes you production-grade.</div></div></li>
+      <li class="step"><div class="num">8</div><div class="body">
+        <div class="t">System Design + Interview Bank <span class="h">· 10.1h</span></div>
+        <div class="d">The design method + distributed-systems fundamentals + worked designs, then 16 company playbooks & round banks. Start ~3–4 weeks pre-interview.</div></div></li>
+      <li class="step finish"><div class="num">✓</div><div class="body">
+        <div class="t">Capstone Projects <span class="h">· 4.2h</span></div>
+        <div class="d">Build end-to-end projects that prove the whole path. This is your portfolio.</div></div></li>
+    </ol>
+
+    <div class="row2">
+      <div class="box companions">
+        <h3>Companions — weave in, don't block on</h3>
+        <p><b>DSA</b> (2.8h) alongside Python, revisit pre-interview · <b>Data Viz & Diagrams</b> (2.3h) from step 5 · <b>Cheat sheets</b> — quick reference, skim before interviews.</p>
+      </div>
+      <div class="box optional">
+        <h3>Optional specializations</h3>
+        <p><b>ML for DE</b> (3.1h) & <b>Agentic AI</b> (2.6h) — take these if your target role touches ML pipelines, feature stores, or RAG/LLM data work.</p>
+      </div>
+    </div>
+
+    <footer>
+      <span>Follow in order · branch only at step 6 · the goal is job-ready by the shortest honest path.</span>
+      <span>datalith · saipavan333.github.io/datalith</span>
+    </footer>
+  </div>
+  <button class="printbtn" onclick="window.print()">🖨 Print / Save as PDF</button>
+</body>
+</html>

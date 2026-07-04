@@ -179,7 +179,23 @@ function renderHome() {
     sections += `<h2 class="phase-h">${label}</h2><div class="track-grid">${ts.map(card).join("")}</div>`;
   });
   if (byPhase[99]) sections += `<div class="track-grid">${byPhase[99].map(card).join("")}</div>`;
-  const startId = CURRICULUM.tracks[0].modules[0].lessons[0].id;
+  const startId = LESSONS[0].id;
+  const doneN = LESSONS.filter(l => progress.has(l.id)).length;
+  const resume = LESSONS.find(l => !progress.has(l.id)) || LESSONS[LESSONS.length - 1];
+  let spTitle, spBody, spLabel, spGo;
+  if (doneN === 0) {
+    spTitle = "New here? Follow the Golden Path.";
+    spBody = `Do the phases below in order. At <b>Cloud &amp; Platforms</b>, pick <b>one</b> stack; DSA, Data Viz &amp; cheat sheets are companions. ~83h to job-ready.`;
+    spLabel = "▶ Start the path"; spGo = startId;
+  } else if (doneN < LESSONS.length) {
+    spTitle = `Welcome back — ${doneN}/${LESSONS.length} lessons done.`;
+    spBody = `Pick up where you left off: <b>${esc(resume.title)}</b><span class="sp-dim"> · ${esc(resume._track.title)}</span>`;
+    spLabel = "▶ Resume"; spGo = resume.id;
+  } else {
+    spTitle = `🎉 You've completed all ${LESSONS.length} lessons.`;
+    spBody = `Legend. Revisit anything, or drill the <b>Interview Question Bank</b> before your loops.`;
+    spLabel = "↻ Review from the top"; spGo = startId;
+  }
   const html = `
     <div class="home">
       <h1>Become a world-class<br/>Data Engineer.</h1>
@@ -187,8 +203,11 @@ function renderHome() {
         ${totalLessons} lessons — grouped into ${PHASES.length - 1} phases from foundations to interview-ready.
         Every concept in plain English, with real examples and a quiz.</p>
       <div class="startpath">
-        <div class="sp-text"><b>New here? Follow the Golden Path.</b><span>Do the phases below in order. At <b>Cloud &amp; Platforms</b>, pick <b>one</b> stack; DSA, Data Viz &amp; cheat sheets are companions. ~83h to job-ready.</span></div>
-        <button class="sp-btn" data-go="${startId}">▶ Start the path</button>
+        <div class="sp-text"><b>${spTitle}</b><span>${spBody}</span></div>
+        <div class="sp-actions">
+          <button class="sp-btn" data-go="${spGo}">${spLabel}</button>
+          <a class="sp-link" href="static/path-poster.html" target="_blank" rel="noopener">🖨 Printable poster</a>
+        </div>
       </div>
       ${sections}
     </div>`;
