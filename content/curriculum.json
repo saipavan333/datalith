@@ -461,6 +461,80 @@
        ],
        "diagram": "pipeline-flow",
        "diagram_caption": "The data lifecycle: generate → ingest → store → transform → serve → analyze, with orchestration/quality/governance throughout."
+      },
+      {
+       "id": "found-data-quality",
+       "title": "Data quality — the six dimensions",
+       "minutes": 10,
+       "summary": "What makes data trustworthy: the six dimensions of quality, how to measure them, and why quality is foundational to every data decision.",
+       "concept": "**Data quality** — whether data is **fit for use** — is foundational: every dashboard, model, and decision is only as good as the data behind it. Bad data silently misleads, so quality must be **defined, measured, and protected**.\n\n### The six dimensions\nData quality is assessed across six standard dimensions — every concrete check maps to one:\n\n- **Accuracy** — does the data **match reality**? (a customer's real address)\n- **Completeness** — are there **no missing** values/rows? (no null required fields, no dropped records)\n- **Consistency** — does it **agree across systems**? (the same customer's data matches in CRM and billing)\n- **Timeliness** — is it **up to date**? (fresh within its SLA)\n- **Validity** — does it **follow the rules/format**? (a valid email, amount ≥ 0, allowed status)\n- **Uniqueness** — are there **no duplicates**? (one row per real entity)\n\n@@diagram:data-quality\n\n### Measuring quality\nTurn each dimension into **automated checks**: not-null (completeness), unique (uniqueness), accepted-values/ranges (validity), referential integrity (consistency), freshness (timeliness), and comparison-to-truth (accuracy). Run them with **dbt tests / great_expectations / Soda** in **CI** and at **runtime**, and track them as **metrics**.\n\n### Why it matters\n**Trust** is the entire value of a data platform — one wrong number erodes it. Quality issues are **insidious** because they're often **silent** (a job succeeds while emitting bad data). Systematic quality — **defined dimensions, automated checks at boundaries, quarantine + alerting, and observability** — turns trust from a hope into an **engineered guarantee**. This is the foundational view; the governance track goes deeper into validation, quarantine, and remediation.",
+       "keypoints": [
+        "Data quality = fitness for use; every dashboard/model/decision is only as good as the data behind it.",
+        "Six dimensions: accuracy (matches reality), completeness (no missing), consistency (agrees across systems), timeliness (up to date), validity (follows rules), uniqueness (no duplicates).",
+        "Every concrete check maps to a dimension: not-null→completeness, unique→uniqueness, ranges→validity, referential integrity→consistency, freshness→timeliness, vs-truth→accuracy.",
+        "Measure with automated checks (dbt/great_expectations/Soda) in CI and at runtime; track them as metrics.",
+        "Quality issues are insidious because they're often silent — a job succeeds while emitting bad data.",
+        "Systematic quality (dimensions + automated boundary checks + quarantine/alert + observability) turns trust from hope into an engineered guarantee."
+       ],
+       "quiz": [
+        {
+         "q": "What are the six dimensions of data quality?",
+         "options": [
+          "Speed and size",
+          "Accuracy, completeness, consistency, timeliness, validity, uniqueness",
+          "Only accuracy",
+          "CPU and memory"
+         ],
+         "answer": 1,
+         "explain": "Quality is fitness-for-use across these six dimensions; every concrete check (not-null, unique, ranges, freshness, etc.) maps to one of them."
+        },
+        {
+         "q": "Why are data-quality issues especially insidious?",
+         "options": [
+          "They're loud",
+          "They're often silent — a pipeline succeeds while producing bad data, so no error fires and bad data reaches consumers",
+          "They crash jobs",
+          "They're rare"
+         ],
+         "answer": 1,
+         "explain": "A job can technically succeed while emitting wrong data (0 rows, dropped records, drift), so 'task succeeded' never alerts — bad data flows to dashboards undetected without quality checks."
+        },
+        {
+         "q": "Which check maps to the 'validity' dimension?",
+         "options": [
+          "not_null",
+          "accepted-values / ranges (e.g. amount ≥ 0, valid email format)",
+          "row count",
+          "freshness"
+         ],
+         "answer": 1,
+         "explain": "Validity is about following rules/format — accepted-values and range checks enforce it. not_null→completeness, unique→uniqueness, freshness→timeliness."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Map a concrete check to each of the six dimensions.",
+         "hint": "One check per dimension.",
+         "solution": "**Accuracy** → compare to a **source of truth** (does the stored address match the verified/real one). **Completeness** → **not_null** on required columns and **row-count** vs expected (no missing values/records). **Consistency** → **referential integrity** (every FK matches a parent) and cross-system reconciliation (the same customer matches across CRM/billing). **Timeliness** → **freshness** check (table updated within its SLA). **Validity** → **accepted-values/range/format** (status in an allowed set, amount ≥ 0, valid email pattern). **Uniqueness** → **unique** on the key (one row per real entity, no duplicates). Every practical data-quality assertion you write **maps to one of these six dimensions**, which both **ensures coverage** (you're checking all aspects of fitness-for-use, not just one) and **communicates meaning** (a failing check tells you *which* quality property broke). Together these automated checks, run in CI and at runtime, operationalize the six dimensions."
+        },
+        {
+         "prompt": "Why is trust the 'entire value' of a data platform, and how does data quality protect it?",
+         "hint": "One wrong number erodes trust in everything.",
+         "solution": "Because a data platform exists to **inform decisions**, and people will only act on data they **trust**. The moment a stakeholder catches **one wrong number** — a revenue figure that doesn't reconcile, a dashboard that's stale, a metric that's double-counted — they **stop trusting the platform**, often broadly ('if *that* was wrong, what else is?'). Then they **revert to spreadsheets, ask for manual checks, or ignore the data** — destroying the platform's value regardless of how much engineering went into it. **Trust is fragile and the whole point.** **Data quality protects it** by making the data **demonstrably trustworthy**: defined **dimensions** (so 'good' is concrete), **automated checks** at boundaries (catching bad data **before** it reaches consumers), **quarantine + alerting** (isolating problems without corrupting or silently shipping), and **observability** (continuously monitoring freshness/volume/quality and tracing issues). This turns quality from a **hope** ('we think the data's fine') into an **engineered guarantee** ('the data passes defined checks continuously, and we catch problems first'). Sustained quality is what **earns and keeps** the trust that makes the platform valuable — which is why it's foundational, not optional."
+        },
+        {
+         "prompt": "Where should data-quality checks run, and why both places?",
+         "hint": "At boundaries / in CI and at runtime.",
+         "solution": "Run checks **at data boundaries** (as data enters the system or moves between layers — bronze→silver→gold), **in CI (pre-deploy)**, and **at runtime (each load) in production** — and you need **all** because they catch different failures. **At boundaries** so bad data is caught **at the door before it spreads** to many downstream consumers (cheaper and safer than fixing after). **In CI** so a **code/transform change** that would break quality **can't ship** — tests on sample/staging data fail the PR (shift left, catching logic bugs early). **At runtime** because **CI can't foresee production data problems** — a source returns bad/empty data, late/skewed records, schema drift, anomalies that only appear with **live data**; runtime checks validate the **actual data flowing through** and **quarantine/alert** on failures. So: **boundaries** localize where to check, **CI** prevents shipping broken logic, and **runtime/observability** catches bad data in production. Relying on one place leaves gaps (CI misses live-data issues; runtime alone lets preventable bugs ship). Running quality checks across **CI and runtime, at boundaries**, gives **end-to-end** coverage — the same complementary relationship as testing and observability."
+        },
+        {
+         "prompt": "How does the 'silent failure' nature of bad data argue for systematic, automated quality checks?",
+         "hint": "No error fires, so you must actively check the data.",
+         "solution": "Because bad data **doesn't announce itself** — a pipeline can **technically succeed** (no exception, 'task green') while **producing wrong data** (a source returned 0 rows, a join dropped records, values drifted, duplicates crept in). Since **no error fires**, you **cannot rely on failures** to tell you something's wrong; the bad data **silently flows to dashboards and decisions** and is often discovered **late** (an angry stakeholder, a wrong report) and **hard to trace**. This **insidious silence** means quality must be **actively, systematically checked** rather than assumed: you **define the dimensions** (what 'good' means), **encode automated checks** (not-null, unique, ranges, freshness, referential integrity) that **examine the data itself**, **run them continuously** (CI + runtime), and **alert/quarantine** on violations. Manual or occasional checking can't keep up with the volume and would miss most silent issues. So the silent-failure property is precisely why quality can't be left to hope or human vigilance — it demands **engineered, automated, always-on checks** (and observability) that **proactively detect** bad data **before consumers do**, turning an invisible risk into a **monitored, caught, and handled** one. Systematic automation is the only defense against failures that never raise an error."
+        }
+       ],
+       "diagram": "data-quality",
+       "diagram_caption": "The six data-quality dimensions: accuracy, completeness, consistency, timeliness, validity, uniqueness — every check maps to one."
       }
      ]
     },
@@ -689,86 +763,6 @@
        ],
        "diagram": "distributed-basics",
        "diagram_caption": "Scale by partitioning and replicating across machines; the network is the bottleneck, so minimize data movement."
-      }
-     ]
-    },
-    {
-     "id": "f-quality",
-     "title": "Data quality foundations",
-     "lessons": [
-      {
-       "id": "found-data-quality",
-       "title": "Data quality — the six dimensions",
-       "minutes": 10,
-       "summary": "What makes data trustworthy: the six dimensions of quality, how to measure them, and why quality is foundational to every data decision.",
-       "concept": "**Data quality** — whether data is **fit for use** — is foundational: every dashboard, model, and decision is only as good as the data behind it. Bad data silently misleads, so quality must be **defined, measured, and protected**.\n\n### The six dimensions\nData quality is assessed across six standard dimensions — every concrete check maps to one:\n\n- **Accuracy** — does the data **match reality**? (a customer's real address)\n- **Completeness** — are there **no missing** values/rows? (no null required fields, no dropped records)\n- **Consistency** — does it **agree across systems**? (the same customer's data matches in CRM and billing)\n- **Timeliness** — is it **up to date**? (fresh within its SLA)\n- **Validity** — does it **follow the rules/format**? (a valid email, amount ≥ 0, allowed status)\n- **Uniqueness** — are there **no duplicates**? (one row per real entity)\n\n@@diagram:data-quality\n\n### Measuring quality\nTurn each dimension into **automated checks**: not-null (completeness), unique (uniqueness), accepted-values/ranges (validity), referential integrity (consistency), freshness (timeliness), and comparison-to-truth (accuracy). Run them with **dbt tests / great_expectations / Soda** in **CI** and at **runtime**, and track them as **metrics**.\n\n### Why it matters\n**Trust** is the entire value of a data platform — one wrong number erodes it. Quality issues are **insidious** because they're often **silent** (a job succeeds while emitting bad data). Systematic quality — **defined dimensions, automated checks at boundaries, quarantine + alerting, and observability** — turns trust from a hope into an **engineered guarantee**. This is the foundational view; the governance track goes deeper into validation, quarantine, and remediation.",
-       "keypoints": [
-        "Data quality = fitness for use; every dashboard/model/decision is only as good as the data behind it.",
-        "Six dimensions: accuracy (matches reality), completeness (no missing), consistency (agrees across systems), timeliness (up to date), validity (follows rules), uniqueness (no duplicates).",
-        "Every concrete check maps to a dimension: not-null→completeness, unique→uniqueness, ranges→validity, referential integrity→consistency, freshness→timeliness, vs-truth→accuracy.",
-        "Measure with automated checks (dbt/great_expectations/Soda) in CI and at runtime; track them as metrics.",
-        "Quality issues are insidious because they're often silent — a job succeeds while emitting bad data.",
-        "Systematic quality (dimensions + automated boundary checks + quarantine/alert + observability) turns trust from hope into an engineered guarantee."
-       ],
-       "quiz": [
-        {
-         "q": "What are the six dimensions of data quality?",
-         "options": [
-          "Speed and size",
-          "Accuracy, completeness, consistency, timeliness, validity, uniqueness",
-          "Only accuracy",
-          "CPU and memory"
-         ],
-         "answer": 1,
-         "explain": "Quality is fitness-for-use across these six dimensions; every concrete check (not-null, unique, ranges, freshness, etc.) maps to one of them."
-        },
-        {
-         "q": "Why are data-quality issues especially insidious?",
-         "options": [
-          "They're loud",
-          "They're often silent — a pipeline succeeds while producing bad data, so no error fires and bad data reaches consumers",
-          "They crash jobs",
-          "They're rare"
-         ],
-         "answer": 1,
-         "explain": "A job can technically succeed while emitting wrong data (0 rows, dropped records, drift), so 'task succeeded' never alerts — bad data flows to dashboards undetected without quality checks."
-        },
-        {
-         "q": "Which check maps to the 'validity' dimension?",
-         "options": [
-          "not_null",
-          "accepted-values / ranges (e.g. amount ≥ 0, valid email format)",
-          "row count",
-          "freshness"
-         ],
-         "answer": 1,
-         "explain": "Validity is about following rules/format — accepted-values and range checks enforce it. not_null→completeness, unique→uniqueness, freshness→timeliness."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Map a concrete check to each of the six dimensions.",
-         "hint": "One check per dimension.",
-         "solution": "**Accuracy** → compare to a **source of truth** (does the stored address match the verified/real one). **Completeness** → **not_null** on required columns and **row-count** vs expected (no missing values/records). **Consistency** → **referential integrity** (every FK matches a parent) and cross-system reconciliation (the same customer matches across CRM/billing). **Timeliness** → **freshness** check (table updated within its SLA). **Validity** → **accepted-values/range/format** (status in an allowed set, amount ≥ 0, valid email pattern). **Uniqueness** → **unique** on the key (one row per real entity, no duplicates). Every practical data-quality assertion you write **maps to one of these six dimensions**, which both **ensures coverage** (you're checking all aspects of fitness-for-use, not just one) and **communicates meaning** (a failing check tells you *which* quality property broke). Together these automated checks, run in CI and at runtime, operationalize the six dimensions."
-        },
-        {
-         "prompt": "Why is trust the 'entire value' of a data platform, and how does data quality protect it?",
-         "hint": "One wrong number erodes trust in everything.",
-         "solution": "Because a data platform exists to **inform decisions**, and people will only act on data they **trust**. The moment a stakeholder catches **one wrong number** — a revenue figure that doesn't reconcile, a dashboard that's stale, a metric that's double-counted — they **stop trusting the platform**, often broadly ('if *that* was wrong, what else is?'). Then they **revert to spreadsheets, ask for manual checks, or ignore the data** — destroying the platform's value regardless of how much engineering went into it. **Trust is fragile and the whole point.** **Data quality protects it** by making the data **demonstrably trustworthy**: defined **dimensions** (so 'good' is concrete), **automated checks** at boundaries (catching bad data **before** it reaches consumers), **quarantine + alerting** (isolating problems without corrupting or silently shipping), and **observability** (continuously monitoring freshness/volume/quality and tracing issues). This turns quality from a **hope** ('we think the data's fine') into an **engineered guarantee** ('the data passes defined checks continuously, and we catch problems first'). Sustained quality is what **earns and keeps** the trust that makes the platform valuable — which is why it's foundational, not optional."
-        },
-        {
-         "prompt": "Where should data-quality checks run, and why both places?",
-         "hint": "At boundaries / in CI and at runtime.",
-         "solution": "Run checks **at data boundaries** (as data enters the system or moves between layers — bronze→silver→gold), **in CI (pre-deploy)**, and **at runtime (each load) in production** — and you need **all** because they catch different failures. **At boundaries** so bad data is caught **at the door before it spreads** to many downstream consumers (cheaper and safer than fixing after). **In CI** so a **code/transform change** that would break quality **can't ship** — tests on sample/staging data fail the PR (shift left, catching logic bugs early). **At runtime** because **CI can't foresee production data problems** — a source returns bad/empty data, late/skewed records, schema drift, anomalies that only appear with **live data**; runtime checks validate the **actual data flowing through** and **quarantine/alert** on failures. So: **boundaries** localize where to check, **CI** prevents shipping broken logic, and **runtime/observability** catches bad data in production. Relying on one place leaves gaps (CI misses live-data issues; runtime alone lets preventable bugs ship). Running quality checks across **CI and runtime, at boundaries**, gives **end-to-end** coverage — the same complementary relationship as testing and observability."
-        },
-        {
-         "prompt": "How does the 'silent failure' nature of bad data argue for systematic, automated quality checks?",
-         "hint": "No error fires, so you must actively check the data.",
-         "solution": "Because bad data **doesn't announce itself** — a pipeline can **technically succeed** (no exception, 'task green') while **producing wrong data** (a source returned 0 rows, a join dropped records, values drifted, duplicates crept in). Since **no error fires**, you **cannot rely on failures** to tell you something's wrong; the bad data **silently flows to dashboards and decisions** and is often discovered **late** (an angry stakeholder, a wrong report) and **hard to trace**. This **insidious silence** means quality must be **actively, systematically checked** rather than assumed: you **define the dimensions** (what 'good' means), **encode automated checks** (not-null, unique, ranges, freshness, referential integrity) that **examine the data itself**, **run them continuously** (CI + runtime), and **alert/quarantine** on violations. Manual or occasional checking can't keep up with the volume and would miss most silent issues. So the silent-failure property is precisely why quality can't be left to hope or human vigilance — it demands **engineered, automated, always-on checks** (and observability) that **proactively detect** bad data **before consumers do**, turning an invisible risk into a **monitored, caught, and handled** one. Systematic automation is the only defense against failures that never raise an error."
-        }
-       ],
-       "diagram": "data-quality",
-       "diagram_caption": "The six data-quality dimensions: accuracy, completeness, consistency, timeliness, validity, uniqueness — every check maps to one."
       }
      ]
     },
@@ -4909,7 +4903,7 @@
     },
     {
      "id": "model-approaches",
-     "title": "Modeling approaches",
+     "title": "Modeling philosophies & the serving layer",
      "lessons": [
       {
        "id": "model-inmon-kimball",
@@ -5641,7 +5635,7 @@
     },
     {
      "id": "model-patterns",
-     "title": "More modeling patterns",
+     "title": "Schema variants & aggregates",
      "lessons": [
       {
        "id": "model-snowflake",
@@ -12822,7 +12816,7 @@
     },
     {
      "id": "spark-advanced",
-     "title": "Spark internals & the ecosystem",
+     "title": "Advanced Spark & the ecosystem",
      "lessons": [
       {
        "id": "bd-join-strategies",
@@ -13282,7 +13276,7 @@
     },
     {
      "id": "spark-internals2",
-     "title": "Spark internals & operations",
+     "title": "Spark internals & deployment",
      "lessons": [
       {
        "id": "bd-rdd",
@@ -15960,13 +15954,7 @@
          "solution": "In a multi-stage processing graph, if a **downstream stage is slow** (can't keep up), it **signals upstream stages to slow their output rate** rather than letting unbounded buffers build between stages. The slowdown ripples back toward the source, so the whole pipeline runs at the **rate of its slowest stage** instead of overflowing memory with queued data. Engines like **Flink** (and the Reactive Streams model) implement this automatically. It prevents out-of-memory failures from buffer growth and keeps the system stable under load, at the cost of throughput being bounded by the bottleneck stage (which you then scale/optimize)."
         }
        ]
-      }
-     ]
-    },
-    {
-     "id": "stream-build",
-     "title": "Build a streaming pipeline",
-     "lessons": [
+      },
       {
        "id": "stream-e2e",
        "title": "Building a streaming pipeline end-to-end",
@@ -16819,13 +16807,7 @@
          "solution": "Kappa wants **one pipeline and one place** serving both real-time and historical needs. A lakehouse table written by a stream provides exactly that: it's **continuously updated** (live) **and** queryable for **analytics/history** with **ACID**, so you don't need Lambda's separate batch+speed layers or a distinct serving store. Combined with the source **event log's replay** (Kafka) and the table's **time travel**, you can **reprocess** through the same streaming code into the same table when logic changes. So the lakehouse table is the unified, reliable sink that lets a single streaming pipeline cover live and historical use cases — the essence of Kappa — provided you manage small files and exactly-once as above."
         }
        ]
-      }
-     ]
-    },
-    {
-     "id": "lake-ops",
-     "title": "Lakehouse operations",
-     "lessons": [
+      },
       {
        "id": "lake-optimize",
        "title": "Maintaining lakehouse tables — OPTIMIZE, VACUUM & the log",
@@ -17580,7 +17562,7 @@
     },
     {
      "id": "cloud-secnet",
-     "title": "Security & networking",
+     "title": "Security, networking & cost",
      "lessons": [
       {
        "id": "cloud-security-iam",
@@ -17731,13 +17713,7 @@
        ],
        "diagram": "cloud-networking",
        "diagram_caption": "Run data services in a private VPC, keep traffic private via VPC endpoints/PrivateLink, and minimize egress (cross-region/internet) — the hidden networking cost."
-      }
-     ]
-    },
-    {
-     "id": "cloud-costops",
-     "title": "Cost & operations",
-     "lessons": [
+      },
       {
        "id": "cloud-cost-finops",
        "title": "Cloud cost & FinOps thinking",
@@ -26954,6 +26930,80 @@
        ],
        "diagram": "data-slas",
        "diagram_caption": "A data SLA promises freshness/completeness/quality; the SLO is the internal target with an error budget — measured continuously and alerted on breach."
+      },
+      {
+       "id": "dataops-monitoring",
+       "title": "Monitoring, alerting & on-call for data",
+       "minutes": 10,
+       "summary": "Operating data systems in production: what to monitor, effective alerting without fatigue, on-call and incident response, and runbooks/postmortems.",
+       "concept": "Data platforms run **24/7**, and things **will** break — sources fail, jobs hang, data goes bad. **Monitoring, alerting, and on-call** are how you **operate** them reliably (the 'Ops' in DataOps).\n\n### What to monitor\n- **Pipeline health** — job success/failure, **duration/latency** (a job creeping 10→60 min), retries, queue depth.\n- **Data health** — freshness, volume, schema, quality (the observability pillars).\n- **Infrastructure** — cluster/warehouse CPU/memory, storage, costs.\n- **SLAs** — are critical datasets meeting their freshness/quality promises?\n\n### Effective alerting (avoid fatigue)\n- Alert on **failures, SLA misses, and anomalies** — not every minor blip.\n- Make alerts **actionable** — what broke, which dataset/job, severity, a **link to logs/runbook**.\n- **Route by severity** — page for critical (prod SLA breach), digest for minor.\n- **Avoid alert fatigue** — too many noisy alerts get **ignored** (worse than none); tune thresholds, de-duplicate, group related alerts.\n\n### On-call & incident response\nAn **on-call rotation** ensures someone is responsible when something breaks off-hours. When an incident fires: **acknowledge**, **assess impact** (lineage → blast radius), **mitigate** (pause dependent jobs, roll back, fix), **communicate** to affected consumers, then **resolve**.\n\n### Runbooks & postmortems\n- **Runbooks** — documented steps for common failures ('source X late → do Y') so anyone on-call can respond fast.\n- **Blameless postmortems** — after a serious incident, analyze **what happened and why** and **prevent recurrence** (add a test, a monitor, an automation) — not blame people.\n\n### Why it matters\nReliability is a **practice**, not luck. Good monitoring + actionable alerting + prepared on-call + learning from incidents keeps the platform **trustworthy** and turns failures from chaos into **handled, improving** events.",
+       "keypoints": [
+        "Data platforms run 24/7 and will break; monitoring + alerting + on-call are how you operate them reliably.",
+        "Monitor pipeline health (success/latency/retries), data health (observability pillars), infra (CPU/memory/cost), and SLAs.",
+        "Alert on failures/SLA misses/anomalies (not every blip); make alerts actionable and severity-routed.",
+        "Avoid alert fatigue — noisy alerts get ignored; tune thresholds, de-duplicate, group related alerts.",
+        "On-call rotation owns off-hours incidents: acknowledge → assess impact (lineage) → mitigate → communicate → resolve.",
+        "Runbooks document responses to common failures; blameless postmortems find root cause and prevent recurrence."
+       ],
+       "quiz": [
+        {
+         "q": "How do you avoid alert fatigue?",
+         "options": [
+          "Alert on everything",
+          "Alert on failures/SLA-misses/anomalies, make alerts actionable and severity-routed, tune thresholds and de-duplicate",
+          "Disable alerts",
+          "Ignore them"
+         ],
+         "answer": 1,
+         "explain": "Too many noisy alerts get ignored (worse than none); fire on genuine problems, make each actionable, route by severity, and group/de-duplicate to keep alerts trustworthy."
+        },
+        {
+         "q": "What is a runbook?",
+         "options": [
+          "A schema",
+          "Documented steps for responding to a common failure, so anyone on-call can act quickly",
+          "A backup",
+          "A dashboard"
+         ],
+         "answer": 1,
+         "explain": "A runbook captures the known response to a recurring failure ('source X late → do Y'), enabling fast, consistent incident handling regardless of who's on-call."
+        },
+        {
+         "q": "What's the goal of a blameless postmortem?",
+         "options": [
+          "Blame someone",
+          "Analyze what happened and why to prevent recurrence (add a test/monitor/automation), not to assign blame",
+          "Punish",
+          "Nothing"
+         ],
+         "answer": 1,
+         "explain": "Blameless postmortems focus on systemic root cause and concrete prevention, fostering a learning culture that improves reliability rather than fear."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Walk through responding to an incident where a critical table missed its freshness SLA at 7am.",
+         "hint": "Ack → assess (lineage) → mitigate → communicate → resolve → postmortem.",
+         "solution": "(1) **Acknowledge** the alert (someone owns it). (2) **Assess impact** — use **lineage** to find the **blast radius** (which dashboards/models/downstream tables depend on the stale table) and **diagnose** upstream (which job/source failed). (3) **Mitigate** — depending on cause: **re-run** the failed (idempotent) job, **pause dependent jobs** so they don't consume stale data, or **roll back** (time travel) if bad data published. (4) **Communicate** — tell affected consumers it's late and the ETA, so they don't make decisions on stale data. (5) **Resolve** — confirm the table is fresh/correct and downstream catches up. (6) **Postmortem** — blamelessly analyze root cause and **prevent recurrence** (add a source-freshness monitor, a retry, a runbook entry). This sequence — **acknowledge, assess, mitigate, communicate, resolve, learn** — turns an SLA breach from chaos into a handled, improving event."
+        },
+        {
+         "prompt": "Why is monitoring pipeline duration/latency (not just success/failure) important?",
+         "hint": "Creeping slowness = trouble before failure.",
+         "solution": "Because a job can **succeed but be silently degrading** — a pipeline that **creeps from 10 minutes to 60** is an early warning of a problem (growing data/skew, a missing index, resource contention, a slow upstream) that may soon **miss its SLA, time out, or fail outright**. **Success/failure alone is binary and lagging** — it only fires once things fully break. **Latency/duration trends** surface the issue **while it's still 'working'**, so you can investigate and fix it **before** it breaches the SLA or cascades. It also catches **cost** issues (longer runs = more compute spend) and **capacity** problems. Monitoring duration turns slowly-developing degradations into **early, actionable signals**, rather than waiting for a hard failure — a key part of operating pipelines proactively."
+        },
+        {
+         "prompt": "What makes an alert 'actionable', and why does that matter?",
+         "hint": "What/where/severity/link to act.",
+         "solution": "An **actionable alert** tells the responder **exactly what they need to act**: **what** broke (the specific job/dataset and the nature of the problem), **where** (environment, links to **logs/dashboards/the runbook**), **severity/impact** (is prod's SLA breached? who's affected?), and ideally a **suggested next step**. It matters because an alert like 'pipeline failed' with no context **wastes precious incident time** hunting for which pipeline, what failed, and what to do — and vague alerts erode trust. An actionable alert lets on-call **immediately assess and respond** (open the linked logs, follow the runbook), **shortening resolution time** and reducing stress. Combined with **severity routing** (page for critical, digest for minor), actionable alerting ensures the **right person acts fast on real problems** — the difference between alerts that drive resolution and alerts that get ignored."
+        },
+        {
+         "prompt": "How do runbooks and postmortems together improve reliability over time?",
+         "hint": "Document responses + fix root causes.",
+         "solution": "They create a **continuous improvement loop**. **Runbooks** capture the **known response to recurring failures** ('source X late → do Y'), so incidents are handled **fast and consistently** by anyone on-call — institutionalizing hard-won operational knowledge instead of relying on one expert. **Blameless postmortems**, after serious incidents, find the **systemic root cause** and produce **concrete preventive actions** — add a **test** to catch the bug pre-deploy, a **monitor** to detect it earlier, an **automation** to self-heal, or a **runbook entry** for faster future response. So each incident **both** improves immediate response (runbook) **and** reduces future incidents (postmortem fixes). Over time, the platform accumulates **better detection, prevention, and response**, steadily becoming **more reliable** — turning failures into **learning that hardens the system**, rather than repeated fire drills."
+        }
+       ],
+       "diagram": "monitoring-oncall",
+       "diagram_caption": "Monitor → detect → alert (by severity) → on-call responds via a runbook → blameless postmortem feeds lessons back into better monitoring."
       }
      ]
     },
@@ -27256,86 +27306,6 @@
        ],
        "diagram": "environments-promotion",
        "diagram_caption": "Promote changes dev → staging (validate) → prod, with blue-green/canary and write-audit-publish for safe, reversible releases."
-      }
-     ]
-    },
-    {
-     "id": "dataops-observe",
-     "title": "Monitoring & on-call",
-     "lessons": [
-      {
-       "id": "dataops-monitoring",
-       "title": "Monitoring, alerting & on-call for data",
-       "minutes": 10,
-       "summary": "Operating data systems in production: what to monitor, effective alerting without fatigue, on-call and incident response, and runbooks/postmortems.",
-       "concept": "Data platforms run **24/7**, and things **will** break — sources fail, jobs hang, data goes bad. **Monitoring, alerting, and on-call** are how you **operate** them reliably (the 'Ops' in DataOps).\n\n### What to monitor\n- **Pipeline health** — job success/failure, **duration/latency** (a job creeping 10→60 min), retries, queue depth.\n- **Data health** — freshness, volume, schema, quality (the observability pillars).\n- **Infrastructure** — cluster/warehouse CPU/memory, storage, costs.\n- **SLAs** — are critical datasets meeting their freshness/quality promises?\n\n### Effective alerting (avoid fatigue)\n- Alert on **failures, SLA misses, and anomalies** — not every minor blip.\n- Make alerts **actionable** — what broke, which dataset/job, severity, a **link to logs/runbook**.\n- **Route by severity** — page for critical (prod SLA breach), digest for minor.\n- **Avoid alert fatigue** — too many noisy alerts get **ignored** (worse than none); tune thresholds, de-duplicate, group related alerts.\n\n### On-call & incident response\nAn **on-call rotation** ensures someone is responsible when something breaks off-hours. When an incident fires: **acknowledge**, **assess impact** (lineage → blast radius), **mitigate** (pause dependent jobs, roll back, fix), **communicate** to affected consumers, then **resolve**.\n\n### Runbooks & postmortems\n- **Runbooks** — documented steps for common failures ('source X late → do Y') so anyone on-call can respond fast.\n- **Blameless postmortems** — after a serious incident, analyze **what happened and why** and **prevent recurrence** (add a test, a monitor, an automation) — not blame people.\n\n### Why it matters\nReliability is a **practice**, not luck. Good monitoring + actionable alerting + prepared on-call + learning from incidents keeps the platform **trustworthy** and turns failures from chaos into **handled, improving** events.",
-       "keypoints": [
-        "Data platforms run 24/7 and will break; monitoring + alerting + on-call are how you operate them reliably.",
-        "Monitor pipeline health (success/latency/retries), data health (observability pillars), infra (CPU/memory/cost), and SLAs.",
-        "Alert on failures/SLA misses/anomalies (not every blip); make alerts actionable and severity-routed.",
-        "Avoid alert fatigue — noisy alerts get ignored; tune thresholds, de-duplicate, group related alerts.",
-        "On-call rotation owns off-hours incidents: acknowledge → assess impact (lineage) → mitigate → communicate → resolve.",
-        "Runbooks document responses to common failures; blameless postmortems find root cause and prevent recurrence."
-       ],
-       "quiz": [
-        {
-         "q": "How do you avoid alert fatigue?",
-         "options": [
-          "Alert on everything",
-          "Alert on failures/SLA-misses/anomalies, make alerts actionable and severity-routed, tune thresholds and de-duplicate",
-          "Disable alerts",
-          "Ignore them"
-         ],
-         "answer": 1,
-         "explain": "Too many noisy alerts get ignored (worse than none); fire on genuine problems, make each actionable, route by severity, and group/de-duplicate to keep alerts trustworthy."
-        },
-        {
-         "q": "What is a runbook?",
-         "options": [
-          "A schema",
-          "Documented steps for responding to a common failure, so anyone on-call can act quickly",
-          "A backup",
-          "A dashboard"
-         ],
-         "answer": 1,
-         "explain": "A runbook captures the known response to a recurring failure ('source X late → do Y'), enabling fast, consistent incident handling regardless of who's on-call."
-        },
-        {
-         "q": "What's the goal of a blameless postmortem?",
-         "options": [
-          "Blame someone",
-          "Analyze what happened and why to prevent recurrence (add a test/monitor/automation), not to assign blame",
-          "Punish",
-          "Nothing"
-         ],
-         "answer": 1,
-         "explain": "Blameless postmortems focus on systemic root cause and concrete prevention, fostering a learning culture that improves reliability rather than fear."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Walk through responding to an incident where a critical table missed its freshness SLA at 7am.",
-         "hint": "Ack → assess (lineage) → mitigate → communicate → resolve → postmortem.",
-         "solution": "(1) **Acknowledge** the alert (someone owns it). (2) **Assess impact** — use **lineage** to find the **blast radius** (which dashboards/models/downstream tables depend on the stale table) and **diagnose** upstream (which job/source failed). (3) **Mitigate** — depending on cause: **re-run** the failed (idempotent) job, **pause dependent jobs** so they don't consume stale data, or **roll back** (time travel) if bad data published. (4) **Communicate** — tell affected consumers it's late and the ETA, so they don't make decisions on stale data. (5) **Resolve** — confirm the table is fresh/correct and downstream catches up. (6) **Postmortem** — blamelessly analyze root cause and **prevent recurrence** (add a source-freshness monitor, a retry, a runbook entry). This sequence — **acknowledge, assess, mitigate, communicate, resolve, learn** — turns an SLA breach from chaos into a handled, improving event."
-        },
-        {
-         "prompt": "Why is monitoring pipeline duration/latency (not just success/failure) important?",
-         "hint": "Creeping slowness = trouble before failure.",
-         "solution": "Because a job can **succeed but be silently degrading** — a pipeline that **creeps from 10 minutes to 60** is an early warning of a problem (growing data/skew, a missing index, resource contention, a slow upstream) that may soon **miss its SLA, time out, or fail outright**. **Success/failure alone is binary and lagging** — it only fires once things fully break. **Latency/duration trends** surface the issue **while it's still 'working'**, so you can investigate and fix it **before** it breaches the SLA or cascades. It also catches **cost** issues (longer runs = more compute spend) and **capacity** problems. Monitoring duration turns slowly-developing degradations into **early, actionable signals**, rather than waiting for a hard failure — a key part of operating pipelines proactively."
-        },
-        {
-         "prompt": "What makes an alert 'actionable', and why does that matter?",
-         "hint": "What/where/severity/link to act.",
-         "solution": "An **actionable alert** tells the responder **exactly what they need to act**: **what** broke (the specific job/dataset and the nature of the problem), **where** (environment, links to **logs/dashboards/the runbook**), **severity/impact** (is prod's SLA breached? who's affected?), and ideally a **suggested next step**. It matters because an alert like 'pipeline failed' with no context **wastes precious incident time** hunting for which pipeline, what failed, and what to do — and vague alerts erode trust. An actionable alert lets on-call **immediately assess and respond** (open the linked logs, follow the runbook), **shortening resolution time** and reducing stress. Combined with **severity routing** (page for critical, digest for minor), actionable alerting ensures the **right person acts fast on real problems** — the difference between alerts that drive resolution and alerts that get ignored."
-        },
-        {
-         "prompt": "How do runbooks and postmortems together improve reliability over time?",
-         "hint": "Document responses + fix root causes.",
-         "solution": "They create a **continuous improvement loop**. **Runbooks** capture the **known response to recurring failures** ('source X late → do Y'), so incidents are handled **fast and consistently** by anyone on-call — institutionalizing hard-won operational knowledge instead of relying on one expert. **Blameless postmortems**, after serious incidents, find the **systemic root cause** and produce **concrete preventive actions** — add a **test** to catch the bug pre-deploy, a **monitor** to detect it earlier, an **automation** to self-heal, or a **runbook entry** for faster future response. So each incident **both** improves immediate response (runbook) **and** reduces future incidents (postmortem fixes). Over time, the platform accumulates **better detection, prevention, and response**, steadily becoming **more reliable** — turning failures into **learning that hardens the system**, rather than repeated fire drills."
-        }
-       ],
-       "diagram": "monitoring-oncall",
-       "diagram_caption": "Monitor → detect → alert (by severity) → on-call responds via a runbook → blameless postmortem feeds lessons back into better monitoring."
       }
      ]
     },
@@ -28273,13 +28243,7 @@
        ],
        "diagram": "compliance-frameworks",
        "diagram_caption": "Different regulations cover different data: GDPR (EU privacy), HIPAA (US health), SOC 2 (security audit), PCI-DSS (cards), CCPA, ISO 27001 — design controls for the ones that apply."
-      }
-     ]
-    },
-    {
-     "id": "gov-lifecycle",
-     "title": "Classification & lifecycle",
-     "lessons": [
+      },
       {
        "id": "gov-classification-retention",
        "title": "Data classification & retention",
@@ -31550,86 +31514,6 @@
      ]
     },
     {
-     "id": "sd-examples",
-     "title": "More worked examples",
-     "lessons": [
-      {
-       "id": "sd-recommendation",
-       "title": "Worked example — event tracking & recommendations",
-       "minutes": 12,
-       "summary": "A capstone design tying batch, streaming, storage, ML, and serving together: an event-tracking pipeline feeding a recommendation system.",
-       "concept": "A **capstone** worked example that combines almost everything: an **event-tracking pipeline** that powers **product recommendations** — blending real-time and batch, storage, ML, and serving.\n\n### The problem\n*'Design a system that tracks user events (views, clicks, purchases) and uses them to power product recommendations — both real-time (react to current session) and batch (train models on history).'*\n\n### Step 1: Clarify requirements\n- **Use case:** capture events + serve **recommendations** (real-time reaction **and** trained models).\n- **Latency:** **mixed** — recs should reflect the **current session** (seconds) **and** be powered by **models trained on history** (batch). → **both** streaming and batch.\n- **Volume:** very high (every user interaction) — millions of events/sec at scale.\n- **Consumers:** the recommendation **service** (low-latency reads) and **ML training** (batch over history).\n\n### Step 2: Walk the pipeline\n@@diagram:recommendation-pipeline\n\n1. **Ingestion:** app emits events → **Kafka** (the event backbone — durable, high-throughput, fan-out).\n2. **Real-time path (streaming):** a stream processor computes **live features** (recent activity, session signals) and writes them to a **feature store** (Redis) for **low-latency** access.\n3. **Batch path:** events also **archive to the lakehouse** (raw → cleaned), where **ML models** (collaborative filtering, etc.) are **trained on full history** (Spark) on a schedule, and batch features are computed.\n4. **Serving:** the **recommendation service** reads **real-time features (Redis)** + the **trained model** to generate recommendations with **low latency**; results may also be cached.\n5. **Analytics:** the lakehouse also powers **BI** on engagement and **model evaluation**.\n\n### Step 3: Scale & trade-offs\n- **Scale:** millions/sec → **partitioned Kafka + scaled stream consumers**; lakehouse + Spark for big-data training; Redis for fast serving.\n- **Architecture:** this is a **Lambda/Kappa-flavored** design — a **streaming path for fresh features** and a **batch path for model training over history**, sharing the Kafka event log and the lakehouse.\n- **Trade-offs:** the **mixed latency requirement justifies running both paths** (real-time + batch); complexity is warranted by the recommendation use case.\n\n### The lesson\nReal systems often need **both batch and streaming**, **multiple stores** (Kafka, lakehouse, Redis), and **ML** — combined via the **framework**. This capstone shows the **whole curriculum working together**: ingestion, streaming, lakehouse, ML, serving, and polyglot storage, all **driven by requirements**.",
-       "keypoints": [
-        "Capstone: an event-tracking pipeline powering recommendations — combining real-time (current session) and batch (model training on history).",
-        "Clarify: capture events + serve recs, mixed latency (seconds for session + batch-trained models → both streaming and batch), very high volume, rec-service + ML consumers.",
-        "Ingestion: app events → Kafka (durable, high-throughput event backbone with fan-out to multiple consumers).",
-        "Real-time path: stream processor computes live features → feature store (Redis) for low-latency serving; batch path: archive to lakehouse, train ML models on full history (Spark).",
-        "Serving: recommendation service reads real-time features + trained model for low-latency recs; lakehouse also powers BI and model evaluation.",
-        "A Lambda/Kappa-flavored design (streaming features + batch training sharing Kafka + lakehouse); mixed-latency requirement justifies both paths — the whole curriculum working together."
-       ],
-       "quiz": [
-        {
-         "q": "Why does a recommendation system need both streaming and batch paths?",
-         "options": [
-          "It doesn't",
-          "Recs need real-time signals (current session, seconds → streaming) AND models trained on full history (batch) — mixed latency",
-          "Only batch",
-          "Only streaming"
-         ],
-         "answer": 1,
-         "explain": "Recommendations blend low-latency reaction to the current session (streaming features) with models trained on historical data (batch) — the mixed requirement justifies both."
-        },
-        {
-         "q": "What role does Kafka play in this design?",
-         "options": [
-          "Storage for models",
-          "The durable, high-throughput event backbone that fans out to the streaming path, the batch/lakehouse archive, and other consumers",
-          "A cache",
-          "A dashboard"
-         ],
-         "answer": 1,
-         "explain": "Kafka ingests the high-volume event stream durably and fans it out to multiple independent consumers (real-time features, lakehouse archive) — the central event log."
-        },
-        {
-         "q": "How does the recommendation service achieve low-latency recs?",
-         "options": [
-          "Querying the lakehouse directly",
-          "Reading real-time features from a fast store (Redis) plus the pre-trained model — serving-store + model, not a slow scan",
-          "Training live",
-          "Batch only"
-         ],
-         "answer": 1,
-         "explain": "Low-latency serving reads precomputed real-time features from Redis and applies the already-trained model, avoiding slow historical scans at request time."
-        }
-       ],
-       "exercises": [
-        {
-         "prompt": "Explain the real-time path vs batch path in this design and why both exist.",
-         "hint": "Live features (stream) + trained models (batch).",
-         "solution": "**Real-time path (streaming):** as events flow through **Kafka**, a **stream processor** computes **live features** — the user's **recent activity and current-session signals** (what they just viewed/clicked) — and writes them to a **feature store (Redis)** for **low-latency** access. This lets recommendations **react to the current session within seconds** (e.g. surface items related to what you're viewing **now**). **Batch path:** events are also **archived to the lakehouse** (raw → cleaned), where **ML models** (collaborative filtering, ranking models) are **trained on the full history** (Spark) on a schedule, and **batch features** are computed over long windows. This produces the **learned model** that captures **broad patterns** ('users who bought X also bought Y') from **all** historical data — which **can't** be computed in real time. **Why both:** recommendations need **both** kinds of signal — **fresh, session-level reactivity (streaming)** *and* **deep, history-trained intelligence (batch)** — and **neither alone suffices**: streaming has the **current context** but can't train on history; batch has the **trained model** but is stale to the current session. The **serving layer combines them** (real-time features + trained model) for recs that are **both current and smart**. So the **mixed latency requirement** (seconds + history-trained) **directly produces a two-path design** — the essence of why real recommendation systems blend streaming and batch."
-        },
-        {
-         "prompt": "Why is this called a 'Lambda/Kappa-flavored' architecture, and what do the paths share?",
-         "hint": "Streaming + batch over a shared log/storage.",
-         "solution": "It's **Lambda/Kappa-flavored** because it runs a **streaming path** (for fresh, low-latency features) **alongside a batch path** (for model training/aggregation over full history) — the hallmark of **Lambda** (parallel speed + batch layers) — while **sharing the Kafka event log and the lakehouse**, which leans **Kappa** (one event log, **replayable** for reprocessing through the same/derived pipelines). **What the paths share:** (1) the **Kafka event log** — the **single source of events** that **both** paths consume (the stream processor for live features, an archiver/batch loader for history), with Kafka's **fan-out** letting them read independently; and (2) the **lakehouse** — the **durable archive of raw/cleaned events** that the **batch path** trains on and that enables **replay/reprocessing** (re-train or recompute features after a change) and **BI/analytics**. So rather than two **wholly separate** systems duplicating logic (classic Lambda's main drawback), they **share the event backbone (Kafka) and the storage (lakehouse)**, with the streaming path producing **fresh features** and the batch path producing the **trained model**, combined at **serving**. This shared-log, dual-path structure is the **practical real-time-ML architecture**: **stream for freshness, batch for depth, one event log + lakehouse underneath** — capturing Lambda's both-worlds benefit while sharing infrastructure (Kappa's simplification) and enabling **replay**."
-        },
-        {
-         "prompt": "Identify the polyglot stores in this design and what each is for.",
-         "hint": "Kafka, lakehouse, Redis (and BI warehouse).",
-         "solution": "This design uses **multiple stores (polyglot persistence)**, each for its **best access pattern**: (1) **Kafka** — the **durable event log/streaming backbone**: high-throughput ingestion of the event firehose, buffering, ordering, and **fan-out** to multiple consumers (and replay). It's transport + buffer, not long-term analytical storage. (2) **Lakehouse (object storage + Delta/Iceberg)** — the **durable, cheap, queryable archive** of raw/cleaned events: holds **full history** for **ML training (Spark)**, **batch features**, **BI/analytics**, and **replay/reprocessing**. Optimized for **big scans over history**, not low-latency point reads. (3) **Feature store (Redis)** — the **low-latency serving layer**: holds **precomputed real-time features** keyed by user/item for **sub-millisecond reads** by the recommendation service at request time. Optimized for **fast key lookups**, not history or scans. (Plus a **warehouse/BI** layer over the lakehouse for engagement analytics and model evaluation.) Each store is **matched to its access pattern** — **Kafka** for streaming ingestion/fan-out, **lakehouse** for historical analytics/training, **Redis** for low-latency feature serving — and they're **combined** because no single store does all three well (a firehose log, big-history analytics, and sub-ms lookups have **incompatible optimizations**). This is **textbook polyglot persistence**: use the **right store for each job** and **connect them** (events flow Kafka → stream→Redis and Kafka → lakehouse → train→model), rather than forcing one store to serve ingestion, training, and low-latency serving simultaneously."
-        },
-        {
-         "prompt": "How does this capstone demonstrate the whole curriculum working together?",
-         "hint": "Ingestion, streaming, lakehouse, ML, serving, polyglot, framework.",
-         "solution": "It **integrates nearly every track** into one requirement-driven design, showing how the pieces combine in a real system. **Foundations/lifecycle:** events flow **source → ingest → store → process → serve** with cross-cutting concerns. **Pipelines & Streaming:** **Kafka** ingestion (durable log, fan-out, partitioning), a **stream processor** with **event-time features, watermarks, exactly-once, consumer-lag/autoscaling**. **Lakehouse & Storage:** raw/cleaned events archived in a **lakehouse (Delta/Iceberg, medallion)** for history, replay, and training. **Spark/PySpark & ML:** **Spark** trains **models on full history** (and computes batch features). **NoSQL/Caching:** a **Redis feature store** for **low-latency serving** (polyglot persistence — Kafka + lakehouse + Redis, each for its access pattern). **Data Modeling & Warehouse:** the lakehouse also powers **BI/analytics** and **model evaluation**. **Architecture:** a **Lambda/Kappa-flavored** blend of **streaming (fresh features) + batch (trained models)** sharing the event log and storage. **DataOps/Governance:** orchestration, monitoring (lag), quality, and access control wrap it. And it's all derived via the **System Design framework** — **clarify the mixed-latency requirement → walk the lifecycle (both paths) → address scale (millions/sec → partitioned Kafka + Spark + Redis) and trade-offs (both paths justified)**. So the capstone shows that real systems **combine batch and streaming, multiple stores, ML, and analytics**, **chosen and connected by the framework from requirements** — demonstrating the **entire curriculum (ingestion, streaming, lakehouse, Spark/ML, NoSQL/serving, modeling, DataOps/governance, and design) working together** to build a sophisticated, appropriate data platform. It's the synthesis the whole course builds toward."
-        }
-       ],
-       "diagram": "recommendation-pipeline",
-       "diagram_caption": "Capstone: events → Kafka → streaming features (Redis) + batch model training (lakehouse/Spark) → low-latency recommendation serving."
-      }
-     ]
-    },
-    {
      "id": "sd-case-studies",
      "title": "DE system-design case studies",
      "lessons": [
@@ -31828,6 +31712,80 @@
          "solution": "**Clarify:** goal = **trustworthy** data; catch bad/missing/late/duplicated data **before** dashboards/ML; define **SLAs**, critical datasets, and on-call. **A) Prevention — quality gates in pipelines:** embed **declarative checks/expectations** at each stage (using **dbt tests / Great Expectations / Lakeflow/Glue expectations / Soda**): **freshness** (data arrived within SLA), **volume** (row/byte counts within expected bounds — anomaly = missing/dup), **schema** (expected columns/types — catch drift), and **quality rules** (**nulls, ranges, uniqueness, referential**: `id` unique+not-null, `amount ≥ 0`, `status` in a set). **On a check:** **pass → publish** to the next layer; **fail → quarantine** the offending rows to a side table (keep good rows flowing) **and alert**; for **critical invariants** (e.g. row-count collapse, a key invariant), **hard-fail the run** to stop bad data propagating. **B) Detection — observability:** continuously monitor the **four signals** (**freshness, volume, quality, lineage**) across **all** tables with **metrics**, **anomaly detection**, **dashboards/SLAs**, and **alerting** that **pages on-call before users notice** (tools: **Monte Carlo, Elementary, OpenLineage**, platform monitoring). **Lineage** powers **impact analysis** (what breaks downstream) and **root-cause** (what fed a wrong number). **C) Process/culture:** **data SLAs/SLOs**, **data contracts** (producers commit to schema/quality), **incident response** (runbooks, **blameless post-mortems**), and **ownership** — treat **data as a product**. **Trade-offs:** **fail vs quarantine** — hard-fail **critical** invariants, **quarantine + alert** the rest to keep pipelines flowing (choose per dataset); **coverage vs noise** — enough checks to catch real issues without **alert fatigue** (start from recommended rules + known invariants, tune thresholds); **prevention + detection** — gates stop bad data, observability catches what slips through, and you need **both**. This design keeps data **trustworthy** end to end — the strong answer to 'how do you ensure data quality and know when data is wrong?'"
         }
        ]
+      },
+      {
+       "id": "sd-recommendation",
+       "title": "Worked example — event tracking & recommendations",
+       "minutes": 12,
+       "summary": "A capstone design tying batch, streaming, storage, ML, and serving together: an event-tracking pipeline feeding a recommendation system.",
+       "concept": "A **capstone** worked example that combines almost everything: an **event-tracking pipeline** that powers **product recommendations** — blending real-time and batch, storage, ML, and serving.\n\n### The problem\n*'Design a system that tracks user events (views, clicks, purchases) and uses them to power product recommendations — both real-time (react to current session) and batch (train models on history).'*\n\n### Step 1: Clarify requirements\n- **Use case:** capture events + serve **recommendations** (real-time reaction **and** trained models).\n- **Latency:** **mixed** — recs should reflect the **current session** (seconds) **and** be powered by **models trained on history** (batch). → **both** streaming and batch.\n- **Volume:** very high (every user interaction) — millions of events/sec at scale.\n- **Consumers:** the recommendation **service** (low-latency reads) and **ML training** (batch over history).\n\n### Step 2: Walk the pipeline\n@@diagram:recommendation-pipeline\n\n1. **Ingestion:** app emits events → **Kafka** (the event backbone — durable, high-throughput, fan-out).\n2. **Real-time path (streaming):** a stream processor computes **live features** (recent activity, session signals) and writes them to a **feature store** (Redis) for **low-latency** access.\n3. **Batch path:** events also **archive to the lakehouse** (raw → cleaned), where **ML models** (collaborative filtering, etc.) are **trained on full history** (Spark) on a schedule, and batch features are computed.\n4. **Serving:** the **recommendation service** reads **real-time features (Redis)** + the **trained model** to generate recommendations with **low latency**; results may also be cached.\n5. **Analytics:** the lakehouse also powers **BI** on engagement and **model evaluation**.\n\n### Step 3: Scale & trade-offs\n- **Scale:** millions/sec → **partitioned Kafka + scaled stream consumers**; lakehouse + Spark for big-data training; Redis for fast serving.\n- **Architecture:** this is a **Lambda/Kappa-flavored** design — a **streaming path for fresh features** and a **batch path for model training over history**, sharing the Kafka event log and the lakehouse.\n- **Trade-offs:** the **mixed latency requirement justifies running both paths** (real-time + batch); complexity is warranted by the recommendation use case.\n\n### The lesson\nReal systems often need **both batch and streaming**, **multiple stores** (Kafka, lakehouse, Redis), and **ML** — combined via the **framework**. This capstone shows the **whole curriculum working together**: ingestion, streaming, lakehouse, ML, serving, and polyglot storage, all **driven by requirements**.",
+       "keypoints": [
+        "Capstone: an event-tracking pipeline powering recommendations — combining real-time (current session) and batch (model training on history).",
+        "Clarify: capture events + serve recs, mixed latency (seconds for session + batch-trained models → both streaming and batch), very high volume, rec-service + ML consumers.",
+        "Ingestion: app events → Kafka (durable, high-throughput event backbone with fan-out to multiple consumers).",
+        "Real-time path: stream processor computes live features → feature store (Redis) for low-latency serving; batch path: archive to lakehouse, train ML models on full history (Spark).",
+        "Serving: recommendation service reads real-time features + trained model for low-latency recs; lakehouse also powers BI and model evaluation.",
+        "A Lambda/Kappa-flavored design (streaming features + batch training sharing Kafka + lakehouse); mixed-latency requirement justifies both paths — the whole curriculum working together."
+       ],
+       "quiz": [
+        {
+         "q": "Why does a recommendation system need both streaming and batch paths?",
+         "options": [
+          "It doesn't",
+          "Recs need real-time signals (current session, seconds → streaming) AND models trained on full history (batch) — mixed latency",
+          "Only batch",
+          "Only streaming"
+         ],
+         "answer": 1,
+         "explain": "Recommendations blend low-latency reaction to the current session (streaming features) with models trained on historical data (batch) — the mixed requirement justifies both."
+        },
+        {
+         "q": "What role does Kafka play in this design?",
+         "options": [
+          "Storage for models",
+          "The durable, high-throughput event backbone that fans out to the streaming path, the batch/lakehouse archive, and other consumers",
+          "A cache",
+          "A dashboard"
+         ],
+         "answer": 1,
+         "explain": "Kafka ingests the high-volume event stream durably and fans it out to multiple independent consumers (real-time features, lakehouse archive) — the central event log."
+        },
+        {
+         "q": "How does the recommendation service achieve low-latency recs?",
+         "options": [
+          "Querying the lakehouse directly",
+          "Reading real-time features from a fast store (Redis) plus the pre-trained model — serving-store + model, not a slow scan",
+          "Training live",
+          "Batch only"
+         ],
+         "answer": 1,
+         "explain": "Low-latency serving reads precomputed real-time features from Redis and applies the already-trained model, avoiding slow historical scans at request time."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Explain the real-time path vs batch path in this design and why both exist.",
+         "hint": "Live features (stream) + trained models (batch).",
+         "solution": "**Real-time path (streaming):** as events flow through **Kafka**, a **stream processor** computes **live features** — the user's **recent activity and current-session signals** (what they just viewed/clicked) — and writes them to a **feature store (Redis)** for **low-latency** access. This lets recommendations **react to the current session within seconds** (e.g. surface items related to what you're viewing **now**). **Batch path:** events are also **archived to the lakehouse** (raw → cleaned), where **ML models** (collaborative filtering, ranking models) are **trained on the full history** (Spark) on a schedule, and **batch features** are computed over long windows. This produces the **learned model** that captures **broad patterns** ('users who bought X also bought Y') from **all** historical data — which **can't** be computed in real time. **Why both:** recommendations need **both** kinds of signal — **fresh, session-level reactivity (streaming)** *and* **deep, history-trained intelligence (batch)** — and **neither alone suffices**: streaming has the **current context** but can't train on history; batch has the **trained model** but is stale to the current session. The **serving layer combines them** (real-time features + trained model) for recs that are **both current and smart**. So the **mixed latency requirement** (seconds + history-trained) **directly produces a two-path design** — the essence of why real recommendation systems blend streaming and batch."
+        },
+        {
+         "prompt": "Why is this called a 'Lambda/Kappa-flavored' architecture, and what do the paths share?",
+         "hint": "Streaming + batch over a shared log/storage.",
+         "solution": "It's **Lambda/Kappa-flavored** because it runs a **streaming path** (for fresh, low-latency features) **alongside a batch path** (for model training/aggregation over full history) — the hallmark of **Lambda** (parallel speed + batch layers) — while **sharing the Kafka event log and the lakehouse**, which leans **Kappa** (one event log, **replayable** for reprocessing through the same/derived pipelines). **What the paths share:** (1) the **Kafka event log** — the **single source of events** that **both** paths consume (the stream processor for live features, an archiver/batch loader for history), with Kafka's **fan-out** letting them read independently; and (2) the **lakehouse** — the **durable archive of raw/cleaned events** that the **batch path** trains on and that enables **replay/reprocessing** (re-train or recompute features after a change) and **BI/analytics**. So rather than two **wholly separate** systems duplicating logic (classic Lambda's main drawback), they **share the event backbone (Kafka) and the storage (lakehouse)**, with the streaming path producing **fresh features** and the batch path producing the **trained model**, combined at **serving**. This shared-log, dual-path structure is the **practical real-time-ML architecture**: **stream for freshness, batch for depth, one event log + lakehouse underneath** — capturing Lambda's both-worlds benefit while sharing infrastructure (Kappa's simplification) and enabling **replay**."
+        },
+        {
+         "prompt": "Identify the polyglot stores in this design and what each is for.",
+         "hint": "Kafka, lakehouse, Redis (and BI warehouse).",
+         "solution": "This design uses **multiple stores (polyglot persistence)**, each for its **best access pattern**: (1) **Kafka** — the **durable event log/streaming backbone**: high-throughput ingestion of the event firehose, buffering, ordering, and **fan-out** to multiple consumers (and replay). It's transport + buffer, not long-term analytical storage. (2) **Lakehouse (object storage + Delta/Iceberg)** — the **durable, cheap, queryable archive** of raw/cleaned events: holds **full history** for **ML training (Spark)**, **batch features**, **BI/analytics**, and **replay/reprocessing**. Optimized for **big scans over history**, not low-latency point reads. (3) **Feature store (Redis)** — the **low-latency serving layer**: holds **precomputed real-time features** keyed by user/item for **sub-millisecond reads** by the recommendation service at request time. Optimized for **fast key lookups**, not history or scans. (Plus a **warehouse/BI** layer over the lakehouse for engagement analytics and model evaluation.) Each store is **matched to its access pattern** — **Kafka** for streaming ingestion/fan-out, **lakehouse** for historical analytics/training, **Redis** for low-latency feature serving — and they're **combined** because no single store does all three well (a firehose log, big-history analytics, and sub-ms lookups have **incompatible optimizations**). This is **textbook polyglot persistence**: use the **right store for each job** and **connect them** (events flow Kafka → stream→Redis and Kafka → lakehouse → train→model), rather than forcing one store to serve ingestion, training, and low-latency serving simultaneously."
+        },
+        {
+         "prompt": "How does this capstone demonstrate the whole curriculum working together?",
+         "hint": "Ingestion, streaming, lakehouse, ML, serving, polyglot, framework.",
+         "solution": "It **integrates nearly every track** into one requirement-driven design, showing how the pieces combine in a real system. **Foundations/lifecycle:** events flow **source → ingest → store → process → serve** with cross-cutting concerns. **Pipelines & Streaming:** **Kafka** ingestion (durable log, fan-out, partitioning), a **stream processor** with **event-time features, watermarks, exactly-once, consumer-lag/autoscaling**. **Lakehouse & Storage:** raw/cleaned events archived in a **lakehouse (Delta/Iceberg, medallion)** for history, replay, and training. **Spark/PySpark & ML:** **Spark** trains **models on full history** (and computes batch features). **NoSQL/Caching:** a **Redis feature store** for **low-latency serving** (polyglot persistence — Kafka + lakehouse + Redis, each for its access pattern). **Data Modeling & Warehouse:** the lakehouse also powers **BI/analytics** and **model evaluation**. **Architecture:** a **Lambda/Kappa-flavored** blend of **streaming (fresh features) + batch (trained models)** sharing the event log and storage. **DataOps/Governance:** orchestration, monitoring (lag), quality, and access control wrap it. And it's all derived via the **System Design framework** — **clarify the mixed-latency requirement → walk the lifecycle (both paths) → address scale (millions/sec → partitioned Kafka + Spark + Redis) and trade-offs (both paths justified)**. So the capstone shows that real systems **combine batch and streaming, multiple stores, ML, and analytics**, **chosen and connected by the framework from requirements** — demonstrating the **entire curriculum (ingestion, streaming, lakehouse, Spark/ML, NoSQL/serving, modeling, DataOps/governance, and design) working together** to build a sophisticated, appropriate data platform. It's the synthesis the whole course builds toward."
+        }
+       ],
+       "diagram": "recommendation-pipeline",
+       "diagram_caption": "Capstone: events → Kafka → streaming features (Redis) + batch model training (lakehouse/Spark) → low-latency recommendation serving."
       }
      ]
     },
