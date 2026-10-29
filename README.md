@@ -139,3 +139,7 @@ datalith/
 
 Built as a companion to **SparkQuest** (the hands-on Spark coding app) — Datalith
 is the broad, plain-English academy across *all* of data engineering.
+
+## Licence
+
+© 2026 Sai Pavan UE. Free to read and share with credit, not for commercial use: [CC BY-NC 4.0](LICENSE).
