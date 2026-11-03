@@ -4,3 +4,4 @@ catalog_lab/
 __pycache__/
 dbt_lab/target/
 dbt_lab/logs/
+dbt_lab/.user.yml
