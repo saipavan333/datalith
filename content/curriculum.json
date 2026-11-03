@@ -12625,14 +12625,14 @@
        "title": "Partitions & the shuffle",
        "minutes": 12,
        "summary": "Parallelism's unit and its biggest cost: how partitions drive parallel tasks, what triggers a shuffle, right-sizing partitions, repartition vs coalesce, and skew.",
-       "concept": "### Partitions = the unit of parallelism\nA DataFrame is split into **partitions**; Spark runs **one task per partition**, so with 200 partitions and 50 cores ~50 tasks run at once. Too few partitions → idle cores; too many tiny ones → scheduling overhead dominates. Aim for partitions of roughly **128–256 MB**.\n\n### The shuffle — the expensive operation\n**Narrow** ops (`filter`, `select`, `withColumn`) act within a partition — no movement. **Wide** ops (`groupBy`, `join`, `distinct`, `orderBy`) need rows with the same key together, so Spark **shuffles**: it redistributes data across the network by key, **writing to disk** on the way. Shuffle = network + disk + serialization, and it **dominates runtime**. The DAG splits into **stages** at each shuffle.\n\n### Reduce the shuffle\n- **Filter and select early** so less data is shuffled.\n- **Broadcast** a small table in a join to avoid shuffling the big one (next lesson).\n- Avoid needless re-grouping and repeated `distinct`/`orderBy`.\n\n### Right-size partitions\n- `spark.sql.shuffle.partitions` (default 200) sets the post-shuffle partition count — tune it to your data size (too high → tiny partitions; too low → huge ones).\n- `repartition(n)` does a **full shuffle** to increase/rebalance partitions; `coalesce(n)` **reduces** partitions **without** a full shuffle (great before writing fewer output files).\n\n### Skew — the silent killer\nA shuffle sends all rows for a key to one task. If one key is huge (a 'null' or a mega-customer), that **one task** does most of the work while others finish — 199 tasks done in seconds, 1 runs for an hour. Fixes: **salting** the hot key, or **Adaptive Query Execution** (AQE) which detects and splits skewed partitions automatically.\n\nDiagnose with the **Spark UI**: a stage with one long-running task = skew; lots of shuffle spill = undersized memory or oversized partitions.",
-       "example": "`big.join(other, 'customer_id')` shuffles both sides by `customer_id`. If one customer has 40% of the rows, that key's task runs far longer than the rest — classic skew. Salting (append a random suffix to the key, aggregate, then combine) spreads it across tasks.",
+       "concept": "### Partitions = the unit of parallelism\nA DataFrame is split into **partitions**; Spark runs **one task per partition**, so with 200 partitions and 50 cores ~50 tasks run at once. Too few partitions → idle cores; too many tiny ones → scheduling overhead dominates. Aim for partitions of roughly **128–256 MB**.\n\n### The shuffle — the expensive operation\n**Narrow** ops (`filter`, `select`, `withColumn`) act within a partition — no movement. **Wide** ops (`groupBy`, `join`, `distinct`, `orderBy`) need rows with the same key together, so Spark **shuffles**: it redistributes data across the network by key, **writing to disk** on the way. Shuffle = network + disk + serialization, and it **dominates runtime**. The DAG splits into **stages** at each shuffle.\n\n### Reduce the shuffle\n- **Filter and select early** so less data is shuffled.\n- **Broadcast** a small table in a join to avoid shuffling the big one (next lesson).\n- Avoid needless re-grouping and repeated `distinct`/`orderBy`.\n\n### Right-size partitions\n- `spark.sql.shuffle.partitions` (default 200) sets the post-shuffle partition count — tune it to your data size (too high → tiny partitions; too low → huge ones).\n- `repartition(n)` does a **full shuffle** to increase/rebalance partitions; `coalesce(n)` **reduces** partitions **without** a full shuffle (great before writing fewer output files).\n\n### Skew — the silent killer\nA shuffle sends all rows for a key to one task. If one key is huge (a 'null' or a mega-customer), that **one task** does most of the work while others finish — 199 tasks done in seconds, 1 runs for an hour. Where it actually bites: **joins** on the hot key and **non-decomposable** work (`collect_list`, exact percentiles, windows partitioned by the key). A plain `sum`/`count` groupBy is usually fine, because Spark aggregates partially on each map task and ships one row per key. Fixes: **AQE** splits skewed sort-merge join partitions automatically (on by default); **salting** by hand (random suffix on the big side's hot key, the small side's matching rows replicated once per suffix) where AQE doesn't apply.\n\nDiagnose with the **Spark UI**: a stage with one long-running task = skew; lots of shuffle spill = undersized memory or oversized partitions.",
+       "example": "`big.join(other, 'customer_id')` shuffles both sides by `customer_id`. If one customer has 40% of the rows, that key's task runs far longer than the rest — classic skew. AQE's skew join splits that partition automatically once it is >5x the median and >256 MB. If it doesn't apply, salt: add a random suffix 0–31 to the hot key on the big side and replicate the matching small-side rows once per suffix, so every salted key still finds its match. (A `sum` by customer_id wouldn't need any of this: partial aggregation ships one row per key per map task.)",
        "keypoints": [
         "Partitions are the unit of parallelism — one task per partition; aim ~128–256 MB each.",
         "Narrow ops stay in-partition; wide ops (groupBy/join/distinct/orderBy) trigger a shuffle (network+disk).",
         "The shuffle dominates runtime and splits the DAG into stages — reduce it by filtering early & broadcasting.",
         "Tune spark.sql.shuffle.partitions to data size; repartition() full-shuffles, coalesce() reduces without one.",
-        "Skew: one hot key overloads a single task — fix with salting or AQE skew handling.",
+        "Skew: one hot key overloads a single task in joins and non-decomposable aggregations (collect_list, percentiles, windows); sum/count groupBys are absorbed by partial aggregation. Fix joins with AQE skew join or salting (salt the big side, replicate the small side).",
         "Diagnose with the Spark UI: one long task = skew; heavy spill = memory/partition sizing."
        ],
        "diagram": "partitions-shuffle",
@@ -12672,15 +12672,15 @@
          "explain": "Skew: a shuffle sends all rows for a key to one task, so a giant key makes one task do most of the work. Fix with salting or AQE skew splitting."
         },
         {
-         "q": "AQE is on (the default). Your groupBy(seller_id) has one seller with 30% of rows. Does AQE's skew handling fix it?",
+         "q": "Your `groupBy(seller_id).agg(sum('amount'))` has one seller with 30% of rows. What happens to that seller's reducer?",
          "options": [
-          "Yes, AQE splits any skewed partition",
-          "No: AQE skew handling targets sort-merge joins; salt the key or aggregate in two steps",
-          "Yes, if you raise spark.sql.shuffle.partitions",
-          "No, skew can't be fixed in Spark"
+          "It gets 30% of all rows and runs for an hour, so salt it",
+          "It gets one partial row per map task, because Spark aggregates partially before the shuffle; no salting needed",
+          "AQE's skew join splits it automatically",
+          "It fails with an out-of-memory error"
          ],
          "answer": 1,
-         "explain": "spark.sql.adaptive.skewJoin splits skewed partitions in sort-merge joins. A hot groupBy key still lands on one reducer; more partitions don't help because one key can't be split by hashing. Salting (or a partial then final aggregation) fixes it, as the lab shows."
+         "explain": "For decomposable aggregates (sum, count, min, max, avg) Spark plans a partial HashAggregate on each map task, so only one row per key per map task is shuffled (the lab shows 1.2x skew instead of 87x). Salting would add a stage for nothing. AQE's skew join is for joins, not aggregations. OOM is a risk for collect_list on the hot key, not for sum."
         },
         {
          "q": "A job shuffles 600 GB with the default spark.sql.shuffle.partitions. Roughly how big is each reduce partition?",
@@ -12703,7 +12703,7 @@
         {
          "prompt": "A join on customer_id is slow with one task running far longer than the rest. Diagnose and give two fixes.",
          "hint": "Skew on a hot key.",
-         "solution": "It's **data skew**: one `customer_id` holds a huge share of rows, so its shuffle task does most of the work. Fixes: (1) **Salting** — append a random suffix to the hot key on both sides, aggregate the partials, then combine, spreading the key across tasks; (2) enable **AQE skew handling** (`spark.sql.adaptive.enabled` + skewJoin), which detects oversized partitions and splits them automatically. Filtering/broadcasting can also help if one side is small."
+         "solution": "It's **data skew**: one `customer_id` holds a huge share of rows, so its shuffle task does most of the work. Fixes: (1) **Salting**: on the big side, append a random suffix 0..N-1 to the hot key; on the small side, replicate that key's rows N times, once per suffix; join on (key, suffix), so the hot key is spread over N tasks and every row still finds its match; (2) enable **AQE skew handling** (`spark.sql.adaptive.enabled` + skewJoin), which detects oversized partitions and splits them automatically. Filtering/broadcasting can also help if one side is small."
         },
         {
          "prompt": "Explain why filtering before a groupBy is faster than after, in terms of the shuffle.",

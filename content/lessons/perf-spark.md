@@ -33,10 +33,13 @@ size threshold; the hint forces it).
 
 A shuffle sends all rows for a key to one task. If one key is huge (a hot country),
 that task does most of the work — **199 tasks finish in seconds, 1 runs for an hour**.
-Fixes:
+This bites in **joins** and **non-decomposable** work (`collect_list`, exact percentiles,
+windows partitioned by the key). A plain `sum`/`count` groupBy is usually fine: Spark
+aggregates partially on each map task before the shuffle. Fixes:
 
-- **Salting** — add a random suffix to the hot key, aggregate, then re-aggregate the
-  partials, spreading it across tasks.
+- **Salting** — for a join, add a random suffix to the hot key on the big side and
+  replicate the small side's matching rows once per suffix; for `collect_list`-style work,
+  collect per salted key and then merge the partial results.
 - **AQE skew handling** — Adaptive Query Execution detects and **splits** oversized
   partitions automatically.
 
