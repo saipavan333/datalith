@@ -96,7 +96,7 @@ dbt docs generate     # builds the docs site + manifest with the full graph
 dbt docs serve        # opens it locally
 ```
 
-You get every model's description, columns, **compiled SQL**, and a **lineage graph** from sources → marts. With **Fusion / Core v2** that includes **column-level lineage** (trace one column end to end).
+You get every model's description, columns, **compiled SQL**, and a **lineage graph** from sources → marts. Column-level lineage (trace one column end to end) is offered in dbt's hosted platform tooling; which edition includes it changes, so check current docs ⚠ unverified for your plan.
 
 Extend lineage to consumers with **exposures**:
 

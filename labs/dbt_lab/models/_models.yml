@@ -1,0 +1,25 @@
+models:
+  - name: stg_orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['placed', 'paid', 'shipped', 'cancelled']
+  - name: fct_orders
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+
+unit_tests:
+  - name: cents_become_currency_and_status_is_lowercased
+    model: stg_orders
+    given:
+      - input: ref('raw_orders')
+        rows:
+          - {order_id: 1, status: "PAID", amount_cents: 1999, updated_at: "2026-11-01 10:00:00"}
+    expect:
+      rows:
+        - {order_id: 1, status: "paid", amount: 19.99}

@@ -1,0 +1,8 @@
+snapshots:
+  - name: orders_snapshot
+    relation: ref('stg_orders')
+    config:
+      unique_key: order_id
+      strategy: timestamp
+      updated_at: updated_at
+      hard_deletes: invalidate

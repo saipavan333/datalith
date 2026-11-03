@@ -15,7 +15,7 @@ python -m pip install dbt-core dbt-snowflake     # or dbt-bigquery / dbt-redshif
 dbt --version          # confirm it installed
 ```
 
-For local practice with zero cloud setup, `dbt-duckdb` runs entirely on your laptop. dbt **Core v2 (Fusion)** ships as a fast Rust engine; the commands below are identical.
+For local practice with zero cloud setup, `dbt-duckdb` runs entirely on your laptop. dbt **Core v2** is a Rust rewrite built on the Fusion engine's code (Apache 2.0, alpha June 2026) and dbt now calls v2 the default for new installs; the Python 1.x line (1.12.x as of Nov 2026) is still maintained. The commands below are the same on both. Check that your adapter supports v2 before switching.
 
 ## 2. Create a project
 
@@ -155,8 +155,8 @@ create or replace view analytics.dbt_yourname.stg_customers as (
 ## 7. dbt Core vs dbt Cloud — what you actually get
 
 - **dbt Core**: the `dbt` CLI above. Free, Apache-2.0. You bring your own scheduler (Airflow/Dagster/cron) and CI.
-- **dbt Cloud**: a hosted IDE in the browser, a built-in scheduler with logs, CI that runs on every PR, hosted docs, and an API/Semantic Layer. You pay per developer seat for convenience.
-- **Fusion engine (Core v2, 2026)**: a Rust rewrite — much faster parsing/compilation, real **SQL comprehension** (it understands your SQL, catching errors before you run), and **column-level lineage** built in.
+- **dbt Cloud** (dbt's docs now call it the **dbt platform**): a hosted IDE in the browser, a built-in scheduler with logs, CI that runs on every PR, hosted docs, and an API/Semantic Layer. You pay per developer seat for convenience.
+- **dbt Core v2 / Fusion (2026)**: dbt Labs rebuilt dbt in Rust. The open-source Core v2 (Apache 2.0) uses the same foundations as the Fusion engine; Fusion adds extra capabilities on top. Main gains: much faster parsing and compilation and real **SQL comprehension** (it parses your SQL and catches errors before you run). Source: https://docs.getdbt.com/blog/dbt-core-v2-is-here
 
 ## Scenario — a brand-new analytics project, day one
 

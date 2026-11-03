@@ -82,7 +82,7 @@ where {{ column_name }} <= 0
           - is_positive
 ```
 
-## 4. Unit tests — test the LOGIC, not the data (dbt 1.8+ / Core v2)
+## 4. Unit tests — test the LOGIC, not the data (dbt 1.8+)
 
 Data tests check live rows; **unit tests** feed **mock inputs** and assert the **exact output** of your SQL — catching logic bugs in CI before any real data runs.
 
@@ -121,7 +121,7 @@ dbt source freshness        # fails if the newest row is older than the SLA
 
 Run this **before** your build so you don't transform stale data.
 
-## 6. Model contracts — enforce the shape (Core v2 makes this first-class)
+## 6. Model contracts — enforce the shape (dbt 1.5+)
 
 Declare a model's columns, types, and constraints; dbt **fails the build** if the output drifts. This protects downstream consumers from surprise schema changes.
 
