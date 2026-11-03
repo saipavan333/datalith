@@ -1,0 +1,23 @@
+SCD TYPE 1 (KEYS userId, SEQUENCE BY sequenceNum, APPLY AS DELETE WHEN operation='DELETE'):
+   (124, 'Raul', 'Oaxaca')
+   (125, 'Mercedes', 'Guadalajara')
+   (126, 'Lily', 'Cancun')
+
+naive 'last arrival wins' (what a hand-written MERGE per batch often does):
+   (123, 'Isabel', 'Chihuahua')
+   (124, 'Raul', 'Oaxaca')
+   (125, 'Mercedes', 'Mexicali')
+   (126, 'Lily', 'Cancun')
+
+SCD TYPE 2 (STORED AS SCD TYPE 2): one row per version, __START_AT/__END_AT from the sequence:
+   (123, 'Isabel', 'Monterrey', 1, 5)
+   (123, 'Isabel', 'Chihuahua', 5, 6)
+   (124, 'Raul', 'Oaxaca', 1, None)
+   (125, 'Mercedes', 'Tijuana', 2, 5)
+   (125, 'Mercedes', 'Mexicali', 5, 6)
+   (125, 'Mercedes', 'Guadalajara', 6, None)
+   (126, 'Lily', 'Cancun', 2, None)
+
+What to look for: user 125 ends in Guadalajara (seq 6) even though the seq-5 event arrived last;
+user 123 is deleted in SCD1 but its history stays in SCD2 with an __END_AT. The naive version gets 125
+wrong AND brings deleted user 123 back to life, because the stale seq-5 update arrived after the delete.
