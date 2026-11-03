@@ -1,4 +1,6 @@
-# Workflows: orchestrating jobs — the complete guide
+# Lakeflow Jobs (formerly Workflows): orchestrating jobs — the complete guide
+
+**Name check (Nov 2026):** Databricks Workflows is now documented as **Lakeflow Jobs**; the concepts (jobs, tasks, triggers, DAG) are unchanged. Source: https://docs.databricks.com/aws/en/jobs/
 
 **Workflows** (Jobs) is Databricks' built-in orchestrator. Instead of running a separate scheduler for lakehouse pipelines, you declare **tasks** and **dependencies** and get scheduling, retries, alerting, parameter passing, and per-task compute natively. This chapter covers the DAG model, production features, triggers, recovery, and when to reach for an external orchestrator.
 

@@ -1,5 +1,7 @@
 # Dataplex: lakehouse governance — the complete guide
 
+**Name check (Nov 2026):** Dataplex Universal Catalog is now called **Knowledge Catalog** (release note 2026-04-10). The old standalone Data Catalog service was discontinued on 2026-01-30; BigQuery policy tags still use the `datacatalog.*` IAM roles. Sources: https://cloud.google.com/dataplex/docs/release-notes and https://cloud.google.com/data-catalog/docs/deprecations
+
 As data spreads across GCS and BigQuery and many projects, you need **unified governance** — one place for discovery, lineage, quality, and security. **Dataplex** is GCP's data-fabric control plane that organizes a distributed lakehouse into logical lakes/zones and governs it centrally. This chapter covers what it does and how it relates to BigQuery/BigLake and other clouds' tools.
 
 @@diagram:gcpd-dataplex

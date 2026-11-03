@@ -1,5 +1,7 @@
 # Dataproc — hands-on
 
+**Name check (Nov 2026):** Google renamed Dataproc. Since April 2026 the cluster product (Dataproc on Compute Engine) and the serverless product (Dataproc Serverless, renamed *Google Cloud Serverless for Apache Spark* in May 2025) are one brand: **Managed Service for Apache Spark**. The API, client libraries and `gcloud dataproc ...` commands keep the Dataproc name, so old scripts still work. Source: Dataproc release notes, 2026-04-03, https://cloud.google.com/dataproc/docs/release-notes
+
 Managed Spark/Hadoop on ephemeral clusters that live off Cloud Storage.
 
 @@diagram:gcp-dataproc

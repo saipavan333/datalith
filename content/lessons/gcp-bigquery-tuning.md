@@ -39,7 +39,7 @@ Cap accidental scans with `maximum_bytes_billed` on the job or a default at the 
 
 | On-demand | Capacity (Editions) |
 |---|---|
-| pay per **TB scanned** (~$6.25/TB) | buy **slots** via **reservations** (slot-time) |
+| pay per **TiB scanned** ($6.25 per TiB in the US; first 1 TiB per month free) | buy **slots** via **reservations** (slot-time) |
 | great for **spiky/unpredictable** | great for **steady/heavy**, predictable cost |
 | design tables to scan less | **autoscaling** + **reservation groups** share idle slots |
 

@@ -1,5 +1,7 @@
 # Cloud Composer — hands-on
 
+**Name check (Nov 2026):** Cloud Composer is now **Managed Service for Apache Airflow** (announced 2026-04-15). Composer 3 is shown as *Managed Airflow (Gen 3)* and is the only generation with **Airflow 3** (GA 2026-04-15); Composer 1 (Legacy Gen 1) and Composer 2.0.x reach end of life on 2026-09-15. `gcloud composer` commands keep the old name. Sources: https://cloud.google.com/composer/docs/release-notes and https://cloud.google.com/composer/docs/composer-versioning-overview
+
 Managed Airflow: code-first DAGs that orchestrate BigQuery, Dataflow, and Dataproc.
 
 @@diagram:gcp-composer
@@ -43,7 +45,7 @@ with DAG("daily_orders", schedule="0 3 * * *",
 
 ## 3. Deploy
 
-Drop the DAG file in the Composer environment's **GCS dags/** folder; the scheduler picks it up. Manage the environment (Composer 2/3 on GKE) and Python deps via the environment config.
+Drop the DAG file in the Composer environment's **GCS dags/** folder; the scheduler picks it up. Manage the environment (Composer 3 / Managed Airflow Gen 3 for new work) and Python deps via the environment config.
 
 ## 4. Composer vs Workflows vs Dataform scheduling
 

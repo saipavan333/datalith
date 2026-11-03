@@ -1,5 +1,7 @@
 # Cortex — AI & ML in SQL, the complete guide
 
+**Name check (Nov 2026):** Snowflake now documents the SQL AI functions as **Cortex AI Functions**: `AI_COMPLETE`, `AI_CLASSIFY`, `AI_FILTER`, `AI_AGG`, `AI_SUMMARIZE_AGG`, `AI_EXTRACT`, `AI_SENTIMENT`, `AI_TRANSLATE`, `AI_EMBED`, `AI_PARSE_DOCUMENT`, `AI_TRANSCRIBE`, `AI_REDACT` and more. The older `SNOWFLAKE.CORTEX.COMPLETE/SUMMARIZE/SENTIMENT/...` functions are called *legacy*; Snowflake's migration guide maps each one (e.g. COMPLETE -> AI_COMPLETE, SENTIMENT -> AI_SENTIMENT with a changed output format) and says new development targets the AI_* functions. AI functions bill in AI Credits per million tokens. Sources: https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql and https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql-migrate-legacy-functions
+
 Cortex is how a data engineer adds LLMs and ML to a pipeline without standing up any ML infrastructure: you call functions from **SQL**, the work runs **serverless** where the governed data already is, and nothing moves. This chapter covers the function families, Analyst/Search, cost, and when to use Cortex vs Snowpark ML vs an external platform.
 
 @@diagram:snow-cortex
@@ -12,10 +14,10 @@ No models to host, no data to export, no separate ML platform to feed. **Cortex*
 
 ```sql
 select review_id,
-       snowflake.cortex.sentiment(text)                              as sentiment,   -- -1..1
-       snowflake.cortex.summarize(text)                              as summary,
+       ai_sentiment(text)                                            as sentiment,   -- legacy: snowflake.cortex.sentiment (-1..1)
+       ai_summarize(text)                                            as summary,     -- legacy: snowflake.cortex.summarize
        snowflake.cortex.translate(text,'es','en')                    as english,
-       snowflake.cortex.complete('mistral-large','Classify: '||text) as label,
+       ai_classify(text, ['billing','bug','howto']):labels[0]::string as label,     -- legacy: complete() with a prompt
        snowflake.cortex.extract_answer(text,'What is the order id?') as order_id
 from reviews;
 ```

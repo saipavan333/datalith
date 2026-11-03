@@ -6,7 +6,7 @@ Because BigQuery cost and speed are driven by **bytes scanned**, the two feature
 
 ## 1. Why this is the top lever
 
-On-demand BigQuery bills **per TB scanned**, and scanning drives latency. **Partitioning** prunes whole partitions; **clustering** skips blocks within them. Together they let a query read a **fraction** of a huge table — the single biggest cost/perf win.
+On-demand BigQuery bills **per TiB scanned**, and scanning drives latency. **Partitioning** prunes whole partitions; **clustering** skips blocks within them. Together they let a query read a **fraction** of a huge table — the single biggest cost/perf win.
 
 ## 2. Partitioning
 

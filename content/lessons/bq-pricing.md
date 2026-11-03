@@ -10,9 +10,9 @@ BigQuery cost = **storage** + **compute**:
 - **Storage** — per GB, cheap; **active** vs **long-term** (untouched ≥90 days auto-discounted ~50%); **partition expiration** drops old data.
 - **Compute** — the big variable, billed **one of two ways**.
 
-## 2. On-demand (per TB scanned)
+## 2. On-demand (per TiB scanned)
 
-You pay **per terabyte of data scanned** by queries, **no commitment**, **nothing when idle**. Simplest, pay-per-query. Since cost = **bytes scanned**, you control it via **layout + query discipline**:
+You pay **per tebibyte (TiB, 2^40 bytes) of data scanned** by queries, **no commitment**, **nothing when idle**. Simplest, pay-per-query. Since cost = **bytes scanned**, you control it via **layout + query discipline**:
 - **Partition/cluster pruning** (prior lesson).
 - **Select only needed columns** (columnar) — never `SELECT *`.
 - **`--dry_run`** / the UI estimate to see **bytes before running**.
