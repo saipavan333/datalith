@@ -6038,5 +6038,31 @@
    "q": "What is polyglot persistence?",
    "a": "Using multiple datastore types together, each for its strength — for example an RDBMS as the system of record, Redis for caching, and a search or graph store for specific access patterns — rather than forcing one database to do everything."
   }
+ ],
+ "pipe-cdc": [
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "Why would you choose log-based CDC over polling with an updated_at column?",
+   "a": "Polling only sees current rows, so it misses hard deletes, collapses intermediate states between polls, depends on every writer bumping updated_at, and adds scan load to production. Log-based CDC reads the WAL/binlog, so it gets every committed insert, update and delete in order with little source load. The costs are replication privileges, a streaming stack (Kafka Connect + Debezium is typical), schema-change handling, and monitoring replication-slot lag."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "How do you get exactly-once results from a CDC pipeline when Kafka delivery is at-least-once?",
+   "a": "Don't chase exactly-once delivery; make the apply idempotent. Keep the primary key and the source position (LSN or binlog offset) on every event, land events append-only in bronze, then MERGE into silver taking the latest event per key and only applying events newer than the stored position. Deletes become deletes or soft-delete flags. A duplicate or a full replay then changes nothing. Verify with periodic count/checksum reconciliation against the source."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "Your Postgres primary's disk alert fires at 3am and the cause is pg_wal. What happened and what do you do?",
+   "a": "Most likely an inactive or lagging logical replication slot, often a stopped Debezium connector: the slot retains WAL until the consumer confirms it. Check pg_replication_slots for the slot's restart_lsn lag. Restart or fix the connector so it catches up; if it can't recover in time and the disk will fill, dropping the slot frees WAL but means you must re-snapshot that connector. Afterwards: alert on slot lag in bytes and minutes, and consider the database's max_slot_wal_keep_size setting as a safety cap, accepting that hitting it invalidates the slot."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Design CDC for 40 database shards into a lakehouse with a 15-minute freshness SLA.",
+   "a": "One Debezium connector (or task) per shard on Kafka Connect, a topic per table with the shard id in the key or as a column, keyed by primary key so per-row order holds. Avro/Protobuf with a schema registry and a compatibility rule. A streaming job lands every event into bronze Iceberg/Delta (append, partitioned by ingest date), and a micro-batch every 5–10 minutes MERGEs into silver with an LSN guard. Monitor connector status, slot lag per shard, consumer lag, and freshness of silver. Backfill new tables with incremental snapshots. Reconcile daily counts per shard."
+  }
  ]
 }
