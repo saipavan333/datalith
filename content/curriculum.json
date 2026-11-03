@@ -31662,34 +31662,40 @@
        "diagram": "sd-design-lakehouse",
        "diagram_caption": "Lakehouse platform: sources → ingest (batch + CDC) → medallion lakehouse (Delta/Iceberg) → warehouse/serving → BI/ML, with orchestration, governance, and observability.",
        "quiz": [
+        [
+         ["q", "For a standard BI analytics platform with hourly freshness, batch or streaming, and why?"],
+         ["options", ["Streaming always — it's modern", "Batch — hourly freshness doesn't need streaming, and batch is simpler and cheaper; add a thin streaming path only if a real-time need appears", "Neither", "Both always"]],
+         ["answer", 1],
+         ["explain", "Match latency to the requirement: hourly BI is fine with batch (simpler/cheaper); don't pay streaming's complexity/cost unless a real-time use case demands it."]
+        ],
+        [
+         ["q", "Why land data in an open lakehouse (Delta/Iceberg) rather than only loading a warehouse?"],
+         ["options", ["It's slower", "One open copy is queried by many engines (SQL/Spark/ML) — no duplication, avoids lock-in; the warehouse/serving layer adds fast BI on top", "Warehouses can't do BI", "Lakehouses can't be governed"]],
+         ["answer", 1],
+         ["explain", "The open lakehouse decouples storage from compute so multiple engines query one copy; you add a serving layer for fast BI without duplicating or locking in data."]
+        ],
         {
-         "q": "For a standard BI analytics platform with hourly freshness, batch or streaming, and why?",
+         "q": "Spark, Trino and Snowflake all need the same Iceberg tables. What is the single most important design decision?",
          "options": [
-          "Streaming always — it's modern",
-          "Batch — hourly freshness doesn't need streaming, and batch is simpler and cheaper; add a thin streaming path only if a real-time need appears",
-          "Neither",
-          "Both always"
+          "Use three catalogs, one per engine",
+          "One catalog as the source of truth that every engine commits and reads through",
+          "Copy the tables into each engine",
+          "Use Parquet without a table format"
          ],
          "answer": 1,
-         "explain": "Match latency to the requirement: hourly BI is fine with batch (simpler/cheaper); don't pay streaming's complexity/cost unless a real-time use case demands it."
-        },
-        {
-         "q": "Why land data in an open lakehouse (Delta/Iceberg) rather than only loading a warehouse?",
-         "options": [
-          "It's slower",
-          "One open copy is queried by many engines (SQL/Spark/ML) — no duplication, avoids lock-in; the warehouse/serving layer adds fast BI on top",
-          "Warehouses can't do BI",
-          "Lakehouses can't be governed"
-         ],
-         "answer": 1,
-         "explain": "The open lakehouse decouples storage from compute so multiple engines query one copy; you add a serving layer for fast BI without duplicating or locking in data."
+         "explain": "The catalog holds the current-metadata pointer; two catalogs drift and fork history. Copies multiply cost and staleness. Plain Parquet gives up transactions and schema evolution."
         }
        ],
        "exercises": [
+        [
+         ["prompt", "Design a data platform for BI from an app OLTP DB, a SaaS source, and event logs. Walk the framework with trade-offs."],
+         ["hint", "Clarify → ingest(batch+CDC) → medallion lakehouse → serving → cross-cutting → trade-offs."],
+         ["solution", "**Clarify:** Goal = BI dashboards + ad-hoc analytics for analysts (SQL/BI); **latency** = hourly/daily is fine → **batch ELT**; **volume** = moderate (app DB + SaaS + logs); **constraints** = cloud, budget, PII governance. **Architecture (walk the lifecycle):** **Ingestion** — **CDC** the **OLTP** app DB (Datastream/Debezium) to capture changes without heavy source queries; **batch EL** the **SaaS** source (Fivetran/Airbyte); **Auto Loader/COPY** the **event logs** — all landing in **bronze**. **Storage** — a **medallion lakehouse** on **S3/GCS**: **bronze** (raw/immutable), **silver** (cleaned, deduped, conformed), **gold** (modeled **star schemas / marts / aggregates**), as **partitioned Parquet/Delta/Iceberg**. **Processing** — **dbt/SQL** (or Spark) builds bronze→silver→gold with **data tests**, orchestrated as a **DAG** (Airflow/Composer). **Serving** — analysts query **gold** via the **warehouse/lakehouse SQL engine** (BigQuery/Snowflake/Databricks SQL) + a **BI tool**; optional **reverse-ETL** and **ML** on the lake. **Cross-cutting** — **orchestration**, **governance** (Unity Catalog/Lake Formation/Dataplex for access, **PII**, lineage), **observability** (freshness/volume/quality/lineage + alerts), **cost** controls. **Scale & trade-offs:** the **lakehouse + elastic warehouse** scales to TBs; **partition/cluster** + columnar keep queries cheap. **Trade-offs to state:** chose **batch** (hourly) over **streaming** — **simpler/cheaper**, latency not needed (add a thin streaming path only if a real-time use case appears); used an **open lakehouse** queried by many engines (**one copy, no lock-in**) with a serving layer for fast BI; controlled **cost** via layout + right-sized compute; **CDC** keeps the OLTP source fresh without load. This **requirement-driven, framework-structured** design — with explicit trade-offs — is the canonical answer to the most common DE design prompt."]
+        ],
         {
-         "prompt": "Design a data platform for BI from an app OLTP DB, a SaaS source, and event logs. Walk the framework with trade-offs.",
-         "hint": "Clarify → ingest(batch+CDC) → medallion lakehouse → serving → cross-cutting → trade-offs.",
-         "solution": "**Clarify:** Goal = BI dashboards + ad-hoc analytics for analysts (SQL/BI); **latency** = hourly/daily is fine → **batch ELT**; **volume** = moderate (app DB + SaaS + logs); **constraints** = cloud, budget, PII governance. **Architecture (walk the lifecycle):** **Ingestion** — **CDC** the **OLTP** app DB (Datastream/Debezium) to capture changes without heavy source queries; **batch EL** the **SaaS** source (Fivetran/Airbyte); **Auto Loader/COPY** the **event logs** — all landing in **bronze**. **Storage** — a **medallion lakehouse** on **S3/GCS**: **bronze** (raw/immutable), **silver** (cleaned, deduped, conformed), **gold** (modeled **star schemas / marts / aggregates**), as **partitioned Parquet/Delta/Iceberg**. **Processing** — **dbt/SQL** (or Spark) builds bronze→silver→gold with **data tests**, orchestrated as a **DAG** (Airflow/Composer). **Serving** — analysts query **gold** via the **warehouse/lakehouse SQL engine** (BigQuery/Snowflake/Databricks SQL) + a **BI tool**; optional **reverse-ETL** and **ML** on the lake. **Cross-cutting** — **orchestration**, **governance** (Unity Catalog/Lake Formation/Dataplex for access, **PII**, lineage), **observability** (freshness/volume/quality/lineage + alerts), **cost** controls. **Scale & trade-offs:** the **lakehouse + elastic warehouse** scales to TBs; **partition/cluster** + columnar keep queries cheap. **Trade-offs to state:** chose **batch** (hourly) over **streaming** — **simpler/cheaper**, latency not needed (add a thin streaming path only if a real-time use case appears); used an **open lakehouse** queried by many engines (**one copy, no lock-in**) with a serving layer for fast BI; controlled **cost** via layout + right-sized compute; **CDC** keeps the OLTP source fresh without load. This **requirement-driven, framework-structured** design — with explicit trade-offs — is the canonical answer to the most common DE design prompt."
+         "prompt": "**Transfer.** Queries on a streaming-fed silver table got 5x slower over a month, with no data growth beyond normal. What do you check first and what do you schedule?",
+         "hint": "Count files and snapshots.",
+         "solution": "Check file counts per partition and the number of snapshots/manifests: frequent streaming commits create many small files and much metadata, which slows planning and reading. Schedule compaction (rewrite data files to ~256–512 MB), snapshot expiry, manifest rewrite and orphan-file cleanup; consider fewer, larger commits."
         }
        ]
       },
@@ -31760,34 +31766,40 @@
        "diagram": "sd-design-cdc",
        "diagram_caption": "CDC: tail the DB log (Debezium/Datastream) → stream change events (Kafka, partitioned by PK) → idempotent MERGE by primary key into a mirror; snapshot then incremental.",
        "quiz": [
+        [
+         ["q", "Why use log-based CDC instead of repeated batch SELECT * dumps to replicate a database?"],
+         ["options", ["Dumps are faster", "CDC tails the transaction log (low source impact), captures every change including deletes, and is fresher — dumps are expensive, stale, and miss deletes", "CDC can't capture updates", "They're the same"]],
+         ["answer", 1],
+         ["explain", "Log-based CDC reads the WAL/binlog with minimal source load and captures inserts/updates/deletes continuously; batch dumps are heavy, stale, and miss deletes."]
+        ],
+        [
+         ["q", "How do you apply CDC change events correctly into a mirror table?"],
+         ["options", ["Append every event", "An idempotent MERGE/upsert by primary key (apply insert/update/delete), with per-key ordering (partition by PK) and dedup — so redelivery is safe", "Random updates", "DROP and recreate each time"]],
+         ["answer", 1],
+         ["explain", "Apply changes with a MERGE by PK (idempotent), partition by PK for ordering, and dedup to latest — so at-least-once delivery doesn't corrupt or double-apply."]
+        ],
         {
-         "q": "Why use log-based CDC instead of repeated batch SELECT * dumps to replicate a database?",
+         "q": "Your CDC sink gets each event at least once. What makes the silver table correct anyway?",
          "options": [
-          "Dumps are faster",
-          "CDC tails the transaction log (low source impact), captures every change including deletes, and is fresher — dumps are expensive, stale, and miss deletes",
-          "CDC can't capture updates",
-          "They're the same"
+          "Kafka exactly-once delivery to the lake",
+          "Keyed MERGE that only applies events with a newer source LSN than the stored row",
+          "Appending every event to silver",
+          "Deduplicating by event timestamp"
          ],
          "answer": 1,
-         "explain": "Log-based CDC reads the WAL/binlog with minimal source load and captures inserts/updates/deletes continuously; batch dumps are heavy, stale, and miss deletes."
-        },
-        {
-         "q": "How do you apply CDC change events correctly into a mirror table?",
-         "options": [
-          "Append every event",
-          "An idempotent MERGE/upsert by primary key (apply insert/update/delete), with per-key ordering (partition by PK) and dedup — so redelivery is safe",
-          "Random updates",
-          "DROP and recreate each time"
-         ],
-         "answer": 1,
-         "explain": "Apply changes with a MERGE by PK (idempotent), partition by PK for ordering, and dedup to latest — so at-least-once delivery doesn't corrupt or double-apply."
+         "explain": "Idempotent apply is the standard answer. Exactly-once inside Kafka doesn't cover the external sink. Appending creates duplicates. Timestamps can tie or go backwards; the log position is the true order."
         }
        ],
        "exercises": [
+        [
+         ["prompt", "Design CDC replication of a Postgres OLTP database into a Delta lakehouse table, fresh and low-impact. Cover capture, transport, apply, bootstrap, and the hard parts."],
+         ["hint", "WAL via Debezium → Kafka by PK → idempotent MERGE; snapshot+incremental; ordering/deletes/schema/idempotency."],
+         ["solution", "**Clarify:** replicate Postgres **orders** into a **Delta** mirror, **minutes-fresh**, **low source impact**, capturing **I/U/D**, **exactly-once** end state. **Capture:** use **log-based CDC** — **Debezium** (or **Datastream/DMS**) tails the Postgres **WAL**, emitting a change event per row mutation (with op type and PK). This has **low source impact** (reads the log, not the tables) and is **continuous/fresh**, unlike heavy `SELECT *` dumps (expensive, stale, **miss deletes**). **Transport:** publish change events to **Kafka**, **one topic per table**, **partitioned by primary key** (`order_id`) so all changes to a given row stay **ordered** (out-of-order apply would corrupt state). **Apply (sink):** a consumer (Spark/Flink `foreachBatch`) **reduces to the latest change per key** within each micro-batch (dedup), then runs an **idempotent MERGE** into the **Delta `orders`** mirror by `order_id`: `WHEN MATCHED AND op='D' THEN DELETE`, `WHEN MATCHED THEN UPDATE SET *`, `WHEN NOT MATCHED AND op<>'D' THEN INSERT *`. Because MERGE-by-PK is **idempotent**, **at-least-once** redelivery is **safe** (no double-apply) — exactly-once end state. **Bootstrap:** take an **initial snapshot** of existing rows (Debezium snapshot or a one-time load), then switch to **incremental** CDC. **Hard parts handled:** **idempotency** (MERGE + dedup), **per-key ordering** (PK partitioning), **deletes** (applied — a dump would miss them), **schema changes** (handle source DDL via schema evolution on the Delta table), and **late/duplicate** events (dedup + MERGE). **Downstream:** enable **Change Data Feed** on the mirror to propagate changes **incrementally** to Silver/Gold (no full re-scan). **Result:** a **fresh, exact, low-impact** replica. The strong answer emphasizes **log-based capture (low impact)** and the **idempotent, ordered MERGE** (the hard parts) — which is what separates a robust CDC design from a naive append."]
+        ],
         {
-         "prompt": "Design CDC replication of a Postgres OLTP database into a Delta lakehouse table, fresh and low-impact. Cover capture, transport, apply, bootstrap, and the hard parts.",
-         "hint": "WAL via Debezium → Kafka by PK → idempotent MERGE; snapshot+incremental; ordering/deletes/schema/idempotency.",
-         "solution": "**Clarify:** replicate Postgres **orders** into a **Delta** mirror, **minutes-fresh**, **low source impact**, capturing **I/U/D**, **exactly-once** end state. **Capture:** use **log-based CDC** — **Debezium** (or **Datastream/DMS**) tails the Postgres **WAL**, emitting a change event per row mutation (with op type and PK). This has **low source impact** (reads the log, not the tables) and is **continuous/fresh**, unlike heavy `SELECT *` dumps (expensive, stale, **miss deletes**). **Transport:** publish change events to **Kafka**, **one topic per table**, **partitioned by primary key** (`order_id`) so all changes to a given row stay **ordered** (out-of-order apply would corrupt state). **Apply (sink):** a consumer (Spark/Flink `foreachBatch`) **reduces to the latest change per key** within each micro-batch (dedup), then runs an **idempotent MERGE** into the **Delta `orders`** mirror by `order_id`: `WHEN MATCHED AND op='D' THEN DELETE`, `WHEN MATCHED THEN UPDATE SET *`, `WHEN NOT MATCHED AND op<>'D' THEN INSERT *`. Because MERGE-by-PK is **idempotent**, **at-least-once** redelivery is **safe** (no double-apply) — exactly-once end state. **Bootstrap:** take an **initial snapshot** of existing rows (Debezium snapshot or a one-time load), then switch to **incremental** CDC. **Hard parts handled:** **idempotency** (MERGE + dedup), **per-key ordering** (PK partitioning), **deletes** (applied — a dump would miss them), **schema changes** (handle source DDL via schema evolution on the Delta table), and **late/duplicate** events (dedup + MERGE). **Downstream:** enable **Change Data Feed** on the mirror to propagate changes **incrementally** to Silver/Gold (no full re-scan). **Result:** a **fresh, exact, low-impact** replica. The strong answer emphasizes **log-based capture (low impact)** and the **idempotent, ordered MERGE** (the hard parts) — which is what separates a robust CDC design from a naive append."
+         "prompt": "**Transfer.** Add a 2 TB table to a live CDC pipeline without pausing the other tables. Outline the steps and the checks.",
+         "hint": "Incremental snapshot via signal.",
+         "solution": "Add the table to the connector's include list, trigger an incremental snapshot with a signal so Debezium reads it in chunks while streaming continues, size Kafka retention and sink throughput for the burst, then reconcile per-day counts and column checksums against the source and watch replication-slot lag throughout."
         }
        ]
       },
@@ -31837,6 +31849,76 @@
          "prompt": "Design a data quality & observability system for an analytics platform. Cover prevention (gates), detection (observability), process, and trade-offs.",
          "hint": "Expectations in pipelines (pass/quarantine/fail+alert); four signals + anomaly detection; SLAs/contracts; fail-vs-quarantine.",
          "solution": "**Clarify:** goal = **trustworthy** data; catch bad/missing/late/duplicated data **before** dashboards/ML; define **SLAs**, critical datasets, and on-call. **A) Prevention — quality gates in pipelines:** embed **declarative checks/expectations** at each stage (using **dbt tests / Great Expectations / Lakeflow/Glue expectations / Soda**): **freshness** (data arrived within SLA), **volume** (row/byte counts within expected bounds — anomaly = missing/dup), **schema** (expected columns/types — catch drift), and **quality rules** (**nulls, ranges, uniqueness, referential**: `id` unique+not-null, `amount ≥ 0`, `status` in a set). **On a check:** **pass → publish** to the next layer; **fail → quarantine** the offending rows to a side table (keep good rows flowing) **and alert**; for **critical invariants** (e.g. row-count collapse, a key invariant), **hard-fail the run** to stop bad data propagating. **B) Detection — observability:** continuously monitor the **four signals** (**freshness, volume, quality, lineage**) across **all** tables with **metrics**, **anomaly detection**, **dashboards/SLAs**, and **alerting** that **pages on-call before users notice** (tools: **Monte Carlo, Elementary, OpenLineage**, platform monitoring). **Lineage** powers **impact analysis** (what breaks downstream) and **root-cause** (what fed a wrong number). **C) Process/culture:** **data SLAs/SLOs**, **data contracts** (producers commit to schema/quality), **incident response** (runbooks, **blameless post-mortems**), and **ownership** — treat **data as a product**. **Trade-offs:** **fail vs quarantine** — hard-fail **critical** invariants, **quarantine + alert** the rest to keep pipelines flowing (choose per dataset); **coverage vs noise** — enough checks to catch real issues without **alert fatigue** (start from recommended rules + known invariants, tune thresholds); **prevention + detection** — gates stop bad data, observability catches what slips through, and you need **both**. This design keeps data **trustworthy** end to end — the strong answer to 'how do you ensure data quality and know when data is wrong?'"
+        }
+       ]
+      },
+      {
+       "id": "sd-design-platform",
+       "title": "Design: a whole data platform at real scale (30M users)",
+       "minutes": 25,
+       "summary": "The senior design question end to end: scope, capacity math, CDC + clickstream into Kafka, an Iceberg/Delta lakehouse with one catalog, dbt + orchestration, serving, and the failure table.",
+       "concept": "A platform design answer has five parts, in this order.\n\n### The analogy\nA city water system: rivers and wells (sources), a reservoir that absorbs floods (Kafka), raw → filtered → drinking water (bronze → silver → gold), and inspectors with pipe maps (catalog, contracts, quality checks). You measure the evening-peak flow before you size a single pipe.\n\n### 1. Scope\nConsumers and their freshness (dashboards hourly, fraud in seconds, finance daily and exact), sources, user scale, constraints (PII deletion, retention, team size).\n\n### 2. Size it\n6B events/day x 140 B + 400M CDC changes x 600 B ≈ **1.1 TB/day**, ~50 MB/s at a 4x peak. Kafka with 7 days x RF3 compressed ≈ 6 TB. Bronze ≈ 24 TB for 90 days. Naive 1-minute streaming commits create ~130x more files than needed, so **compaction is a requirement**. Saying \"this is moderate scale; the hard part is correctness\" is a senior signal.\n\n### 3. Design the layers\nDebezium CDC per shard and a clickstream collector into Kafka (Avro + registry); managed EL for SaaS. One catalog over an open table format; bronze append-only, silver merged with an LSN guard, gold dimensional with a semantic layer. Streaming land + hourly compaction, silver merges every 10–15 min, dbt for gold, asset-aware orchestration. Serve BI, ML features (offline + online) and reverse ETL.\n\n### 4. Name what breaks first\nHot keys, replication-slot lag, small files, unannounced schema changes, late events, deletion requests, cost creep — each with a concrete mitigation.\n\n### 5. Sequence the build\nWith 8 engineers: CDC + bronze/silver for orders and payments, then the finance mart, then clickstream.",
+       "example": "Inputs: 30M users x ~200 events/day = 6B events (140 B) + 40 Postgres shards, 400M changes/day (600 B)\nRaw: 0.84 TB + 0.24 TB ≈ 1.1 TB/day; avg 12.5 MB/s, peak ~50 MB/s (~300k events/s)\nKafka: 1.1 TB / 4 (compression) x 7 days x RF3 ≈ 5.7 TB → plan ~7 TB\nBronze: 0.27 TB/day → 24 TB over 90 days; ~530 files/day at 512 MB vs 69,120 from naive 1-min commits\nFreshness plan: bronze ~1 min, silver 10–15 min, gold hourly, finance mart daily after reconciliation",
+       "keypoints": [
+        "Scope consumers, freshness, sources, scale and constraints before drawing anything.",
+        "Do the capacity math out loud: bytes/day, peak MB/s, Kafka disk with retention x RF, lake storage, file counts.",
+        "CDC and clickstream into Kafka (keyed, schema-registered); managed EL for SaaS sources.",
+        "One catalog over an open table format; bronze append-only, silver merged idempotently, gold dimensional + semantic layer.",
+        "Streaming writes need scheduled compaction; small files appear in the arithmetic before production.",
+        "Close with the failure table and a build sequence that matches the team size."
+       ],
+       "diagram": "platform-at-scale",
+       "diagram_caption": "Sources → Kafka → bronze/silver/gold lakehouse → BI, ML features and reverse ETL, with governance across everything.",
+       "quiz": [
+        {
+         "q": "Your arithmetic gives ~1.1 TB/day and ~50 MB/s peak. What should drive most of your design time?",
+         "options": [
+          "Raw throughput: add brokers and executors",
+          "Correctness and operations: CDC merges, late data, deletes, schema changes, compaction",
+          "Choosing the fastest file format",
+          "Real-time everything"
+         ],
+         "answer": 1,
+         "explain": "At this scale a modest cluster handles the bytes. What goes wrong is correctness and operations. File format choice matters less than compaction and layout. 'Real-time everything' raises cost without a consumer asking for it."
+        },
+        {
+         "q": "48 streaming writers commit to a bronze table every minute. Roughly how many files per day before compaction?",
+         "options": [
+          "~530",
+          "~1,440",
+          "~69,000",
+          "~48"
+         ],
+         "answer": 2,
+         "explain": "1,440 commits/day x 48 files = 69,120. ~530 is what the same bytes need at 512 MB files; 1,440 assumes one file per commit; 48 is per commit. That gap is why compaction is part of the design."
+        },
+        {
+         "q": "Why put Kafka between Debezium and the lakehouse instead of writing CDC straight into tables?",
+         "options": [
+          "Kafka makes CDC exactly-once end to end",
+          "Buffering for spikes and sink outages, replay, and fan-out to other consumers like fraud",
+          "Debezium can't write anywhere else",
+          "It removes the need for a silver merge"
+         ],
+         "answer": 1,
+         "explain": "The reservoir role: absorb bursts, survive sink downtime without holding WAL on the source, replay after bugs, and let several consumers read the same changes. It doesn't make the sink exactly-once (the merge does), Debezium Server can target other sinks, and you still merge in silver."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "**Warm-up.** Rerun the lab's arithmetic by hand for 60M users (same events per user). What are raw TB/day, peak MB/s and Kafka disk?",
+         "hint": "Only clickstream doubles; CDC stays the same unless shards grow.",
+         "solution": "Clickstream 12B x 140 B = 1.68 TB, CDC 0.24 TB → 1.92 TB/day. Average 1.92e12 / 86,400 ≈ 22 MB/s; peak x4 ≈ 89 MB/s. Kafka: 1.92 / 4 x 7 x 3 ≈ 10 TB, ~13 TB with 30% headroom. Note what didn't change: the silver merge design and the CDC path."
+        },
+        {
+         "prompt": "**Transfer.** Finance says yesterday's revenue changed after they closed the books. Using the failure table, list the two most likely causes in this design and the fix for each.",
+         "hint": "Late events and CDC updates both rewrite yesterday.",
+         "solution": "1. Late-arriving clickstream/mobile events landing in yesterday's event-time partition (microbatch lookback reprocessed it) → publish a 'final after T+2' rule and build the finance mart from a closed, versioned snapshot (time travel / tagged snapshot). 2. CDC updates to old orders (refunds, status corrections) merged into silver → model refunds as separate dated facts instead of updating the original order's revenue, so closed periods don't move."
+        },
+        {
+         "prompt": "**Stretch.** A deletion request arrives for one user. Their events are in 90 days of bronze clickstream (24 TB). Design deletion so it finishes within 30 days without rewriting all 24 TB each time.",
+         "hint": "Tokenize identity; keep PII in one small keyed table; batch deletes.",
+         "solution": "Don't store raw identifiers in event tables: replace user_id with a token at the collector and keep the token→person mapping (and PII) in a small vault table. A deletion removes the mapping row (crypto-shredding if values are encrypted per user), which makes events anonymous immediately. For tables that must physically drop the rows, batch requests weekly and run row-level deletes (merge-on-read delete files or deletion vectors) only on partitions that contain those tokens, then compact and expire old snapshots so the bytes are really gone. Record each request's completion for audit."
         }
        ]
       },

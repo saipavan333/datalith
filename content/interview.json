@@ -6130,5 +6130,41 @@
    "q": "Design CDC for 40 database shards into a lakehouse with a 15-minute freshness SLA.",
    "a": "One Debezium connector (or task) per shard on Kafka Connect, a topic per table with the shard id in the key or as a column, keyed by primary key so per-row order holds. Avro/Protobuf with a schema registry and a compatibility rule. A streaming job lands every event into bronze Iceberg/Delta (append, partitioned by ingest date), and a micro-batch every 5–10 minutes MERGEs into silver with an LSN guard. Monitor connector status, slot lag per shard, consumer lag, and freshness of silver. Backfill new tables with incremental snapshots. Reconcile daily counts per shard."
   }
+ ],
+ "sd-design-platform": [
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Design the data platform for a 30M-user marketplace. Walk me through it.",
+   "a": "Scope consumers and freshness (BI hourly, fraud seconds, finance daily and exact), sources (40 Postgres shards, clickstream, SaaS) and constraints (PII deletion, retention, team of 8). Size it: ~1.1 TB/day raw, ~50 MB/s peak, ~6 TB Kafka with 7d RF3, ~24 TB bronze for 90 days. Design: Debezium CDC and a clickstream collector into Kafka with Avro and a registry; managed EL for SaaS; one catalog over Iceberg/Delta; bronze append-only, silver merged with an LSN guard every 10–15 minutes, gold dimensional via dbt with a semantic layer; asset-aware orchestration; serving to BI, ML features and reverse ETL. Then the failure table (hot keys, slot lag, small files, schema changes, late data, deletion, cost) and a build sequence starting with orders and payments for finance."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "What breaks first in a streaming-fed lakehouse and how do you prevent it?",
+   "a": "Small files and metadata growth from frequent commits (slower planning and reads) → compaction, snapshot expiry, manifest rewrite, fewer larger commits. Next: schema changes from producers (registry gate in CI, contracts, quarantine), CDC source issues (replication-slot lag alerts and WAL caps), and late data changing closed periods (event-time partitioning, lookback windows, closed snapshots for finance)."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "How do you handle right-to-erasure requests in an append-only lake?",
+   "a": "Design for it: tokenize identifiers at ingestion and keep PII in a small keyed vault table, so deleting the mapping (or the per-user key, crypto-shredding) anonymizes history at once. Where rows must physically go, batch requests and run targeted row-level deletes on affected partitions, then compact and expire snapshots so old files are removed, and log completion for audit."
+  }
+ ],
+ "sd-design-cdc": [
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "Design CDC from 40 Postgres shards into a lakehouse with 15-minute freshness.",
+   "a": "Debezium per shard on Kafka Connect (pgoutput, one slot each), topics keyed by primary key, Avro + registry. Land every event append-only in bronze; MERGE into silver every 5–10 minutes taking the latest event per key and applying only newer LSNs; deletes become deletes. Monitor connector health, slot lag, consumer lag and silver freshness; backfill new tables with incremental snapshots; reconcile counts daily."
+  }
+ ],
+ "sd-design-lakehouse": [
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Bronze, silver, gold: what goes in each and what guarantees does each give?",
+   "a": "Bronze: raw, append-only, as received (events, CDC envelopes), partitioned by ingest date; guarantee: nothing lost, replayable. Silver: cleaned, typed, deduplicated, CDC merged to current state, conformed keys; guarantee: one correct row per entity/event. Gold: business-level facts, dimensions and metrics for consumers; guarantee: tested, documented, contract-backed. Rebuild silver from bronze and gold from silver when logic changes."
+  }
  ]
 }

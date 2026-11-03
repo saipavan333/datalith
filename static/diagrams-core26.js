@@ -193,7 +193,7 @@
   /* ---------- 7. Data platform at real scale ---------- */
   D["platform-at-scale"] = (() => {
     let b = t(320,22,"A batch + streaming data platform for a 30M-user marketplace",{bold:true,size:13});
-    const src=[["40 Postgres DBs","CDC, ~2 TB changes/day"],["Clickstream","~800 GB/day, 60k ev/s peak"],["SaaS APIs","Stripe, Salesforce, hourly"]];
+    const src=[["40 Postgres DBs","CDC, ~240 GB/day"],["Clickstream","~840 GB/day, 280k ev/s pk"],["SaaS APIs","Stripe, Salesforce, hourly"]];
     src.forEach((s,i)=>{ const y=42+i*58; b += box(14,y,128,46,{fill:C.box,stroke:C.boxS,r:6})+t(78,y+19,s[0],{size:9.5,bold:true})+t(78,y+35,s[1],{size:7.5,fill:C.dim}); });
     b += box(168,42,104,104,{fill:C.teal,stroke:C.tealS,r:8})+t(220,74,"Kafka",{size:11,fill:C.tealT,bold:true})+t(220,92,"Debezium +",{size:8,fill:C.dim})+t(220,104,"event collectors",{size:8,fill:C.dim})+t(220,122,"7-day retention",{size:8,fill:C.dim});
     b += box(168,158,104,46,{fill:C.box,stroke:C.boxS,r:8})+t(220,178,"EL tool",{size:10,bold:true})+t(220,193,"batch pulls",{size:8,fill:C.dim});
