@@ -15848,40 +15848,47 @@
         "Adding optional fields with defaults is safe; removing/renaming required fields or changing types breaks compatibility."
        ],
        "diagram": "schema-evolution",
-       "diagram_caption": "A central registry validates each new schema version's compatibility so producers and consumers evolve independently.",
+       "diagram_caption": "Compatibility modes: who can read whom, what changes are safe, and which side upgrades first.",
        "quiz": [
+        [
+         ["q", "What does a schema registry do?"],
+         ["options", ["Stores the events", "Centrally stores event schemas and enforces compatibility; messages carry a schema id consumers resolve", "Replaces Kafka", "Encrypts data"]],
+         ["answer", 1],
+         ["explain", "The registry holds schemas (so messages carry only a small id) and validates that new schema versions are compatible, preventing producer changes from breaking consumers."]
+        ],
+        [
+         ["q", "Adding a new OPTIONAL field with a default to an event schema is…"],
+         ["options", ["A breaking change", "A safe, compatible change — old/new readers handle it (backward/forward compatible)", "Impossible", "Forward-incompatible"]],
+         ["answer", 1],
+         ["explain", "Optional fields with defaults let new consumers read old data and old consumers ignore the new field — a safe evolution the registry accepts."]
+        ],
+        [
+         ["q", "What does 'backward compatible' mean for schemas?"],
+         ["options", ["Old consumers read new data", "New consumers can read old data (so you can upgrade consumers first)", "Nothing changes", "Producers break"]],
+         ["answer", 1],
+         ["explain", "Backward compatibility means a new schema can read data written with the old schema, so consumers can be upgraded before producers without breaking."]
+        ],
         {
-         "q": "What does a schema registry do?",
+         "q": "Compatibility is BACKWARD (the default). A producer adds a required field `coupon` with no default. What happens at registration?",
          "options": [
-          "Stores the events",
-          "Centrally stores event schemas and enforces compatibility; messages carry a schema id consumers resolve",
-          "Replaces Kafka",
-          "Encrypts data"
+          "Accepted: adding fields is always safe",
+          "Rejected: a reader with the new schema can't fill `coupon` for old records",
+          "Accepted, and old records get null",
+          "Rejected only under FORWARD"
          ],
          "answer": 1,
-         "explain": "The registry holds schemas (so messages carry only a small id) and validates that new schema versions are compatible, preventing producer changes from breaking consumers."
+         "explain": "BACKWARD means the new schema must read old data; with no default there is no value for old rows, so resolution fails (the lab shows SchemaResolutionError). Adding is safe only with a default. Avro doesn't silently invent nulls. Under FORWARD this particular change would actually pass."
         },
         {
-         "q": "Adding a new OPTIONAL field with a default to an event schema is…",
+         "q": "Your topic keeps 30 days and consumers replay from the start after bugs. Which mode fits best?",
          "options": [
-          "A breaking change",
-          "A safe, compatible change — old/new readers handle it (backward/forward compatible)",
-          "Impossible",
-          "Forward-incompatible"
+          "NONE",
+          "FORWARD",
+          "BACKWARD_TRANSITIVE",
+          "BACKWARD only against the last version"
          ],
-         "answer": 1,
-         "explain": "Optional fields with defaults let new consumers read old data and old consumers ignore the new field — a safe evolution the registry accepts."
-        },
-        {
-         "q": "What does 'backward compatible' mean for schemas?",
-         "options": [
-          "Old consumers read new data",
-          "New consumers can read old data (so you can upgrade consumers first)",
-          "Nothing changes",
-          "Producers break"
-         ],
-         "answer": 1,
-         "explain": "Backward compatibility means a new schema can read data written with the old schema, so consumers can be upgraded before producers without breaking."
+         "answer": 2,
+         "explain": "Replays mean the current reader may meet any schema version still in retention, so check against all earlier versions. Plain BACKWARD only checks the previous version. FORWARD protects old readers, not replays. NONE has no gate."
         }
        ],
        "exercises": [
