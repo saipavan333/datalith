@@ -8,6 +8,8 @@ A partition is a **numbered notebook that you can only write at the end of**. Ea
 
 @@diagram:kafka-partition-log
 
+**Watch it move (100 s, narrated):** [How a Kafka partition log works](media/kafka-partition-log.mp4): appends, replication, the high watermark, consumer offsets and segment retention.
+
 ## 1. Topics, partitions and segments
 
 A **topic** is split into **partitions**. Each partition is an ordered, append-only log stored on a broker's disk as a series of **segment files** (default `log.segment.bytes` = 1 GiB). Each segment has an index that maps offsets to file positions, so "start reading at offset 8,412,005" is a cheap seek, not a scan.
