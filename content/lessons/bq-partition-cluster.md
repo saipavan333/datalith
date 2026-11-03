@@ -79,3 +79,61 @@ An `events` table is **partitioned by `event_date`** and **clustered by `user_id
 5. When do you partition vs cluster a given column (e.g. date vs user_id)?
 6. What does `require_partition_filter` do and why enable it?
 7. Design partitioning/clustering for an events table filtered by date, user_id, and event_type.
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+A school's lost-property room. Partitioning is one shelf per day: asked for last Tuesday's jumper, you only search Tuesday's shelf. Clustering is sorting each shelf by colour, so inside Tuesday you go straight to the blue section. Column selection is opening only the bag pocket you need.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/bq_bytes_billed.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+scale factor to a 30 x 800 GiB table: x122,292
+
+query                                                 local MB  at scale GiB  on-demand cost
+1  SELECT * , no filter (whole table)                    201.0        24,000         $146.48   (100.0% of SELECT *)
+2  4 columns, no partition filter                         33.2         3,963          $24.19   ( 16.5% of SELECT *)
+3  4 columns, partition filter: last 7 days                7.7           924           $5.64   (  3.9% of SELECT *)
+4  + clustered on country, WHERE country = 'IN'            1.3           155           $0.95   (  0.6% of SELECT *)
+
+A tiny lookup query on this table still bills max(10 MB, bytes read): 10 MB.
+```
+
+What to look for: the same question costs $146 as `SELECT *` and $0.95 with column selection + a 7-day partition filter + a cluster key filter on a 30 x 800 GiB table. Bytes are counted with BigQuery's documented logical sizes (8 bytes per INT64/TIMESTAMP/FLOAT64, 2 + UTF-8 length per STRING), and the clustering row assumes ideal clustering.
+
+**Needs your account (free trial/tier):** in the BigQuery sandbox (free, no card), create a date-partitioned, clustered copy of a public table, e.g. `CREATE TABLE mydataset.trips PARTITION BY DATE(pickup_datetime) CLUSTER BY payment_type AS SELECT * FROM bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`, then compare the bytes estimate the editor shows (or `bq query --dry_run`) for `SELECT *` vs four columns with a one-week filter. Sandbox tables expire after 60 days.
+
+## Exercises with solutions
+
+**Warm-up.** Which of the lab's four queries would `require_partition_filter = TRUE` reject?
+
+*Solution:* Queries 1 and 2: they have no filter on `event_date`, so BigQuery refuses to run them instead of scanning all partitions.
+
+**Transfer.** Analysts filter by `user_id` (50,000 values) and `event_date`. Partition or cluster on `user_id`?
+
+*Solution:* Cluster. Partition by `event_date` (daily partitions, well under the 10,000-partition limit for a few decades of days) and cluster by `user_id`; partitioning by user_id would need integer-range partitions and still create thousands of tiny partitions.
+
+**Stretch.** A dashboard runs query 3 every 5 minutes. What else cuts its cost?
+
+*Solution:* A materialized view (or scheduled aggregate table) on the 4 columns by day, so each refresh reads kilobytes; cached results already make identical reruns free for 24 hours unless the table changed.
+
+## Interview questions
+
+- **(Junior) Why is SELECT * expensive in BigQuery?** On-demand bills the logical bytes of every column read; columnar storage means unread columns cost nothing, so SELECT * pays for all of them.
+- **(Mid) Partitioning vs clustering?** Partitioning splits the table into partitions by date/ingestion time/integer range and prunes whole partitions with an exact estimate before running; clustering sorts storage blocks by up to four columns and prunes blocks at run time, so the dry-run estimate is an upper bound.
+- **(Senior) A 200 TB table's bill tripled after a schema change. How do you investigate?** INFORMATION_SCHEMA.JOBS by query hash and user for bytes billed, check whether new queries lost the partition filter or added wide STRING/JSON columns, check clustering on new filter columns, then enforce require_partition_filter and maximum_bytes_billed on scheduled jobs.
+
+## Sources (checked 2026-11-03)
+
+- BigQuery pricing: https://cloud.google.com/bigquery/pricing
+- Data type sizes (how bytes are counted): https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_sizes
+- Editions: https://cloud.google.com/bigquery/docs/editions-intro
+- Partitioned tables: https://cloud.google.com/bigquery/docs/partitioned-tables
+- Clustered tables: https://cloud.google.com/bigquery/docs/clustered-tables

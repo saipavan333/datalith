@@ -1,25 +1,25 @@
 1) Month-to-date cost by provider
-   snowflake   $   11,594
-   databricks  $    5,839
-   gcp         $    1,896
+   snowflake   $   11,722
+   databricks  $    5,569
+   gcp         $    1,853
 
 2) Showback by team (untagged spend is a finding on its own)
-   data-science  $    6,708   34.7%
-   marketing     $    6,099   31.6%
-   finance       $    3,650   18.9%
-   <untagged>    $    2,871   14.9%
+   data-science  $    6,394   33.4%
+   marketing     $    6,147   32.1%
+   finance       $    3,829   20.0%
+   <untagged>    $    2,773   14.5%
 
 3) Top waste candidates
-   all-purpose (interactive) clusters running scheduled work: $3,468; the same DBUs on jobs
-   compute at the ASSUMED rate would be $1,300 -> move scheduled notebooks to jobs/serverless
-   ADHOC_WH has no owner tag: $2,871/month nobody is accountable for
+   all-purpose (interactive) clusters running scheduled work: $3,136; the same DBUs on jobs
+   compute at the ASSUMED rate would be $1,176 -> move scheduled notebooks to jobs/serverless
+   ADHOC_WH has no owner tag: $2,773/month nobody is accountable for
 
 4) Unit economics: cost per 1,000 orders processed (the number your CFO understands)
-   $19,328 / 74,400,000 orders = $0.260 per 1,000 orders
+   $19,143 / 74,400,000 orders = $0.257 per 1,000 orders
 
 5) Anomaly: days where a team spent > 1.5x its own 7-day trailing average
    1 anomaly day(s)
-   2026-10-21 data-science $966 vs avg $184
+   2026-10-21 data-science $972 vs avg $190
 
 What to look for: tag coverage first, then the biggest single lever (here: interactive clusters),
 then a unit cost you can trend month over month.

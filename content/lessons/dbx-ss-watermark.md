@@ -82,3 +82,57 @@ A team counts events in **5-minute event-time windows**. Mobile clients buffer, 
 5. Explain the latency/completeness trade-off and how you'd pick the delay.
 6. When do you use append vs update output mode with windows?
 7. A teammate aggregates by `current_timestamp()` — what breaks and how do you fix it?
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+Collecting homework by the hour on the school bus. You close the 8-9 am pile when you're fairly sure nobody's still running for the bus (the watermark). A kid who arrives a bit late can still add to the pile if the teacher allows a grace period (allowed lateness); one who shows up at lunch is too late.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/event_time_windows.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+Spark-style (late data after the watermark is dropped):
+  watermark  65 passed  60 -> emit window [0,60) = 19
+  t= 40 LATE beyond the limit -> dropped (amount 9)
+  watermark 155 passed 120 -> emit window [60,120) = 10
+  t= 70 LATE beyond the limit -> dropped (amount 6)
+  watermark 270 passed 180 -> emit window [120,180) = 8
+  watermark 270 passed 240 -> emit window [180,240) = 2
+  t= 10 LATE beyond the limit -> dropped (amount 99)
+```
+
+What to look for: with `withWatermark('event_time', '30 seconds')`, Spark emits a window once the watermark passes its end (append mode) and drops events older than the watermark (t=40, t=70, t=10). The Beam half of the lab shows the allowed-lateness alternative.
+
+**Needs your account (free trial/tier):** in Databricks Free Edition, use the `rate` source or a Delta table as a stream: `df.withWatermark('event_time','30 seconds').groupBy(window('event_time','1 minute')).agg(sum('amount'))` with `outputMode('append')`, insert late rows into the source table, and check they're dropped.
+
+## Exercises with solutions
+
+**Warm-up.** Why does append output mode need a watermark for aggregations?
+
+*Solution:* Append emits each window once, final; Spark can only know a window is final when the watermark passes its end.
+
+**Transfer.** Join two streams (orders, payments) within 30 minutes. What do you need?
+
+*Solution:* Watermarks on both sides and a time-range join condition, so Spark can expire state; without them state grows forever.
+
+**Stretch.** State is growing and the job slows down. Diagnose.
+
+*Solution:* Check the streaming query progress for state rows and watermark; missing or too-generous watermarks, high-cardinality keys in dropDuplicates without a watermark, or joins without time bounds are the usual causes; consider the RocksDB state store.
+
+## Interview questions
+
+- **(Junior) What does withWatermark do?** Defines how late data may be (max event time seen minus a delay) so Spark can finalise windows and drop old state.
+- **(Mid) What happens to data older than the watermark?** It may be dropped from stateful aggregations and joins; Spark guarantees to keep data within the threshold, not to drop everything beyond it immediately.
+- **(Senior) Watermark trade-off?** A larger delay tolerates later data but delays results and holds more state; a smaller one is faster and cheaper but drops more late events.
+
+## Sources (checked 2026-11-03)
+
+- Structured Streaming guide (watermarking): https://spark.apache.org/docs/latest/streaming/apis-on-dataframes-and-datasets.html
+- Databricks stateful streaming: https://docs.databricks.com/aws/en/structured-streaming/stateful-streaming

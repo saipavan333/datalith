@@ -1,6 +1,6 @@
 # Datalith — Full Syllabus
 
-_28 tracks · 148 modules · 546 lessons · 472 deep-dive tutorials · 1601 practice problems · 1389 quiz questions · 506 lessons with diagrams_
+_28 tracks · 152 modules · 558 lessons · 484 deep-dive tutorials · 1625 practice problems · 1425 quiz questions · 518 lessons with diagrams_
 
 
 Every lesson has a plain-English concept, a worked example, key points, a quiz, and practice problems with full solutions (SQL lessons include a live in-browser SQL playground). Lessons marked 🖼 include a diagram; lessons marked 📖 have a deep-dive tutorial under `content/lessons/`.
@@ -505,7 +505,7 @@ _13 lessons — Reliable, database-like tables on cheap storage — Delta Lake a
 
 
 ## 14. ☁️ Cloud Data Engineering
-_16 lessons — Where modern data lives: object storage, cloud warehouses, and serverless pipelines._
+_20 lessons — Where modern data lives: object storage, cloud warehouses, and serverless pipelines._
 
 ### Cloud foundations
 
@@ -538,9 +538,16 @@ _16 lessons — Where modern data lives: object storage, cloud warehouses, and s
 
 - **Cloud Data Engineering interview prep & cheat sheet** (13 min · 1 practice) 📖 — Consolidated rapid-review for the Cloud track: high-frequency answers and a 10-question mock interview.
 
+### Cross-platform engineering: GCP · Databricks · Snowflake
+
+- **Terraform for GCP, Databricks & Snowflake** (14 min · 2 practice) 🖼 📖 — Infrastructure as code for data platforms: desired config + state + refresh -> plan (create, update, replace, destroy) -> apply, with the google, databricks and snowflakedb/snowflake providers.
+- **FinOps across BigQuery, Databricks & Snowflake** (14 min · 2 practice) 🖼 📖 — Make data-platform cost visible, owned and lower: the three billing models, the system tables that hold the truth, showback, unit cost, anomaly alerts and the top levers per platform.
+- **Lineage with OpenLineage (cross-platform)** (13 min · 2 practice) 🖼 📖 — OpenLineage run events (START/COMPLETE with inputs and outputs) let Airflow, Spark, dbt and your own jobs feed one lineage graph; how it meets Google's Data Lineage API, Unity Catalog and Snowflake lineage.
+- **System design: choosing BigQuery, Databricks or Snowflake** (15 min · 2 practice) 🖼 📖 — A defensible platform decision: what really differs between the three, weighted criteria agreed up front, a sensitivity check, a bake-off on your own queries, and a written decision record.
+
 
 ## 15. 🏔️ Snowflake — complete course
-_31 lessons — Become great at Snowflake for data engineering: architecture, warehouses & cost, loading & continuous ingestion, performance, security & governance, and the modern stack (Snowpark, Iceberg, Dynamic Tables, Cortex)._
+_32 lessons — Become great at Snowflake for data engineering: architecture, warehouses & cost, loading & continuous ingestion, performance, security & governance, and the modern stack (Snowpark, Iceberg, Dynamic Tables, Cortex)._
 
 ### Snowflake for Data Engineering
 
@@ -591,9 +598,13 @@ _31 lessons — Become great at Snowflake for data engineering: architecture, wa
 - **Hybrid Tables (Unistore) — OLTP + analytics** (11 min · 2 practice) 🖼 📖 — Hybrid Tables bring row-store, primary-key, indexed transactional workloads to Snowflake — so operational point lookups/upserts run on the same platform as analytics. This lesson covers what they are, how they differ from standard tables, and when to use them.
 - **Apps & data products — Streamlit, Native Apps, Clean Rooms** (11 min · 2 practice) 🖼 📖 — Snowflake isn't only a warehouse — you can build and distribute on it. This lesson covers Streamlit in Snowflake (interactive apps on governed data), Native Apps (package and monetize data+logic), and Data Clean Rooms (privacy-preserving collaboration).
 
+### Snowflake cost & credits in depth
+
+- **Snowflake credits in depth: warehouses, Gen2, serverless & controls** (13 min · 2 practice) 🖼 📖 — Every Snowflake meter from the Oct-2026 consumption table: warehouse credits (60 s minimum, Gen2 1.35x), serverless multipliers, Snowpipe per GB, cloud services 10% rule, AI credits, storage, price per credit, and which control (resource monitors vs budgets) covers each.
+
 
 ## 16. 🧱 Databricks — complete course
-_37 lessons — Become great at Databricks for data engineering: the lakehouse & Delta Lake, the platform & Photon, Unity Catalog governance, Lakeflow pipelines, performance & cost, and end-to-end medallion architecture._
+_40 lessons — Become great at Databricks for data engineering: the lakehouse & Delta Lake, the platform & Photon, Unity Catalog governance, Lakeflow pipelines, performance & cost, and end-to-end medallion architecture._
 
 ### Databricks for Data Engineering
 
@@ -634,7 +645,7 @@ _37 lessons — Become great at Databricks for data engineering: the lakehouse &
 - **Event time, windows & watermarks** (13 min · 2 practice) 🖼 📖 — Aggregate by when events happened (event time), not when they arrived; watermarks tell the engine how long to wait for late data before finalizing windows and dropping their state.
 - **Stateful streaming: joins, dedup, aggregations** (13 min · 2 practice) 🖼 📖 — Operations that remember across micro-batches — aggregations, stream-stream joins, deduplication, and custom state — live in a checkpointed state store, bounded by watermarks.
 - **Auto Loader — incremental file ingestion** (12 min · 2 practice) 🖼 📖 — Auto Loader (cloudFiles) incrementally ingests new files from cloud storage exactly once, scales to millions of files, and infers and evolves schema — the standard way to load files into the lakehouse.
-- **Lakeflow Declarative Pipelines (DLT)** (12 min · 2 practice) 🖼 📖 — Declare your Bronze/Silver/Gold tables and data-quality expectations; the platform infers the dependency graph and handles orchestration, incremental processing, retries, autoscaling, and monitoring.
+- **Lakeflow Spark Declarative Pipelines (formerly DLT)** (12 min · 2 practice) 🖼 📖 — Declare your Bronze/Silver/Gold tables and data-quality expectations; the platform infers the dependency graph and handles orchestration, incremental processing, retries, autoscaling, and monitoring.
 
 ### Unity Catalog & governance in depth
 
@@ -648,10 +659,16 @@ _37 lessons — Become great at Databricks for data engineering: the lakehouse &
 ### DataOps & platform in depth
 
 - **Clusters, Photon & serverless compute** (12 min · 2 practice) 🖼 📖 — A Databricks cluster is one driver coordinating many workers; Photon accelerates SQL/DataFrame work, autoscaling and auto-termination control cost, and the cluster type (job/all-purpose/serverless) is a key cost lever.
-- **Workflows: orchestrating jobs** (11 min · 2 practice) 🖼 📖 — Databricks Workflows (Jobs) orchestrate multi-task DAGs with dependencies, retries, scheduling/triggers, notifications, and per-task compute — native orchestration without a separate scheduler.
+- **Lakeflow Jobs (formerly Workflows): orchestrating jobs** (11 min · 2 practice) 🖼 📖 — Databricks Workflows (Jobs) orchestrate multi-task DAGs with dependencies, retries, scheduling/triggers, notifications, and per-task compute — native orchestration without a separate scheduler.
 - **Git, Asset Bundles & CI/CD** (12 min · 2 practice) 🖼 📖 — Version notebooks and jobs in Git via Repos, package code + jobs + config as a Databricks Asset Bundle, and deploy the same definition to dev/staging/prod through CI/CD — reproducible, reviewed releases.
 - **Cost optimization** (11 min · 2 practice) 🖼 📖 — Databricks cost = DBUs × rate × time; the big levers are killing idle clusters (auto-terminate), using ephemeral job clusters and spot workers, enabling Photon, right-sizing, and attributing spend with tags.
 - **Performance tuning with the Spark UI** (13 min · 2 practice) 🖼 📖 — Most Spark slowness is skew, spill, shuffle, or small files; diagnose the real bottleneck in the Spark UI, then apply the matching fix — AQE, broadcast joins, repartition/salting, OPTIMIZE, caching, or Photon.
+
+### Databricks 2026: layout, CDC & AI
+
+- **Liquid clustering & predictive optimization** (13 min · 2 practice) 🖼 📖 — The recommended Delta layout for new tables: CLUSTER BY up to four keys, incremental OPTIMIZE, change keys any time, CLUSTER BY AUTO with predictive optimization on UC managed tables; why it replaces partitioning + Z-ORDER.
+- **AUTO CDC (formerly APPLY CHANGES) & Lakeflow Connect** (13 min · 2 practice) 🖼 📖 — Turn change feeds into correct SCD type 1 or 2 tables with AUTO CDC INTO (KEYS, SEQUENCE BY, APPLY AS DELETE WHEN, STORED AS SCD TYPE 2), AUTO CDC FROM SNAPSHOT, and managed ingestion with Lakeflow Connect.
+- **AI on Databricks: AI Functions, AI Search, Model Serving, MLflow 3** (13 min · 2 practice) 🖼 📖 — A data engineer's AI toolkit on Databricks: ai_query and task AI Functions in SQL, AI Search (formerly Vector Search) indexes synced from Delta, vector_search() in SQL, Model Serving, MLflow 3 evaluation, and how inference is billed.
 
 
 ## 17. ☁️ AWS for Data Engineering — complete course
@@ -731,7 +748,7 @@ _45 lessons — Become great at data engineering on AWS: the serverless-lakehous
 
 
 ## 18. 🟦 GCP for Data Engineering — complete course
-_31 lessons — Become great at data engineering on Google Cloud: the BigQuery-centered serverless lakehouse — GCS, BigQuery (deep), Dataflow, Dataproc, Pub/Sub, Composer, Dataform, Datastream/Bigtable and Dataplex — with real syntax and when to use what._
+_35 lessons — Become great at data engineering on Google Cloud: the BigQuery-centered serverless lakehouse — GCS, BigQuery (deep), Dataflow, Dataproc, Pub/Sub, Composer, Dataform, Datastream/Bigtable and Dataplex — with real syntax and when to use what._
 
 ### Core GCP data services
 
@@ -743,19 +760,19 @@ _31 lessons — Become great at data engineering on Google Cloud: the BigQuery-c
 
 ### Processing, streaming, orchestration & governance
 
-- **Dataproc — managed Spark/Hadoop** (12 min · 2 practice) 🖼 📖 — Dataproc runs Spark, Hadoop, Hive and Presto on managed clusters that read GCS. Learn the node roles, ephemeral clusters with the GCS connector, preemptible workers, Dataproc Serverless, and when to use it over Dataflow or BigQuery.
+- **Dataproc (now Managed Service for Apache Spark)** (12 min · 2 practice) 🖼 📖 — Dataproc runs Spark, Hadoop, Hive and Presto on managed clusters that read GCS. Learn the node roles, ephemeral clusters with the GCS connector, preemptible workers, Dataproc Serverless, and when to use it over Dataflow or BigQuery.
 - **Pub/Sub — global messaging & streaming** (12 min · 2 practice) 🖼 📖 — Pub/Sub is GCP's serverless event backbone. Learn topics and subscriptions, push vs pull, fan-out, ordering keys, at-least-once vs exactly-once, dead-letter topics, and how it feeds Dataflow.
-- **Cloud Composer — managed Airflow** (12 min · 2 practice) 🖼 📖 — Cloud Composer runs Apache Airflow for you. Learn DAGs and operators, the GCP-native operators (BigQuery, Dataflow, Dataproc), scheduling and backfills, sensors and retries, and when to use Composer vs Workflows vs Dataform's scheduler.
+- **Cloud Composer (now Managed Service for Apache Airflow)** (12 min · 2 practice) 🖼 📖 — Cloud Composer runs Apache Airflow for you. Learn DAGs and operators, the GCP-native operators (BigQuery, Dataflow, Dataproc), scheduling and backfills, sensors and retries, and when to use Composer vs Workflows vs Dataform's scheduler.
 - **Dataform — ELT in BigQuery (dbt-style)** (13 min · 2 practice) 🖼 📖 — Dataform brings software engineering to BigQuery SQL: SQLX models, ref()-based dependency graphs, incremental tables, assertions as tests, tags, and Git-based version control — all native to BigQuery.
 - **Datastream & Bigtable — CDC and NoSQL** (12 min · 2 practice) 🖼 📖 — Two operational-data services: Datastream (serverless CDC from relational databases into BigQuery/GCS) and Bigtable (wide-column NoSQL for massive low-latency workloads). Learn what each is for and how they feed analytics.
-- **Dataplex — govern the lakehouse** (12 min · 2 practice) 🖼 📖 — Dataplex is the governance plane over GCS + BigQuery: organize data into lakes/zones, auto-catalog and profile it, track lineage, run data-quality scans, and enforce policy tags and row-level security — the basis of a governed data mesh.
+- **Dataplex, now Knowledge Catalog: govern the lakehouse** (12 min · 2 practice) 🖼 📖 — Dataplex is the governance plane over GCS + BigQuery: organize data into lakes/zones, auto-catalog and profile it, track lineage, run data-quality scans, and enforce policy tags and row-level security — the basis of a governed data mesh.
 - **Capstone — a reference GCP data platform** (14 min · 2 practice) 🖼 📖 — Assemble the whole GCP stack: ingest (Datastream/DTS/Pub/Sub+Dataflow), a GCS+BigQuery lakehouse, transform with Dataform/Dataflow/Dataproc, serve via BigQuery+Looker, govern with Dataplex, orchestrate with Composer — plus IaC, cost and security.
 
 ### BigQuery in depth
 
 - **Architecture: Dremel, slots & separated storage/compute** (12 min · 2 practice) 🖼 📖 — BigQuery is fully serverless: columnar storage (Colossus/Capacitor) is decoupled from massively-parallel compute (Dremel slots) connected by the Jupiter network, so storage and compute scale independently with no clusters to manage.
 - **Partitioning & clustering** (12 min · 2 practice) 🖼 📖 — Partitioning prunes whole partitions (by date/ingestion-time/integer range) and clustering sorts rows within partitions on up to four columns so the engine skips blocks — together the top levers to cut bytes scanned (cost and latency).
-- **Pricing & cost control** (11 min · 2 practice) 🖼 📖 — BigQuery bills compute two ways — on-demand (per TB scanned) or capacity (reserved/autoscaling slots via editions) — plus storage; control cost with partitioning/clustering, column selection, materialized views, BI Engine, and maximum-bytes-billed guardrails.
+- **Pricing & cost control** (11 min · 2 practice) 🖼 📖 — BigQuery bills compute two ways — on-demand (per TiB scanned) or capacity (reserved/autoscaling slots via editions) — plus storage; control cost with partitioning/clustering, column selection, materialized views, BI Engine, and maximum-bytes-billed guardrails.
 - **Loading & streaming ingestion** (11 min · 2 practice) 🖼 📖 — Batch-load from GCS (Parquet/Avro/CSV/JSON) with free load jobs, stream in real time via the Storage Write API, or query data in place with external/BigLake tables — choosing by latency, cost, and whether data should live in BigQuery.
 - **Query optimization** (12 min · 2 practice) 🖼 📖 — Because BigQuery bills bytes scanned, optimization means scanning less (select needed columns, filter on partition/cluster keys, avoid SELECT *) and shuffling smart for big joins (denormalize/nested data, broadcast small joins, approximate aggregations) — guided by the query execution plan.
 - **Materialized views, BI Engine, BQML & BigLake** (11 min · 2 practice) 🖼 📖 — BigQuery is a platform, not just a query engine: materialized views precompute aggregations, BI Engine accelerates dashboards in memory, BigQuery ML trains and predicts in SQL, and BigLake governs and queries open data across clouds.
@@ -780,10 +797,17 @@ _31 lessons — Become great at data engineering on Google Cloud: the BigQuery-c
 
 ### Dataproc, orchestration & governance in depth
 
-- **Dataproc: managed Spark/Hadoop** (11 min · 2 practice) 🖼 📖 — Dataproc runs managed Spark/Hadoop on GCP for lift-and-shift of existing OSS code, using ephemeral clusters (spin up, run, delete) with preemptible VMs and GCS storage for low cost — or Dataproc Serverless; choose it over Dataflow when you have existing Spark/skills.
-- **Cloud Composer: managed Airflow** (10 min · 2 practice) 🖼 📖 — Cloud Composer is managed Apache Airflow on GCP — AWS-of-GCP's MWAA equivalent — for complex, cross-system orchestration via Python DAGs; Cloud Workflows is the lighter serverless option for simple service orchestration.
+- **Managed Service for Apache Spark (Dataproc) in depth** (11 min · 2 practice) 🖼 📖 — Dataproc runs managed Spark/Hadoop on GCP for lift-and-shift of existing OSS code, using ephemeral clusters (spin up, run, delete) with preemptible VMs and GCS storage for low cost — or Dataproc Serverless; choose it over Dataflow when you have existing Spark/skills.
+- **Managed Airflow (Composer) in depth** (10 min · 2 practice) 🖼 📖 — Cloud Composer is managed Apache Airflow on GCP — AWS-of-GCP's MWAA equivalent — for complex, cross-system orchestration via Python DAGs; Cloud Workflows is the lighter serverless option for simple service orchestration.
 - **Dataform: SQL ELT in BigQuery** (10 min · 2 practice) 🖼 📖 — Dataform brings dbt-style software engineering to BigQuery SQL: define SQLX models with ref()-based dependencies, incremental builds, assertions (tests), and Git/CI-CD, and Dataform compiles a dependency DAG and runs the SQL in BigQuery — serverless ELT, no data movement.
-- **Dataplex: lakehouse governance** (10 min · 2 practice) 🖼 📖 — Dataplex unifies governance across GCS and BigQuery: organize data into logical lakes/zones, auto-catalog and discover metadata with lineage, enforce data-quality rules, and centralize security/policy — governing the whole lakehouse from one control plane.
+- **Knowledge Catalog (formerly Dataplex): lakehouse governance** (10 min · 2 practice) 🖼 📖 — Dataplex unifies governance across GCS and BigQuery: organize data into logical lakes/zones, auto-catalog and discover metadata with lineage, enforce data-quality rules, and centralize security/policy — governing the whole lakehouse from one control plane.
+
+### GCP platform engineering (2026): security, CDC, Spark & AI
+
+- **IAM & data security on GCP (BigQuery end to end)** (14 min · 2 practice) 🖼 📖 — The four gates a BigQuery query passes: IAM with inheritance, column policy tags (Fine-Grained Reader), row access policies, and CMEK + VPC Service Controls; service accounts without keys.
+- **Datastream: CDC into BigQuery** (13 min · 2 practice) 🖼 📖 — Serverless change data capture from MySQL, PostgreSQL, Oracle, SQL Server and more into BigQuery: backfill + CDC, merge vs append-only modes, datastream_metadata, max_staleness, pricing and the replication-slot trap.
+- **Serverless Spark: Managed Service for Apache Spark** (12 min · 2 practice) 🖼 📖 — Dataproc and Dataproc Serverless are one product since April 2026: cluster vs serverless batches, DCU billing (0.6 per vCPU, 0.1/0.2 per GiB), Standard vs Premium tiers, and when a cluster still wins.
+- **BigQuery ML, embeddings & vector search** (14 min · 2 practice) 🖼 📖 — AI in SQL on BigQuery: CREATE MODEL/ML.PREDICT, AI.GENERATE_EMBEDDING and AI.EMBED, VECTOR_SEARCH with IVF/TreeAH indexes, AI.GENERATE for RAG, edition limits and cost habits.
 
 
 ## 19. 🛠️ DataOps & Infrastructure

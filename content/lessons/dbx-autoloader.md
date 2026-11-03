@@ -78,3 +78,61 @@ A vendor drops **~5 million small JSON files/day** into S3. The team configures 
 5. Why pair Auto Loader with `trigger(availableNow=True)` and a schedule?
 6. When might you use `COPY INTO` instead?
 7. Configure robust, cheap ingestion for millions of files/day and justify each choice.
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+A school post room. Every morning new letters arrive in the tray. The clerk keeps a ticked list of every letter already sorted, so even if she goes home sick and comes back, she never sorts a letter twice. If a letter arrives in a new kind of envelope, she stops, adds the new type to her sorting guide, and carries on.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/autoloader_sim.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+batch 1 processed: ['orders_0001.json', 'orders_0002.json']
+batch 2 (nothing new) processed: []
+batch 3 stopped: new columns ['coupon'] in orders_0003.json; schema updated, restart the stream
+schema now: ['order_id', 'amount', 'coupon']
+batch 3 restarted processed: ['orders_0003.json']
+
+bronze_orders:
+   (1, 10.5, None, 'orders_0001.json', None)
+   (2, 7.0, None, 'orders_0001.json', None)
+   (3, None, '{"amount": "12,40"}', 'orders_0002.json', None)
+   (4, 3.2, None, 'orders_0003.json', 'DIWALI10')
+checkpoint: [('orders_0001.json', 1), ('orders_0002.json', 1), ('orders_0003.json', 3)]
+```
+
+What to look for: batch 2 finds nothing new (the checkpoint remembers files); the bad `amount` lands in `_rescued_data` instead of being lost; a new column stops the stream once (schemaEvolutionMode addNewColumns) and is picked up after restart.
+
+**Needs your account (free trial/tier):** in Databricks Free Edition, upload JSON files to a UC volume and run `spark.readStream.format('cloudFiles').option('cloudFiles.format','json').option('cloudFiles.schemaLocation', '/Volumes/main/default/chk/schema').load('/Volumes/main/default/landing').writeStream.option('checkpointLocation','/Volumes/main/default/chk').trigger(availableNow=True).toTable('bronze_orders')`; add a file with a new column and run it again.
+
+## Exercises with solutions
+
+**Warm-up.** Restart the lab's stream after batch 3. What does it process?
+
+*Solution:* Nothing: all three files are in the checkpoint.
+
+**Transfer.** A source re-uploads a file with the same name but corrected content. Does Auto Loader reprocess it?
+
+*Solution:* Not by default (it tracks files it has seen); `cloudFiles.allowOverwrites` changes that, but corrected data is better delivered as a new file plus a MERGE downstream.
+
+**Stretch.** Millions of files per day land in one bucket. Directory listing or file notification mode?
+
+*Solution:* File notification mode (cloud queue events) avoids listing huge directories; or managed file events where available. Listing works for moderate volumes and needs no extra cloud setup.
+
+## Interview questions
+
+- **(Junior) What is Auto Loader?** Databricks' incremental file ingestion source (cloudFiles) for Structured Streaming that discovers new files, tracks them in a checkpoint for exactly-once processing, and infers and evolves schema.
+- **(Mid) How does it handle schema changes?** It stores the inferred schema at schemaLocation; with addNewColumns it fails the stream on a new column, updates the schema, and resumes on restart; mismatched values go to _rescued_data.
+- **(Senior) Auto Loader vs COPY INTO?** Both are idempotent file loads. COPY INTO is a SQL batch command good for thousands of files; Auto Loader scales to millions with streaming semantics, schema evolution and notification mode.
+
+## Sources (checked 2026-11-03)
+
+- Auto Loader: https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/
+- Schema evolution: https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema

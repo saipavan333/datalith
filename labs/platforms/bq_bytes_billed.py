@@ -22,6 +22,7 @@ TIB = 2 ** 40
 MB = 2 ** 20
 
 con = duckdb.connect()
+con.execute("SET threads TO 1")  # deterministic random() so your numbers match the lesson
 con.execute("SELECT setseed(0.42)")
 con.execute("""
 CREATE TABLE events AS

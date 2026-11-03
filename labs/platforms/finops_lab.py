@@ -15,6 +15,7 @@ Run:  python labs/platforms/finops_lab.py
 import duckdb
 
 con = duckdb.connect()
+con.execute("SET threads TO 1")  # deterministic random() so your numbers match the lesson
 con.execute("SELECT setseed(0.11)")
 # ---- unified usage table (FOCUS-style: provider, service, team tag, quantity, unit, cost) ----
 con.execute("""

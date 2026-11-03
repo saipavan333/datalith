@@ -112,3 +112,61 @@ A dimension `dim_customer` needs **SCD Type 2** (keep history with effective dat
 3. Two independent jobs must each process every change to `raw.orders`. Why can't they share one stream, and what do you do instead?
 4. Set up a task DAG (root + child) on a schedule that only runs when there's data; in what order do you RESUME them?
 5. Give two failure modes (stream staleness, suspended task) and how you'd detect each.
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+A bookmark in a diary. The stream is the bookmark: "I've read up to here". Reading ahead to peek doesn't move it. Only when you copy the new pages into your notebook (the task's MERGE) and close the notebook (commit) do you move the bookmark forward. If you drop the notebook halfway, the bookmark stays where it was.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/snow_streams_tasks.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+1) three new policies land in staging
+   stream shows: [(101, Decimal('1200.00'), 'INSERT'), (102, Decimal('950.00'), 'INSERT'), (103, Decimal('3100.00'), 'INSERT')]
+   a plain SELECT on the stream twice -> still there: 3 rows
+2) task runs -> committed
+   target: [(101, Decimal('1200.00')), (102, Decimal('950.00')), (103, Decimal('3100.00'))]
+   stream now empty: []
+3) policy 102 re-priced twice and 103 cancelled before the next run
+   stream shows only the NET change per key: [(102, Decimal('1010.00'), 'UPDATE'), (103, None, 'DELETE')]
+4) task fails half-way -> rolled back (warehouse lost mid-run)
+   offset did not move, nothing lost: [(102, Decimal('1010.00'), 'UPDATE'), (103, None, 'DELETE')]
+5) task retries -> committed
+   target: [(101, Decimal('1200.00')), (102, Decimal('1010.00'))]
+```
+
+What to look for: SELECTs don't consume the stream; the committed MERGE does. Two updates to 102 show up as one net change. The failed run rolled back both the MERGE and the offset, so the retry applied each change exactly once.
+
+**Needs your account (free trial/tier):** in a trial: `CREATE STREAM s ON TABLE staging_policies;` then a task `CREATE TASK t WAREHOUSE = etl_wh SCHEDULE = '5 MINUTE' WHEN SYSTEM$STREAM_HAS_DATA('s') AS MERGE INTO curated_policies ...` (omit WAREHOUSE for a serverless task), `ALTER TASK t RESUME;`, insert rows and watch `TASK_HISTORY()`.
+
+## Exercises with solutions
+
+**Warm-up.** Why use `WHEN SYSTEM$STREAM_HAS_DATA('s')`?
+
+*Solution:* The task skips runs when there is nothing to process, so a warehouse isn't resumed (and billed a 60-second minimum) every 5 minutes for nothing.
+
+**Transfer.** Two tasks need the same changes. One stream or two?
+
+*Solution:* Two streams on the same table: each stream has its own offset, and the first task's commit would otherwise consume the changes for both.
+
+**Stretch.** Streams + tasks or a Dynamic Table for this pipeline?
+
+*Solution:* Dynamic Table if the target is expressible as a query with a freshness target (minimum 60 s lag) and you want Snowflake to manage incremental refresh; streams + tasks when you need procedural logic, side effects, or MERGE semantics like SCD2 written by hand.
+
+## Interview questions
+
+- **(Junior) What does a stream store?** An offset into the table's version history plus change-tracking metadata, not a copy of the data; it returns net changes since the offset with METADATA$ACTION and METADATA$ISUPDATE.
+- **(Mid) When does the offset advance?** When the stream is consumed in a DML statement that commits; SELECTs and failed transactions don't move it.
+- **(Senior) What happens if a stream isn't consumed for a long time?** It can become stale once the offset falls outside the table's data retention (Snowflake may extend retention up to 14 days to prevent this); a stale stream must be recreated and the gap backfilled.
+
+## Sources (checked 2026-11-03)
+
+- Streams: https://docs.snowflake.com/en/user-guide/streams-intro
+- Tasks: https://docs.snowflake.com/en/user-guide/tasks-intro

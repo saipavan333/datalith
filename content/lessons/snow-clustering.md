@@ -105,3 +105,55 @@ A 6 TB `events` table backs dashboards that filter `(event_date, region)`. The Q
 3. Give three tables you would NOT cluster and the reason for each.
 4. When would you choose Search Optimization over clustering, and why?
 5. Interpret a `SYSTEM$CLUSTERING_INFORMATION` result with high `average_depth` and a long-tailed histogram — what does it tell you to do?
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+Sorting your sticker album by country once costs an afternoon; keeping it sorted as new stickers arrive costs a few minutes a week. Automatic clustering is paying someone to keep it sorted. Worth it only if you look things up by country a lot.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/snow_pruning.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+Query: SELECT SUM(amount) FROM orders WHERE order_date BETWEEN '2026-03-01' AND '2026-03-07'
+
+natural load order           partitions=  98  scanned=  98  pruned=  0.0%  depth@2026-03-04=98
+clustered by order_date      partitions=  98  scanned=   3  pruned= 96.9%  depth@2026-03-04=1
+
+same answer both ways: 7658163.95 == 7658163.95 -> True
+```
+
+What to look for: clustering depth drops from 98 to 1 and scanned partitions from 98 to 3. That's the benefit side; the cost side is Automatic Clustering credits (a serverless feature in the consumption table), so measure both.
+
+**Needs your account (free trial/tier):** in a trial, `ALTER TABLE o CLUSTER BY (o_orderdate);` on the randomly ordered copy, wait, then compare `SYSTEM$CLUSTERING_INFORMATION` and partitions scanned, and read the credits in `SNOWFLAKE.ACCOUNT_USAGE.AUTOMATIC_CLUSTERING_HISTORY`.
+
+## Exercises with solutions
+
+**Warm-up.** A 40 GB table: add a clustering key?
+
+*Solution:* Rarely worth it: small tables have few partitions and scans are cheap; clustering is for multi-TB tables with selective filters.
+
+**Transfer.** Queries filter on `event_date` and sometimes `country`. Key order?
+
+*Solution:* Lower-cardinality, most-used column first: `CLUSTER BY (event_date, country)`; very high-cardinality columns first make clustering expensive and less effective.
+
+**Stretch.** How do you prove clustering paid for itself?
+
+*Solution:* Compare credits of the top queries (bytes/partitions scanned and warehouse time) before and after for two weeks, minus AUTOMATIC_CLUSTERING_HISTORY credits.
+
+## Interview questions
+
+- **(Junior) What does a clustering key do?** Tells Snowflake to keep rows with similar key values in the same micro-partitions (via background reclustering), improving pruning for filters on those columns.
+- **(Mid) What's clustering depth?** The average number of overlapping micro-partitions for values of the key; 1 is ideal, high numbers mean poor pruning.
+- **(Senior) When would you not cluster?** Small tables, tables already naturally clustered by load order, tables with heavy churn where reclustering costs exceed savings, or point lookups better served by Search Optimization.
+
+## Sources (checked 2026-11-03)
+
+- Clustering keys: https://docs.snowflake.com/en/user-guide/tables-clustering-keys
+- Service Consumption Table (serverless feature billing): https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf

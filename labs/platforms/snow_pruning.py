@@ -16,6 +16,7 @@ import duckdb
 
 tmp = tempfile.mkdtemp(prefix="snow_prune_")
 con = duckdb.connect()
+con.execute("SET threads TO 1")  # deterministic random() so your numbers match the lesson
 con.execute("SELECT setseed(0.7)")
 # 2M orders over 365 days, arriving in random order (think: late, out-of-order loads)
 con.execute("""

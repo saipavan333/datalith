@@ -61,3 +61,53 @@ A payments consumer **pulls** from a subscription with **exactly-once** enabled 
 5. What problem do dead-letter topics solve?
 6. How do retention and seek enable replay, and what's the prerequisite?
 7. Design a correct payments consumer (ordering, exactly-once, DLQ, replay).
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+A teacher hands out worksheets and wants each one signed for. If you don't sign within 10 seconds she assumes you didn't get it and hands you another copy. If you were just slow, you now have two copies; a careful student checks the worksheet number and does each number once.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/pubsub_delivery_sim.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+200 messages, true revenue = 39900
+
+naive INSERT (not idempotent)              deliveries=268  rows=268  revenue=53143
+INSERT ... ON CONFLICT (message_id) DO NOTHING deliveries=258  rows=200  revenue=39900
+```
+
+What to look for: slow acks past the 10-second default deadline cause redelivery; the naive sink counts revenue 33% too high, the sink keyed on `message_id` lands exactly 39,900. Redelivery is normal behaviour, not a bug.
+
+**Needs your account (free trial/tier):** in a trial project: `gcloud pubsub topics create orders`, `gcloud pubsub subscriptions create orders-sub --topic=orders --ack-deadline=10`, publish a message, pull it with `gcloud pubsub subscriptions pull orders-sub` without `--auto-ack`, wait 15 seconds, pull again: it comes back. (The local emulator needs gcloud + a JDK, not available here.)
+
+## Exercises with solutions
+
+**Warm-up.** Settings for a payment consumer that sometimes takes 40 seconds?
+
+*Solution:* Raise the ack deadline (10-600 s; or let the client library extend leases), keep an idempotent sink keyed by message or payment id, and add a dead-letter topic with max delivery attempts between 5 and 100.
+
+**Transfer.** Does exactly-once delivery make the naive sink safe?
+
+*Solution:* Only partly: exactly-once delivery (pull subscriptions, within a region) stops redelivery of acked messages, but a crash after writing and before acking still re-processes; keep the idempotent write.
+
+**Stretch.** Messages for the same order must be processed in order. How?
+
+*Solution:* Publish with an ordering key (the order id) on a subscription with message ordering enabled; ordering holds per key within a region, at some throughput cost.
+
+## Interview questions
+
+- **(Junior) What delivery guarantee does a default Pub/Sub subscription give?** At-least-once: unacked messages are redelivered after the ack deadline (default 10 s), so duplicates are possible.
+- **(Mid) What's a dead-letter topic?** A topic that receives messages after a configured number of failed delivery attempts (5-100), so poison messages stop blocking consumers.
+- **(Senior) Explain Pub/Sub exactly-once delivery and its limits.** Pull subscriptions only, within a cloud region, based on Pub/Sub message ids; higher publish-to-subscribe latency; push/export subscriptions don't support it; sinks still need idempotency for end-to-end exactly-once.
+
+## Sources (checked 2026-11-03)
+
+- Subscription properties (ack deadline 10-600 s, retention, dead-letter 5-100): https://cloud.google.com/pubsub/docs/subscription-properties
+- Exactly-once delivery: https://cloud.google.com/pubsub/docs/exactly-once-delivery

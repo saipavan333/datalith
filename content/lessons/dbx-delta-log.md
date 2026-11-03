@@ -100,3 +100,66 @@ A team runs **streaming ingestion**, **batch MERGE**s, and **ad-hoc reads** on t
 4. Walk an INSERT then UPDATE through the log (files added/removed) and connect it to time travel.
 5. Two writers commit at once — how does optimistic concurrency resolve it?
 6. What are checkpoints for, and why does the log design also give time travel and Iceberg interop?
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+A shared class diary where nobody erases anything. Every change is a new numbered page saying "added these files, removed those". To know what the class looks like today you read the pages in order; to see last Tuesday, you stop reading at Tuesday's page.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+pip install deltalake duckdb
+python labs/platforms/delta_log_lab.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+== 1. the transaction log is just ordered JSON commits ==
+  00000000000000000000.json: {'commitInfo': 1, 'protocol': 1, 'metaData': 1, 'add': 1}
+  00000000000000000001.json: {'commitInfo': 1, 'add': 1}
+  00000000000000000002.json: {'commitInfo': 1, 'add': 1, 'cdc': 1, 'remove': 1}
+  00000000000000000003.json: {'commitInfo': 1, 'add': 1, 'cdc': 1, 'remove': 1}
+
+== 2. versions and time travel == current version = 3
+  v0: WRITE
+  v1: WRITE
+  v2: MERGE
+  v3: DELETE
+  VERSION AS OF 0: 1000 rows
+  VERSION AS OF 1: 2000 rows
+  VERSION AS OF 2: 2200 rows
+  VERSION AS OF 3: 2150 rows
+```
+
+What to look for: each commit is a JSON file of actions (protocol, metaData, add, remove, cdc, commitInfo); MERGE and DELETE write `remove` + `add` (copy-on-write) and, with Change Data Feed on, `cdc` files; every version stays readable. The lab uses open-source delta-rs (no JDK needed); Databricks writes the same protocol.
+
+**Needs your account (free trial/tier):** in Databricks Free Edition, create a Delta table, run an INSERT, MERGE and DELETE, then `DESCRIBE HISTORY t` and `SELECT * FROM t VERSION AS OF 0`; list `_delta_log` with `LIST` on the table location if it's an external table, or use `DESCRIBE DETAIL` for managed ones.
+
+## Exercises with solutions
+
+**Warm-up.** Which commit in the lab first wrote `cdc` actions, and why?
+
+*Solution:* Version 2 (the MERGE): Change Data Feed was enabled at creation, and MERGE/UPDATE/DELETE record row-level changes as cdc files; plain appends don't need them (inserts are read from add files).
+
+**Transfer.** Two writers MERGE into the same table at once. What happens?
+
+*Solution:* Optimistic concurrency: both try to commit version N+1; the second detects the conflict, checks whether the files it read were changed, and either retries on top or fails with a concurrent modification error.
+
+**Stretch.** Why do checkpoints exist?
+
+*Solution:* Replaying thousands of JSON commits is slow; every so many commits Delta writes a Parquet checkpoint of the full state so readers start from it and replay only newer JSON files.
+
+## Interview questions
+
+- **(Junior) What is the Delta transaction log?** An ordered sequence of JSON commits (plus Parquet checkpoints) in _delta_log that lists the actions making up each table version; it gives ACID, time travel and metadata-based skipping on object storage.
+- **(Mid) How does time travel work and what limits it?** Read the log up to an older version and use its file list; VACUUM deletes files no longer referenced after the retention period (7 days by default), after which those versions can't be read.
+- **(Senior) Explain optimistic concurrency in Delta.** Writers read a snapshot, write new files, then atomically commit the next version; if someone committed first, they check for logical conflicts and retry or fail; object-store atomicity (put-if-absent or a coordinator) guarantees one winner.
+
+## Sources (checked 2026-11-03)
+
+- Delta protocol: https://github.com/delta-io/delta/blob/master/PROTOCOL.md
+- delta-rs Python package: https://delta-io.github.io/delta-rs/
+- Databricks Delta history and time travel: https://docs.databricks.com/aws/en/delta/history

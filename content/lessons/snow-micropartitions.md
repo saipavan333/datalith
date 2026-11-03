@@ -92,3 +92,55 @@ Two dashboards are slow. You pull `QUERY_HISTORY`: Query A (`WHERE order_date = 
 3. Explain why `WHERE order_date = …` prunes well on a fresh table but `WHERE customer_id = …` may not.
 4. Give three things that defeat pruning and how to avoid each.
 5. Connect immutability to Time Travel and cloning in two sentences.
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+A library where every box of books has a label on the outside saying the first and last title inside (A..D, E..H). To find "Harry Potter" you only open the boxes whose label range could contain it. If books were thrown into boxes at random, every label says A..Z and you open every box.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/snow_pruning.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+Query: SELECT SUM(amount) FROM orders WHERE order_date BETWEEN '2026-03-01' AND '2026-03-07'
+
+natural load order           partitions=  98  scanned=  98  pruned=  0.0%  depth@2026-03-04=98
+clustered by order_date      partitions=  98  scanned=   3  pruned= 96.9%  depth@2026-03-04=1
+
+same answer both ways: 7658163.95 == 7658163.95 -> True
+```
+
+What to look for: 98 'micro-partitions' (Parquet row groups with min/max stats, an honest local model of Snowflake's per-partition metadata). Random arrival order: all 98 must be scanned and clustering depth is 98. Sorted by date: 3 scanned, depth 1, same answer.
+
+**Needs your account (free trial/tier):** in a Snowflake trial, `CREATE TABLE o AS SELECT * FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF10.ORDERS ORDER BY RANDOM();`, run `SELECT SUM(o_totalprice) FROM o WHERE o_orderdate BETWEEN '1995-03-01' AND '1995-03-07'` and read *Partitions scanned / Partitions total* in the query profile; then recreate it `ORDER BY o_orderdate` and compare. `SELECT SYSTEM$CLUSTERING_INFORMATION('o', '(o_orderdate)')` shows depth.
+
+## Exercises with solutions
+
+**Warm-up.** Why does the clustered copy give the same SUM?
+
+*Solution:* Pruning skips only partitions that can't contain matches (by min/max), so results are identical; only work changes.
+
+**Transfer.** Data arrives in daily batches already ordered by date. Do you need a clustering key?
+
+*Solution:* Usually not: natural load order already clusters by date. Check depth with SYSTEM$CLUSTERING_INFORMATION before paying for automatic clustering.
+
+**Stretch.** Filters are on `customer_id` (high cardinality) but data lands by date. Options?
+
+*Solution:* A clustering key on customer_id (paid automatic clustering), Search Optimization for point lookups, or a materialized view ordered differently; measure partitions scanned and the maintenance credits for each.
+
+## Interview questions
+
+- **(Junior) What is a micro-partition?** An immutable unit of table storage holding 50-500 MB of uncompressed data (stored compressed, columnar) with per-column metadata such as min/max and distinct counts.
+- **(Mid) How does pruning work?** The compiler uses micro-partition metadata to drop partitions whose column ranges can't satisfy the filter before any data is read; the query profile shows partitions scanned vs total.
+- **(Senior) Why can UPDATEs hurt pruning and cost?** Micro-partitions are immutable, so DML rewrites whole partitions; frequent scattered updates create churn, more Time Travel/Fail-safe storage and worse clustering until reclustered.
+
+## Sources (checked 2026-11-03)
+
+- Micro-partitions & data clustering: https://docs.snowflake.com/en/user-guide/tables-clustering-micropartitions
+- Clustering information function: https://docs.snowflake.com/en/sql-reference/functions/system_clustering_information

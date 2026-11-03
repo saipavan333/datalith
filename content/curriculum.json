@@ -18255,6 +18255,272 @@
        ]
       }
      ]
+    },
+    {
+     "id": "cloud-xp",
+     "title": "Cross-platform engineering: GCP · Databricks · Snowflake",
+     "lessons": [
+      {
+       "id": "xp-terraform",
+       "title": "Terraform for GCP, Databricks & Snowflake",
+       "minutes": 14,
+       "summary": "Infrastructure as code for data platforms: desired config + state + refresh -> plan (create, update, replace, destroy) -> apply, with the google, databricks and snowflakedb/snowflake providers.",
+       "concept": "Clicking in three consoles doesn't scale: settings drift and nobody knows what production looks like. **Terraform** (or the open-source fork **OpenTofu**) describes the platform in `.tf` files reviewed in pull requests.\n\n### How plan works\n- **Configuration**: what you want.\n- **State**: what Terraform created last time; keep it in a remote backend (a locked-down **GCS bucket** on GCP), never in git.\n- **Refresh**: read the real world; differences from state are **drift**.\n- **Plan** is the diff: `+` create, `~` update in place, `-/+` **replace** (destroy then create), `-` destroy. **Apply** executes it.\n\n### Providers\n`hashicorp/google` (datasets, IAM, reservations), `databricks/databricks` (Unity Catalog, jobs, cluster policies), `snowflakedb/snowflake` (warehouses, roles, grants; moved from Snowflake-Labs, v2.20.0 released 2026-08-21).\n\n### Habits\nPlan on every PR, a human reads every `-` and `-/+`, apply from CI with federated identity (no keys), one owner per object so grants don't churn.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/iac_plan_sim.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "A 40-person data team manages 6 BigQuery datasets and their IAM, 3 Databricks cluster policies and 14 jobs, and 4 Snowflake warehouses with roles and grants in one repo. A PR changes `raw` dataset location from EU to US: the plan shows `-/+ google_bigquery_dataset.raw` (destroy + create); because `delete_contents_on_destroy = false`, the destroy would fail with tables inside. The reviewer blocks it and they plan a proper data migration instead.",
+       "keypoints": [
+        "Terraform compares desired config, recorded state and the real world; the plan is the diff.",
+        "-/+ means destroy then create: the most dangerous line in any plan.",
+        "Drift is a console change; the next apply reverts it unless you update the code.",
+        "Keep state remote (GCS bucket), locked and private: it can contain secrets.",
+        "Providers: hashicorp/google, databricks/databricks, snowflakedb/snowflake.",
+        "Import existing objects before managing them, and give each object one owner."
+       ],
+       "diagram": "xp-terraform",
+       "diagram_caption": "Code + state + refresh produce a plan; apply changes GCP, Databricks and Snowflake through their providers.",
+       "quiz": [
+        {
+         "q": "The plan shows `-/+ google_bigquery_dataset.raw` after you changed `location`. What will apply do?",
+         "options": [
+          "Move the dataset in place",
+          "Destroy the dataset and create a new one (and fail if tables exist unless delete_contents_on_destroy = true)",
+          "Nothing, plan is read-only",
+          "Only update labels"
+         ],
+         "answer": 1,
+         "explain": "A dataset location can't change in place, so Terraform must replace it. Plan itself is read-only, but the question is about apply; labels are not what changed."
+        },
+        {
+         "q": "Someone raised a cluster policy's max workers in the Databricks UI. Next plan?",
+         "options": [
+          "Ignores it",
+          "Detects drift and plans to set it back to the coded value",
+          "Edits your .tf file",
+          "Fails"
+         ],
+         "answer": 1,
+         "explain": "Refresh reads the real value and the plan converges to the code. Terraform never edits your files, and drift is a normal plan input, not an error."
+        },
+        {
+         "q": "Where should state live for a GCP-centred platform?",
+         "options": [
+          "In the git repo",
+          "On one engineer's laptop",
+          "In a remote GCS backend with restricted access and locking",
+          "In a BigQuery table"
+         ],
+         "answer": 2,
+         "explain": "Git leaks secrets and conflicts; a laptop can't be shared safely; BigQuery isn't a Terraform backend."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Your plan shows `- snowflake_warehouse.legacy_reporting` and nobody remembers deleting it. What do you do?",
+         "hint": "History, usage, owners.",
+         "solution": "Find when and why the block was removed (`git log -p`), check recent use in `WAREHOUSE_METERING_HISTORY` and BI connections. If it's still used, restore the block; if it should live outside Terraform, `terraform state rm` it. Never apply a destroy you can't explain."
+        },
+        {
+         "prompt": "Design a repo layout so dev and prod share modules but not state.",
+         "hint": "modules/ + envs/.",
+         "solution": "`modules/` (bigquery_domain, snowflake_warehouse_set, databricks_job_set) and root modules `envs/dev`, `envs/prod`, each with its own backend prefix and tfvars. CI plans both, applies only the merged environment; prod pins module versions and is promoted by PR."
+        }
+       ]
+      },
+      {
+       "id": "xp-finops",
+       "title": "FinOps across BigQuery, Databricks & Snowflake",
+       "minutes": 14,
+       "summary": "Make data-platform cost visible, owned and lower: the three billing models, the system tables that hold the truth, showback, unit cost, anomaly alerts and the top levers per platform.",
+       "concept": "Each platform meters differently:\n\n| | Compute | Where the truth is |\n|---|---|---|\n| **BigQuery** | $6.25/TiB on-demand (US, 1 TiB/month free) or slot-hours ($0.04 Standard, $0.06 Enterprise, $0.10 Enterprise Plus PAYG) | billing export + `INFORMATION_SCHEMA.JOBS` |\n| **Databricks** | DBUs per SKU (+ VMs on classic compute); $/DBU only in the pricing calculator | `system.billing.usage` x `system.billing.list_prices` |\n| **Snowflake** | credits per warehouse-second; $2/$3/$4 per credit (Standard/Enterprise/Business Critical, AWS US East) | `SNOWFLAKE.ACCOUNT_USAGE` metering views |\n\n### The loop: inform -> optimize -> operate\n1. **Inform**: tag everything (team, env), daily cost table, showback; untagged spend is a finding.\n2. **Optimize**: auto-suspend, jobs/serverless instead of interactive clusters, partition filters, right-sizing, commitments sized to the cleaned-up base.\n3. **Operate**: budgets, resource monitors, `maximum_bytes_billed`, anomaly alerts, a **unit cost** (e.g. $ per 1,000 orders) on the wall.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/finops_lab.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "A retailer spends ~$19k/month across the three platforms. The weekly review finds 14.5% of spend on an untagged Snowflake warehouse, ~$3.1k of interactive Databricks clusters running scheduled notebooks, and one day where a notebook `SELECT *` scanned 120 TiB ($750). Fixes: owner tags, move notebooks to jobs compute with a cluster policy, `maximum_bytes_billed` on notebook service accounts. Unit cost falls from $0.26 per 1,000 orders.",
+       "keypoints": [
+        "BigQuery bills bytes (on-demand) or slot-hours; Databricks bills DBUs; Snowflake bills credits per warehouse-second.",
+        "System tables are the source of truth: INFORMATION_SCHEMA.JOBS, system.billing.usage, ACCOUNT_USAGE.",
+        "Tag coverage comes first: you can't ask anyone to fix untagged spend.",
+        "Biggest common levers: auto-suspend, jobs instead of interactive clusters, partition filters.",
+        "Snowflake resource monitors cover warehouses only; budgets cover serverless and AI.",
+        "Track a unit cost so growth and waste can be told apart."
+       ],
+       "diagram": "xp-finops",
+       "diagram_caption": "Three billing sources feed one usage table that drives showback, optimization and alerts.",
+       "quiz": [
+        {
+         "q": "Snowflake serverless task spend doubled. Which control can alert on it?",
+         "options": [
+          "A resource monitor",
+          "A budget",
+          "AUTO_SUSPEND",
+          "Nothing can"
+         ],
+         "answer": 1,
+         "explain": "Resource monitors work for warehouses only; AUTO_SUSPEND is a warehouse setting; budgets track serverless and AI spend."
+        },
+        {
+         "q": "Which BigQuery JOBS column is what an on-demand query was billed for?",
+         "options": [
+          "total_bytes_processed",
+          "total_bytes_billed",
+          "total_slot_ms",
+          "cache_hit"
+         ],
+         "answer": 1,
+         "explain": "Billing applies rounding and the 10 MB minimum, so sum total_bytes_billed. total_slot_ms is capacity (editions); cache_hit just says it was free."
+        },
+        {
+         "q": "40% of a Databricks bill is all-purpose compute running scheduled notebooks. First move?",
+         "options": [
+          "Buy a bigger commitment",
+          "Run them as jobs on jobs compute or serverless under a cluster policy",
+          "Disable Photon everywhere",
+          "Use bigger instances"
+         ],
+         "answer": 1,
+         "explain": "Interactive compute costs more per DBU and idles; committing before fixing waste locks waste in; Photon and instance size don't address the cause."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Finance wants cost per dashboard on Snowflake.",
+         "hint": "QUERY_TAG + attribution view.",
+         "solution": "Set QUERY_TAG per dashboard (BI connection setting), attribute warehouse credits with ACCOUNT_USAGE.QUERY_ATTRIBUTION_HISTORY, report warehouse idle time as its own line, and add storage/serverless by object tags."
+        },
+        {
+         "prompt": "Design a next-morning anomaly alert for all three platforms.",
+         "hint": "Daily job + trailing baseline.",
+         "solution": "A 06:00 job loads yesterday's per-team cost from each source into one table, compares with the trailing 7-day mean (and sd), posts to the team channel when cost > max(1.5x mean, mean + 3 sd) and > $200. Pair with preventive caps: maximum_bytes_billed, quotas, cluster policies, resource monitors."
+        }
+       ]
+      },
+      {
+       "id": "xp-openlineage",
+       "title": "Lineage with OpenLineage (cross-platform)",
+       "minutes": 13,
+       "summary": "OpenLineage run events (START/COMPLETE with inputs and outputs) let Airflow, Spark, dbt and your own jobs feed one lineage graph; how it meets Google's Data Lineage API, Unity Catalog and Snowflake lineage.",
+       "concept": "Lineage answers \"if this column changes, what breaks?\" and \"where did this bad number come from?\". Each platform has native lineage, but pipelines cross platforms. **OpenLineage** (LF AI & Data) is the open event standard.\n\n### The RunEvent\n`eventType` (START, COMPLETE, FAIL, ABORT, RUNNING, OTHER), `eventTime`, `run.runId` (client UUID), `job.namespace`/`name`, `inputs[]`/`outputs[]` datasets named by physical location, and **facets** (schema, sql, column lineage, data quality, output statistics).\n\n### Producers and backends\nProducers: Airflow provider, `openlineage-spark`, `openlineage-dbt`, Python/Java clients. Backends: **Marquez** (reference), Google's **Data Lineage API** (`processOpenLineageRunEvent`, consumer only, OpenLineage major versions 1 and 2, 5 MB per message).\n\n### Native lineage\nGCP: Managed Service for Apache Spark and Managed Airflow emit OpenLineage built in; BigQuery jobs appear natively. Databricks: `system.access.table_lineage` / `column_lineage`. Snowflake: `ACCESS_HISTORY` and `SNOWFLAKE.CORE.GET_LINEAGE`.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/openlineage_lab.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "Four jobs in four tools (Airflow ingest from Postgres to BigQuery, Dataform model, Spark forecast, reverse-ETL to Snowflake) each emit START/COMPLETE with inputs and outputs. A recursive query over the collected events shows that renaming a Postgres column affects raw.orders, mart.fct_orders, the ML forecast and finance's Snowflake table, and that the Snowflake job failed last night.",
+       "keypoints": [
+        "A RunEvent says which job run read which datasets and wrote which.",
+        "START and COMPLETE of one run share run.runId.",
+        "Dataset names come from physical location; inconsistent naming breaks the graph.",
+        "Google's Data Lineage API consumes OpenLineage via processOpenLineageRunEvent.",
+        "Unity Catalog and Snowflake keep native lineage in system tables and GET_LINEAGE.",
+        "Column-level lineage needs the column lineage facet; table-level is the default."
+       ],
+       "diagram": "xp-openlineage",
+       "diagram_caption": "Producers emit OpenLineage run events; Marquez or Google's lineage service builds the graph.",
+       "quiz": [
+        {
+         "q": "Two events share the same run.runId. Meaning?",
+         "options": [
+          "Duplicates to drop",
+          "The same run at different states (e.g. START and COMPLETE)",
+          "Two jobs wrote one table",
+          "The backend failed"
+         ],
+         "answer": 1,
+         "explain": "START and COMPLETE share a runId by design; two jobs would have different job names; nothing failed."
+        },
+        {
+         "q": "True about Google's Data Lineage API and OpenLineage?",
+         "options": [
+          "It produces OpenLineage events for BigQuery",
+          "It accepts OpenLineage run events via processOpenLineageRunEvent",
+          "It accepts any OpenLineage version",
+          "It requires Marquez"
+         ],
+         "answer": 1,
+         "explain": "The endpoint is a consumer only, supports major versions 1 and 2, and needs no Marquez."
+        },
+        {
+         "q": "Fastest way to see which jobs read main.sales.orders on Databricks last week?",
+         "options": [
+          "Install the OpenLineage Spark listener",
+          "Query system.access.table_lineage",
+          "Spark UI",
+          "Git history"
+         ],
+         "answer": 1,
+         "explain": "Unity Catalog already records reads and writes in system.access.table_lineage; the listener only helps for future runs; the Spark UI is per run."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Write the upstream lineage query for the Snowflake table in the lab.",
+         "hint": "Swap the recursive join.",
+         "solution": "Start from the Snowflake node and join edges.dst = up.node, selecting edges.src: depth 1 fct_orders, depth 2 raw.orders and raw.customers, depth 3 the Postgres table."
+        },
+        {
+         "prompt": "Make one searchable lineage hub for Composer, Dataform, Databricks and Snowflake.",
+         "hint": "Pick a consumer, fill the gaps.",
+         "solution": "Use the Data Lineage API: Managed Airflow and Managed Spark already emit, BigQuery/Dataform are native, add openlineage-spark to Databricks job clusters with a relay to processOpenLineageRunEvent, emit Snowflake load events from Airflow tasks, and enforce one dataset naming library with a CI test."
+        }
+       ]
+      },
+      {
+       "id": "xp-choose-platform",
+       "title": "System design: choosing BigQuery, Databricks or Snowflake",
+       "minutes": 15,
+       "summary": "A defensible platform decision: what really differs between the three, weighted criteria agreed up front, a sensitivity check, a bake-off on your own queries, and a written decision record.",
+       "concept": "### What differs\n- **BigQuery**: serverless SQL on GCP; pay per TiB scanned or per slot-hour; BigLake for open formats; strongest for SQL-heavy teams already on GCP.\n- **Databricks**: Spark lakehouse on your object storage (AWS/Azure/GCP); Delta and Iceberg; DBU billing; strongest for Spark, streaming, ML and unstructured data.\n- **Snowflake**: SQL platform with virtual warehouses on all three clouds; credits per warehouse-second; strongest for many concurrent BI users, data sharing and governance.\n\nAll three read open table formats, so mixed estates are normal.\n\n### Method\n1. Agree **weights** before anyone scores.\n2. Score options 1-5 **for this company**, with reasons.\n3. **Sensitivity check**: does the winner flip with plausible priority changes?\n4. **Bake-off** the top two on your 3 heaviest queries + 1 streaming pipeline, measuring cost and latency.\n5. Write a **decision record** with review triggers.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/platform_choice.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "A 300-person retailer on GCP with 25 SQL analysts and 4 ML engineers scores BigQuery 4.05, Databricks 3.90, Snowflake 3.75. When the ML team is expected to double and lock-in becomes a board concern, Databricks wins 4.20 to 3.85. The team bakes off BigQuery and Databricks on real queries for two weeks before deciding, and records the trigger (ML headcount above 10) for revisiting.",
+       "keypoints": [
+        "Start from workload, team and existing cloud, not the logo.",
+        "BigQuery: serverless SQL; Databricks: Spark lakehouse on open files; Snowflake: SQL warehouses on any cloud.",
+        "Agree weights before scoring or the matrix launders a decision already made.",
+        "Small score gaps flip under plausible changes: always run a sensitivity check.",
+        "A bake-off on your own heaviest queries beats any vendor benchmark.",
+        "Open table formats and shared catalogs make two-platform estates workable."
+       ],
+       "diagram": "xp-choose-platform",
+       "diagram_caption": "Workload, team and cloud point to a platform; open formats let you mix.",
+       "quiz": [
+        {
+         "q": "Which situation most clearly favours Snowflake?",
+         "options": [
+          "Spark-heavy image ML",
+          "Hundreds of concurrent BI users and partner data sharing on AWS",
+          "A GCP shop wanting zero infrastructure",
+          "Raw video processing"
+         ],
+         "answer": 1,
+         "explain": "Multi-cluster warehouses and sharing are Snowflake's strengths; image ML and video lean Databricks; a GCP zero-ops shop leans BigQuery."
+        },
+        {
+         "q": "Why write the weights before scoring?",
+         "options": [
+          "It is faster",
+          "Otherwise weights get tuned to justify a choice already made",
+          "Vendors require it",
+          "So you can skip the bake-off"
+         ],
+         "answer": 1,
+         "explain": "Speed and vendors are irrelevant, and you still run a bake-off."
+        },
+        {
+         "q": "Databricks and BigQuery must share one copy of gold data. Most helpful?",
+         "options": [
+          "Nightly CSV exports",
+          "Open table formats with a catalog both engines read",
+          "Ban one platform today",
+          "A faster network link"
+         ],
+         "answer": 1,
+         "explain": "CSVs duplicate data and lose types; banning may come later; bandwidth doesn't remove the copy."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "A fintech on AWS, 60 SQL analysts, strict residency, ML outsourced: recommend in five sentences.",
+         "hint": "Cloud and team first.",
+         "solution": "Snowflake on AWS in the required region (Business Critical if regulated): SQL-first team, strong RBAC/masking/row policies, nothing to size beyond warehouses. Databricks is runner-up if ML moves in-house; BigQuery is out (AWS). Bake off the two heaviest reports and one masking scenario. Revisit if streaming or in-house ML becomes core."
+        },
+        {
+         "prompt": "Design a mixed estate: Databricks for ingestion/ML, Snowflake for BI, one copy of gold.",
+         "hint": "Iceberg + catalog.",
+         "solution": "Write gold as Iceberg (or Delta with Iceberg reads) in object storage, register it in a catalog Snowflake can read via a catalog integration, mirror governance in Terraform for both platforms, emit OpenLineage across both, and attribute both bills to the same data products in FinOps."
+        }
+       ]
+      }
+     ]
     }
    ],
    "summary": "Build data systems on the cloud: object storage, warehouses, compute options, IAM/security, networking & egress, cost/FinOps, serverless pipelines, and the AWS/GCP/Azure data service map — the platform every modern data engineer runs on."
@@ -20067,6 +20333,77 @@
          "prompt": "What problem do Data Clean Rooms solve that ordinary data sharing doesn't?",
          "hint": "Combine data without exposing rows.",
          "solution": "Ordinary **data sharing** gives a consumer **read access** to (a governed view of) your data — useful, but it still **reveals rows** to the other side (within the shared view). A **Data Clean Room** solves the case where **two parties must analyze their data *together*** (e.g., overlap/measurement: 'how many of my customers saw your ad') **without either exposing raw individual rows** to the other. It uses secure functions/sharing and agreed, constrained query templates so each side **controls what's revealed** (typically only aggregates above a threshold). This enables **privacy-preserving collaboration** for advertising measurement, partnerships, and regulated data — combining datasets for insight while keeping the underlying records private, which a plain share can't guarantee."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "snow-2026",
+     "title": "Snowflake cost & credits in depth",
+     "lessons": [
+      {
+       "id": "snow-cost-credits",
+       "title": "Snowflake credits in depth: warehouses, Gen2, serverless & controls",
+       "minutes": 13,
+       "summary": "Every Snowflake meter from the Oct-2026 consumption table: warehouse credits (60 s minimum, Gen2 1.35x), serverless multipliers, Snowpipe per GB, cloud services 10% rule, AI credits, storage, price per credit, and which control (resource monitors vs budgets) covers each.",
+       "concept": "### Meters\n- **Warehouses**: Gen1 XS 1, S 2, M 4, L 8, XL 16 ... credits/h; **Gen2** XS 1.35 ... (AWS/GCP; Azure 1.25); per second after a **60 s minimum** per resume.\n- **Serverless features** with multipliers (serverless tasks 0.9x, Tasks Flex 0.5x, search optimization 2x, MV maintenance 2x); Snowpipe **0.0037 credits/GB**, Snowpipe Streaming **0.0037 credits/uncompressed GB**.\n- **Cloud services** billed only above **10%** of daily warehouse credits.\n- **AI credits** per million tokens; **storage** $23/TB-month (AWS US East).\n- **Price per credit** (on-demand, AWS US East): Standard $2, Enterprise $3, Business Critical $4.\n\n### Controls\n**Resource monitors** (ACCOUNTADMIN) cover **warehouses only**: NOTIFY / SUSPEND / SUSPEND_IMMEDIATE at a % of quota. **Budgets** cover serverless and AI. **Design**: AUTO_SUSPEND = 60 for bursty BI, one warehouse per workload, measure before Gen2.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/snow_credits.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "A Medium BI warehouse refreshed 96 times a day with AUTO_SUSPEND = 600 bills 66 credits/day (~$5,950/month at $3); only 2.1 credits/day is real work. AUTO_SUSPEND = 60 brings it to 8.5 credits/day (~$770/month). A Gen2 Large must finish a 2-hour Gen1 job in under ~1h29m to be cheaper.",
+       "keypoints": [
+        "Warehouses bill per second after a 60-second minimum per resume.",
+        "Gen2 costs 1.35x per hour on AWS/GCP; it must be >1.35x faster to save money.",
+        "Serverless features have their own multipliers or per-GB rates.",
+        "Cloud services are free up to 10% of daily warehouse credits.",
+        "Resource monitors cover warehouses only; use budgets for serverless and AI.",
+        "AUTO_SUSPEND is often the single biggest lever for bursty workloads."
+       ],
+       "diagram": "snow-cost-credits",
+       "diagram_caption": "Warehouses, serverless features and cloud services consume credits; monitors, budgets and design control them.",
+       "quiz": [
+        {
+         "q": "A warehouse resumes, runs a 5-second query and suspends. Billed seconds?",
+         "options": [
+          "5",
+          "60 minimum, plus idle time before auto-suspend",
+          "3,600",
+          "0"
+         ],
+         "answer": 1,
+         "explain": "Billing is per second but with a 60 s minimum per resume; a cache hit wouldn't resume the warehouse at all."
+        },
+        {
+         "q": "Which control alerts on serverless task overspend?",
+         "options": [
+          "Resource monitor",
+          "A budget",
+          "AUTO_SUSPEND",
+          "Gen2"
+         ],
+         "answer": 1,
+         "explain": "Resource monitors are warehouse-only; AUTO_SUSPEND and Gen2 are warehouse settings."
+        },
+        {
+         "q": "300 warehouse credits and 25 cloud services credits in a day. Billable cloud services?",
+         "options": [
+          "25",
+          "0",
+          "2.5",
+          "22"
+         ],
+         "answer": 1,
+         "explain": "Only cloud services above 10% of warehouse credits (30) are billed; 25 is below that."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Monthly cost: XS Gen1, 6 h/day, Standard edition, AWS US East.",
+         "hint": "credits x hours x days x price.",
+         "solution": "1 x 6 x 30 = 180 credits x $2 = $360."
+        },
+        {
+         "prompt": "Two teams share ELT_WH; finance wants per-team cost.",
+         "hint": "Split or tag.",
+         "solution": "Best: separate warehouses. Otherwise QUERY_TAG per team and ACCOUNT_USAGE.QUERY_ATTRIBUTION_HISTORY (idle time reported separately), plus object tags for storage and serverless."
         }
        ]
       }
@@ -22196,6 +22533,207 @@
          "prompt": "A colleague adds .cache() and .repartition(200) everywhere 'for performance' and some jobs get slower. Explain what's wrong and the right approach.",
          "hint": "Cache costs memory; repartition forces a shuffle.",
          "solution": "Both are being used as **superstition, not diagnosis**. **`.cache()`** only helps a DataFrame **reused multiple times**; caching a once-used DataFrame **wastes memory** (and can cause **spill/eviction** that slows other stages) and the materialization itself costs time. **`.repartition(200)`** forces a **full shuffle** — beneficial only if the current partitioning is genuinely wrong; applied blindly it **adds** an expensive shuffle and can create skew or tiny partitions, making things slower. The right approach: **measure in the Spark UI**, find the real bottleneck (skew/spill/shuffle/small files), and apply the **matching** fix; lean on **AQE** to auto-coalesce/broadcast/handle skew and **Photon** for raw speed; cache **only** DataFrames demonstrably reused; repartition **only** to fix a specific partitioning problem (e.g. before a known-skewed write). Remove the blanket `.cache()/.repartition()` and let diagnosis drive targeted changes."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "dbx-2026",
+     "title": "Databricks 2026: layout, CDC & AI",
+     "lessons": [
+      {
+       "id": "dbx-liquid-clustering",
+       "title": "Liquid clustering & predictive optimization",
+       "minutes": 13,
+       "summary": "The recommended Delta layout for new tables: CLUSTER BY up to four keys, incremental OPTIMIZE, change keys any time, CLUSTER BY AUTO with predictive optimization on UC managed tables; why it replaces partitioning + Z-ORDER.",
+       "concept": "### What it is\n`CLUSTER BY (k1, k2, ...)` (max **four** keys) co-locates similar rows in files so min/max statistics let queries skip files. No partition folders.\n\n### Why it beats partitioning + ZORDER\n- Works for high-cardinality keys (partitioning would make millions of tiny folders).\n- **Incremental** OPTIMIZE instead of big nightly rewrites; `OPTIMIZE t FULL` (DBR 16.0+) reclusters everything after key changes.\n- `ALTER TABLE t CLUSTER BY (new_keys)` any time; `CLUSTER BY NONE` to remove.\n\n### Automatic\n`CLUSTER BY AUTO` picks keys from the workload; needs **predictive optimization** on **Unity Catalog managed** tables, which also runs OPTIMIZE/VACUUM for you (serverless billing).\n\n### Rules\nNot compatible with partitioning or ZORDER on the same table. GA for Delta on DBR 15.4 LTS+.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/delta_log_lab.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "A 30 TB events table moves from `PARTITIONED BY (event_date)` + nightly `ZORDER BY (customer_id)` (600 GB rewritten nightly, small-file storms from streaming) to `CLUSTER BY (event_date, customer_id)` with predictive optimization. When analysts start filtering by country, they switch to `CLUSTER BY AUTO` instead of rebuilding the table.",
+       "keypoints": [
+        "CLUSTER BY takes up to four keys of any cardinality.",
+        "OPTIMIZE is incremental; OPTIMIZE FULL reclusters after key changes.",
+        "Keys can change with ALTER TABLE without rewriting the table immediately.",
+        "CLUSTER BY AUTO needs predictive optimization on UC managed tables.",
+        "Not compatible with partitioning or ZORDER on the same table.",
+        "Clustering works through file min/max stats: keys should be columns you filter on."
+       ],
+       "diagram": "dbx-liquid-clustering",
+       "diagram_caption": "Fixed partitions + Z-ORDER versus incremental, changeable liquid clustering.",
+       "quiz": [
+        {
+         "q": "Change clustering from customer_id to country on a liquid table:",
+         "options": [
+          "Recreate the table",
+          "ALTER TABLE ... CLUSTER BY (country), then OPTIMIZE ... FULL for old data",
+          "Run ZORDER BY country",
+          "Nothing, it's always automatic"
+         ],
+         "answer": 1,
+         "explain": "Recreating is the partitioning problem; ZORDER is incompatible; automatic only with CLUSTER BY AUTO on UC managed tables."
+        },
+        {
+         "q": "What does CLUSTER BY AUTO require?",
+         "options": [
+          "Photon",
+          "Predictive optimization on a Unity Catalog managed table",
+          "A partitioned table",
+          "DBR 11"
+         ],
+         "answer": 1,
+         "explain": "Photon isn't required, partitioning is incompatible, DBR 11 is far too old."
+        },
+        {
+         "q": "Partitioning a 5 TB table by user_id (20 M users) causes:",
+         "options": [
+          "Too few files",
+          "Millions of tiny partitions/files and metadata overhead",
+          "Data loss",
+          "Nothing"
+         ],
+         "answer": 1,
+         "explain": "High-cardinality keys belong in clustering, not partitioning."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "DDL for a sales table clustered by sale_date and store_id.",
+         "hint": "CLUSTER BY.",
+         "solution": "`CREATE TABLE main.retail.sales (sale_date DATE, store_id INT, sku STRING, qty INT, amount DECIMAL(12,2)) CLUSTER BY (sale_date, store_id);`"
+        },
+        {
+         "prompt": "Migrate a partitioned + ZORDER table to liquid with minimal downtime.",
+         "hint": "New table, backfill, cut over.",
+         "solution": "Create the clustered table, backfill in date chunks, switch writers at a cut-over with a catch-up merge, run OPTIMIZE FULL once, validate counts per day, swap names, delete the nightly ZORDER job, enable predictive optimization."
+        }
+       ]
+      },
+      {
+       "id": "dbx-auto-cdc",
+       "title": "AUTO CDC (formerly APPLY CHANGES) & Lakeflow Connect",
+       "minutes": 13,
+       "summary": "Turn change feeds into correct SCD type 1 or 2 tables with AUTO CDC INTO (KEYS, SEQUENCE BY, APPLY AS DELETE WHEN, STORED AS SCD TYPE 2), AUTO CDC FROM SNAPSHOT, and managed ingestion with Lakeflow Connect.",
+       "concept": "### Input\nA change feed with a **key**, an **operation** and a **sequence** (from Lakeflow Connect, Debezium, Delta CDF, Datastream files).\n\n### AUTO CDC\nIn a Lakeflow (Spark Declarative) pipeline: `CREATE FLOW f AS AUTO CDC INTO target FROM stream(src) KEYS (id) APPLY AS DELETE WHEN op = 'DELETE' SEQUENCE BY seq STORED AS SCD TYPE 2;` or `dp.create_auto_cdc_flow()` in Python. **SEQUENCE BY** makes late and out-of-order events land correctly. SCD 1 keeps the latest row; SCD 2 keeps versions with `__START_AT`/`__END_AT`. Snapshot sources use `AUTO CDC FROM SNAPSHOT`.\n\n### Lakeflow Connect\nManaged connectors (database, SaaS, file, streaming) that produce UC-governed ingestion pipelines on serverless compute with incremental reads.\n\n`APPLY CHANGES` is the old name for the same feature.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/auto_cdc_scd_sim.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "An 18 M-row SQL Server customers table (~400 k changes a day) lands via a Lakeflow Connect connector; one AUTO CDC flow keeps `silver.customers` (SCD 1) for apps, another keeps `silver.customers_history` (SCD 2) so marketing can join orders to the address valid at order time with `order_ts BETWEEN __START_AT AND COALESCE(__END_AT, ...)`.",
+       "keypoints": [
+        "AUTO CDC replaces APPLY CHANGES with the same syntax.",
+        "KEYS identify rows; SEQUENCE BY orders events; APPLY AS DELETE WHEN handles deletes.",
+        "SCD 1 keeps the latest row; SCD 2 keeps history with __START_AT/__END_AT.",
+        "Out-of-order events are handled by sequence, unlike a naive per-batch MERGE.",
+        "AUTO CDC FROM SNAPSHOT derives changes from full snapshots.",
+        "Lakeflow Connect provides managed, governed connectors that feed these flows."
+       ],
+       "diagram": "dbx-auto-cdc",
+       "diagram_caption": "A change feed flows through AUTO CDC into SCD type 1 or type 2 tables.",
+       "quiz": [
+        {
+         "q": "What does SEQUENCE BY protect against?",
+         "options": [
+          "Schema drift",
+          "Out-of-order events overwriting newer data",
+          "Duplicate files",
+          "Slow queries"
+         ],
+         "answer": 1,
+         "explain": "Schema drift and duplicate files are ingestion concerns; SEQUENCE BY is about ordering changes."
+        },
+        {
+         "q": "Marketing needs the customer's city at each order's time. Target?",
+         "options": [
+          "SCD TYPE 1",
+          "SCD TYPE 2 with __START_AT/__END_AT",
+          "A view on bronze",
+          "Append-only bronze"
+         ],
+         "answer": 1,
+         "explain": "SCD 1 only has the current city; bronze has events but no validity ranges."
+        },
+        {
+         "q": "The source only provides a full nightly snapshot. Which API?",
+         "options": [
+          "AUTO CDC INTO",
+          "AUTO CDC FROM SNAPSHOT",
+          "Hand-written MERGE",
+          "Not possible"
+         ],
+         "answer": 1,
+         "explain": "AUTO CDC INTO expects a change feed; a hand MERGE re-implements what the snapshot API does."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "SQL Server commit timestamps tie at millisecond resolution. Fix?",
+         "hint": "Make the sequence total.",
+         "solution": "Sequence by a struct (commit_ts, lsn) or the connector's sequence column, and add an expectation that fails on duplicate (key, sequence)."
+        },
+        {
+         "prompt": "CDC for 120 tables from one OLTP database with dev/prod parity.",
+         "hint": "Metadata-driven.",
+         "solution": "One Lakeflow Connect ingestion pipeline per source, a pipeline that generates an AUTO CDC flow per table from a config table (keys, sequence, SCD type), deployed with Declarative Automation Bundles to dev and prod, nightly row-count reconciliation, alerts on event-log errors."
+        }
+       ]
+      },
+      {
+       "id": "dbx-ai-search",
+       "title": "AI on Databricks: AI Functions, AI Search, Model Serving, MLflow 3",
+       "minutes": 13,
+       "summary": "A data engineer's AI toolkit on Databricks: ai_query and task AI Functions in SQL, AI Search (formerly Vector Search) indexes synced from Delta, vector_search() in SQL, Model Serving, MLflow 3 evaluation, and how inference is billed.",
+       "concept": "**Name check:** Mosaic AI Vector Search is now **Databricks AI Search** (docs, Oct 2026).\n\n- **AI Functions**: `ai_query` (any served model) and task functions `ai_classify`, `ai_extract`, `ai_summarize`, `ai_translate`, `ai_analyze_sentiment`, `ai_mask`, `ai_parse_document`, `ai_forecast` and more, from SQL, notebooks, pipelines and jobs. Inference can be billed **on top of** your compute (AI_FUNCTIONS / MODEL_SERVING in `system.billing.usage`).\n- **AI Search**: an index built and synced from a Delta table; query from SQL with `vector_search(index => ..., query_text => ..., num_results => ...)` on serverless SQL warehouses (not classic).\n- **Model Serving**: endpoints for foundation and custom models.\n- **MLflow 3**: tracing, evaluation and prompt management for LLM apps.\n- **Unity Catalog** governs tables, volumes, models, functions and indexes.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/vector_search_lab.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "3 M claim PDFs in a UC volume, 25 k new a day: a Lakeflow pipeline runs `ai_parse_document` and `ai_extract` on new files only, `ai_classify` labels claim type, an AI Search index on the chunks table powers \"similar claims\" for investigators, and an MLflow evaluation set of 500 labelled claims gates every prompt or model change.",
+       "keypoints": [
+        "AI Functions run LLM tasks from SQL; inference may be billed in addition to compute.",
+        "AI Search (formerly Vector Search) indexes sync from Delta tables.",
+        "vector_search() runs on serverless SQL warehouses, not classic ones.",
+        "Process incrementally: never re-run LLM enrichment over the whole table nightly.",
+        "MLflow 3 evaluation and tracing catch quality regressions from prompt/model changes.",
+        "Unity Catalog governs models, indexes and volumes like tables."
+       ],
+       "diagram": "dbx-ai-search",
+       "diagram_caption": "Govern in Unity Catalog, enrich with AI Functions, retrieve with AI Search, serve models, evaluate with MLflow 3.",
+       "quiz": [
+        {
+         "q": "You run ai_extract over 2 M rows from a jobs cluster. You pay for:",
+         "options": [
+          "Only cluster DBUs",
+          "Compute plus model inference recorded under AI_FUNCTIONS / MODEL_SERVING",
+          "Nothing",
+          "Storage only"
+         ],
+         "answer": 1,
+         "explain": "Inference can run on Databricks-managed infrastructure billed separately; it is not free."
+        },
+        {
+         "q": "Where can SELECT * FROM vector_search(...) run?",
+         "options": [
+          "Any cluster",
+          "A serverless SQL warehouse (not classic)",
+          "Only Python",
+          "Only Model Serving"
+         ],
+         "answer": 1,
+         "explain": "The function reference says it's not available on classic SQL warehouses."
+        },
+        {
+         "q": "Which tool tells you a new prompt made extraction worse?",
+         "options": [
+          "Unity Catalog grants",
+          "MLflow evaluation and tracing",
+          "Photon",
+          "AUTO CDC"
+         ],
+         "answer": 1,
+         "explain": "Grants, Photon and AUTO CDC are unrelated to output quality."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Summarise every new ticket within 5 minutes.",
+         "hint": "Streaming table + AI function.",
+         "solution": "A Lakeflow pipeline streaming table over bronze tickets applies ai_summarize to new rows only, triggered every few minutes, with an expectation on non-null summaries, a dead-letter table, and daily cost checks in system.billing.usage."
+        },
+        {
+         "prompt": "AI Functions vs a fine-tuned small model on Model Serving for claims extraction?",
+         "hint": "Speed to ship vs unit cost.",
+         "solution": "AI Functions: fastest, no training, higher per-row cost. Fine-tuned model: effort to train and serve, lower cost at volume, more control. Decide with an MLflow evaluation on the same labelled claims plus a cost projection at 25 k/day."
         }
        ]
       }
@@ -26413,6 +26951,272 @@
          "prompt": "How does Dataplex relate to BigQuery/BigLake security and to the governance tools on other clouds?",
          "hint": "Layered governance; analog of Lake Formation/Unity Catalog/Purview.",
          "solution": "**Within GCP**, Dataplex **complements** BigQuery and BigLake security rather than replacing them: **BigQuery** provides **column/row-level security**, authorized views, and policy tags; **BigLake** extends **fine-grained governance** to open-format data on GCS/other clouds; and **Dataplex** sits **above** as the **unifying control plane** — organizing data into **lakes/zones**, providing **catalog/discovery**, **lineage**, **data quality**, and **centralized policy** across **GCS + BigQuery** and projects. So you get **layered** governance: fine-grained access at the **table/column/row** level (BigQuery/BigLake) plus **estate-wide** discovery, quality, lineage, and organization (Dataplex). **Across clouds**, Dataplex is GCP's answer to the same governance need served by **AWS Lake Formation** (central lake permissions, fine-grained access, sharing), **Databricks Unity Catalog** (catalog, lineage, fine-grained security, governance across the lakehouse), and **Microsoft Purview** (catalog/governance) — all addressing **governance at scale** over a distributed lakehouse: **discovery/catalog, lineage, quality, and centralized security**. The shared theme across clouds: as data spreads, you need a **central governance layer** that makes it **findable, trustworthy, and consistently secured** — Dataplex is GCP's, working **with** BigQuery/BigLake's finer-grained controls."
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "gcp-2026",
+     "title": "GCP platform engineering (2026): security, CDC, Spark & AI",
+     "lessons": [
+      {
+       "id": "gcp-iam-security",
+       "title": "IAM & data security on GCP (BigQuery end to end)",
+       "minutes": 14,
+       "summary": "The four gates a BigQuery query passes: IAM with inheritance, column policy tags (Fine-Grained Reader), row access policies, and CMEK + VPC Service Controls; service accounts without keys.",
+       "concept": "### Gate 1: IAM\nRoles bind to principals on resources and **inherit down** org > folder > project > dataset > table. Querying needs `bigquery.jobs.create` on the project running the job (e.g. `roles/bigquery.jobUser`) **and** read on the data (e.g. `roles/bigquery.dataViewer`).\n\n### Gate 2: columns\nColumns with a **policy tag** need **Fine-Grained Reader** (`roles/datacatalog.categoryFineGrainedReader`). Without it, selecting the column **errors**; `SELECT * EXCEPT(col)` works; dynamic masking can return masked values.\n\n### Gate 3: rows\n`CREATE ROW ACCESS POLICY ... GRANT TO (...) FILTER USING (...)`. Users in no grantee list see **zero rows** (no error). Give admins and pipelines a `FILTER USING (TRUE)` policy.\n\n### Gate 4: keys and perimeter\nCMEK keeps the key in Cloud KMS; VPC Service Controls stop data leaving a perimeter even with valid credentials. Fine-grained security, CMEK and VPC-SC aren't in Standard edition.\n\nPrefer Workload Identity Federation and attached service accounts over JSON keys.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/gcp_iam_sim.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "A 400 M-row claims table: `patient_name` and `phone` carry policy tag `pii.high` (only audit has Fine-Grained Reader), row policy `mh_team` limits the Maharashtra team to `state = 'MH'`, audit gets read through an org-level grant plus a TRUE row policy, the dataset uses a CMEK key, and the project sits in a VPC-SC perimeter. An intern with dataset read but no row policy gets an empty result.",
+       "keypoints": [
+        "Querying needs jobs.create on the job project plus read on the data.",
+        "IAM grants inherit from organization down to table.",
+        "Tagged columns need Fine-Grained Reader; otherwise the query errors.",
+        "Users in no row-policy grantee list see zero rows, not an error.",
+        "CMEK holds the key in KMS; VPC-SC blocks exfiltration.",
+        "Use federation or attached service accounts, not downloaded keys."
+       ],
+       "diagram": "gcp-iam-security",
+       "diagram_caption": "IAM, policy tags, row policies and CMEK inside a VPC-SC perimeter decide what a query returns.",
+       "quiz": [
+        {
+         "q": "An analyst has dataViewer on the dataset but every query is denied. Likely cause?",
+         "options": [
+          "A row policy",
+          "No bigquery.jobs.create (e.g. jobUser) on the project running the job",
+          "CMEK",
+          "Partitioning"
+         ],
+         "answer": 1,
+         "explain": "Row policies return zero rows rather than errors; CMEK only blocks if the key is disabled; partitioning is unrelated."
+        },
+        {
+         "q": "A table has row policies; a user named in none runs SELECT COUNT(*). Result?",
+         "options": [
+          "Error",
+          "0",
+          "Full count",
+          "Rows with NULL filter"
+         ],
+         "answer": 1,
+         "explain": "Users not in any grantee list can't see any rows, so the count is 0 without an error."
+        },
+        {
+         "q": "Which control stops a valid credential copying data into a personal project?",
+         "options": [
+          "Policy tags",
+          "CMEK",
+          "VPC Service Controls",
+          "Labels"
+         ],
+         "answer": 2,
+         "explain": "Policy tags govern columns, CMEK data is decrypted for authorized reads, labels are metadata; a perimeter blocks the copy."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Give group claims-south KA and TN rows.",
+         "hint": "FILTER USING with IN.",
+         "solution": "`CREATE ROW ACCESS POLICY south ON claims-prod.health.claims GRANT TO (\"group:claims-south@acme.com\") FILTER USING (state IN (\"KA\",\"TN\"));`"
+        },
+        {
+         "prompt": "Design identities for a Dataflow writer and a Composer reader of the claims table.",
+         "hint": "One service account per workload.",
+         "solution": "Separate attached service accounts, no keys; writer gets dataEditor on the target dataset only; reader gets dataViewer plus a TRUE row policy if it needs all rows; each gets jobUser where its jobs run; no Fine-Grained Reader unless PII is needed."
+        }
+       ]
+      },
+      {
+       "id": "gcp-datastream-cdc",
+       "title": "Datastream: CDC into BigQuery",
+       "minutes": 13,
+       "summary": "Serverless change data capture from MySQL, PostgreSQL, Oracle, SQL Server and more into BigQuery: backfill + CDC, merge vs append-only modes, datastream_metadata, max_staleness, pricing and the replication-slot trap.",
+       "concept": "Datastream reads the database's change log (MySQL row-based binlog, PostgreSQL logical replication with a **publication** and replication slot via `pgoutput`, Oracle and SQL Server logs; also AlloyDB, Spanner, MongoDB, Salesforce).\n\n### Phases and modes\n- **Backfill** snapshots existing rows; **CDC** streams changes.\n- **Merge mode**: BigQuery mirrors the source, one row per key; `max_staleness` trades freshness for merge cost.\n- **Append-only**: every change is a row with `datastream_metadata` (UUID, SOURCE_TIMESTAMP, CHANGE_SEQUENCE_NUMBER, CHANGE_TYPE, SORT_KEYS). Tables without a primary key are append-only.\n\n### Price (Nov 2026)\nCDC $2.00/GiB for the first 2,500 GiB a month (then $1.50, $1.20, $0.80); backfill free up to 500 GiB a month then $0.40/GiB; processed bytes can be **2-5x** the raw data.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/datastream_cdc_sim.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "A fintech replicates `accounts` (merge mode, 15-minute max_staleness) and `ledger_entries` (append-only for auditors) from Cloud SQL for PostgreSQL. 300 GiB of raw changes a month means 600-1,500 GiB processed: $1,200-$3,000 a month. They alert on replication-slot lag because a stalled stream makes PostgreSQL keep WAL and fill its disk.",
+       "keypoints": [
+        "Datastream reads the source's change log, so deletes and order are captured without querying tables.",
+        "Backfill copies the snapshot; CDC streams ongoing changes.",
+        "Merge mode mirrors the source; append-only keeps every change with metadata.",
+        "Order by SOURCE_TIMESTAMP and sequence, never by arrival.",
+        "Processed bytes can be 2-5x raw; measure the multiplier before promising a budget.",
+        "A stalled stream on PostgreSQL fills the source disk via the replication slot."
+       ],
+       "diagram": "gcp-datastream-cdc",
+       "diagram_caption": "Source change logs flow through Datastream into BigQuery merge or append-only tables, or to Cloud Storage.",
+       "quiz": [
+        {
+         "q": "Why read the binlog/WAL instead of polling `updated_at`?",
+         "options": [
+          "Cheaper licence",
+          "The log has every change including deletes, in commit order, without loading tables",
+          "SELECTs don't work on replicas",
+          "BigQuery requires it"
+         ],
+         "answer": 1,
+         "explain": "Polling misses deletes and rows with unreliable timestamps; the other options are false."
+        },
+        {
+         "q": "Which mode keeps every historical change for auditors?",
+         "options": [
+          "Merge",
+          "Append-only",
+          "Backfill only",
+          "Neither"
+         ],
+         "answer": 1,
+         "explain": "Merge keeps only the latest row per key; a backfill is a snapshot without history."
+        },
+        {
+         "q": "The bill is 4x the estimate from raw row sizes. Most likely?",
+         "options": [
+          "A bug",
+          "Processed bytes are an internal representation, often 2-5x raw",
+          "BigQuery storage",
+          "Backfill is always charged"
+         ],
+         "answer": 1,
+         "explain": "The pricing page warns about the 2-5x factor; storage is billed separately; the first 500 GiB of backfill are free."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Current state of accounts from an append-only table.",
+         "hint": "ROW_NUMBER by source timestamp.",
+         "solution": "`SELECT * EXCEPT(rn) FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY account_id ORDER BY datastream_metadata.source_timestamp DESC, datastream_metadata.change_sequence_number DESC) rn FROM raw.accounts) WHERE rn = 1 AND datastream_metadata.change_type != 'DELETE'`"
+        },
+        {
+         "prompt": "CDC for 40 tenant MySQL databases into one dataset.",
+         "hint": "Streams, landing, unify.",
+         "solution": "One stream per source (consistent names), append-only landing tables partitioned by date, a Dataform layer that unions tenants with tenant_id and builds current state, Terraform for profiles and streams, alerts on errors and binlog retention, cost per stream from the billing export."
+        }
+       ]
+      },
+      {
+       "id": "gcp-serverless-spark",
+       "title": "Serverless Spark: Managed Service for Apache Spark",
+       "minutes": 12,
+       "summary": "Dataproc and Dataproc Serverless are one product since April 2026: cluster vs serverless batches, DCU billing (0.6 per vCPU, 0.1/0.2 per GiB), Standard vs Premium tiers, and when a cluster still wins.",
+       "concept": "**Name check:** Managed Service for Apache Spark (2026-04-03) unifies Dataproc on Compute Engine (clusters) and Dataproc Serverless (renamed Serverless for Apache Spark in May 2025). `gcloud dataproc ...` and the API keep the old name.\n\n### Serverless batches\n`gcloud dataproc batches submit pyspark job.py --region=...`; the service sizes and autoscales executors and scales to zero. Billing is **DCU-seconds** (1-minute minimum): 1 vCPU-h = 0.6 DCU; RAM 0.1 DCU per GiB-h up to 8 GiB/vCPU, 0.2 above. Default footprint 12 DCUs. Standard **$0.06**/DCU-h, Premium (Lightning Engine) **$0.089**/DCU-h (us-central1). Shuffle storage extra.\n\n### Clusters\nYou size machines and pay VMs, disks and a service fee while the cluster exists, idle or not. Best for busy 24x7 use, custom images, long-lived services.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/serverless_spark_cost.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "A nightly 2 TiB join on 20 executors of 4 vCPU/16 GiB for 25 minutes = 84 DCU x 25/60 h x $0.06 = $2.10 a run, ~$63 a month, nothing between runs. Swapping to 8 vCPU/96 GiB executors pushes each to 17.6 DCU because memory above 8 GiB/vCPU costs double.",
+       "keypoints": [
+        "Managed Service for Apache Spark = clusters + serverless; commands still say dataproc.",
+        "Serverless bills DCU-seconds with a 1-minute minimum and a 12-DCU default footprint.",
+        "Memory above 8 GiB per vCPU costs 0.2 DCU per GiB instead of 0.1.",
+        "Premium must be >1.48x faster to cost less than Standard.",
+        "Clusters win for busy 24x7 workloads or custom images; serverless for scheduled batches.",
+        "Thousands of tiny batches pay the minimums: group them or use BigQuery SQL."
+       ],
+       "diagram": "gcp-serverless-spark",
+       "diagram_caption": "Cluster and serverless deployments of the same Spark code, billed by VM time or by DCU-seconds.",
+       "quiz": [
+        {
+         "q": "What does a serverless batch bill for?",
+         "options": [
+          "VM hours",
+          "DCU-seconds, shuffle storage and accelerators",
+          "Bytes scanned",
+          "A monthly fee"
+         ],
+         "answer": 1,
+         "explain": "VM hours are the cluster model; bytes scanned is BigQuery on-demand."
+        },
+        {
+         "q": "DCUs per hour for an executor of 4 vCPU and 48 GiB?",
+         "options": [
+          "4.0",
+          "7.2",
+          "8.8",
+          "12"
+         ],
+         "answer": 2,
+         "explain": "2.4 for vCPU + 32 GiB x 0.1 = 3.2 + 16 GiB above 8 GiB/vCPU x 0.2 = 3.2 -> 8.8. 7.2 prices all memory at 0.1; 4.0 is a 16 GiB executor."
+        },
+        {
+         "q": "When is a cluster the better choice?",
+         "options": [
+          "A nightly 20-minute job",
+          "A busy 24x7 workload or one needing custom images",
+          "Any PySpark job",
+          "Never"
+         ],
+         "answer": 1,
+         "explain": "A nightly job benefits from scale to zero; clusters pay off when kept busy or customised."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "2,000 tiny batches a day, each with 20 s of real work. Cost problem and fix?",
+         "hint": "Minimum x footprint.",
+         "solution": "Each pays 1 minute on 12 DCUs: 2,000 x 12 x 1/60 x $0.06 = $24/day for ~11 minutes of work. Group them into a few batches per hour or move the logic to BigQuery SQL."
+        },
+        {
+         "prompt": "Write your team's Spark-on-GCP decision rule.",
+         "hint": "Default, exceptions, review.",
+         "solution": "Serverless standard tier by default for scheduled ETL; premium only with a benchmark showing >1.5x speedup; clusters only for high 24x7 utilisation or custom images; BigQuery SQL first if SQL-expressible; Dataflow for event-time streaming; monthly review from the billing export."
+        }
+       ]
+      },
+      {
+       "id": "bq-ai-vector",
+       "title": "BigQuery ML, embeddings & vector search",
+       "minutes": 14,
+       "summary": "AI in SQL on BigQuery: CREATE MODEL/ML.PREDICT, AI.GENERATE_EMBEDDING and AI.EMBED, VECTOR_SEARCH with IVF/TreeAH indexes, AI.GENERATE for RAG, edition limits and cost habits.",
+       "concept": "### Classic ML\n`CREATE MODEL ... OPTIONS(model_type='BOOSTED_TREE_CLASSIFIER' ...)`, `ML.EVALUATE`, `ML.PREDICT`, billed as BigQuery processing.\n\n### Embeddings and search\n- `AI.GENERATE_EMBEDDING` (table of embeddings) and `AI.EMBED` (one value); automatic embedding maintenance is available.\n- `VECTOR_SEARCH(TABLE base, 'emb', (query), top_k => 10, distance_type => 'COSINE')` returns `query`, `base`, `distance`; brute force without an index.\n- `CREATE VECTOR INDEX ... OPTIONS(index_type='IVF')` (or TreeAH/ScaNN) for fast approximate search.\n\n### Generation\n`AI.GENERATE` and typed variants, `AI.CLASSIFY`, `AI.SCORE`, `AI.AGG` call Gemini from SQL; model cost passes through on top of BigQuery compute.\n\n### Edition limits\nStandard edition: no BigQuery ML, no vector indexes. Enterprise, Enterprise Plus and on-demand have both.\n\n### Hands-on lab\nRuns locally, no account: `python labs/platforms/vector_search_lab.py`. The deep dive below has the recorded output and the exact cloud steps (needs your account: free trial/tier).",
+       "example": "12 M support tickets, 40 k new a day: embed only new tickets each night, keep an IVF index, return the 5 most similar resolved tickets for each new one with VECTOR_SEARCH, draft a reply with AI.GENERATE from those 5 (RAG, human approves), and predict escalations with a boosted-tree BigQuery ML model on structured features.",
+       "keypoints": [
+        "BigQuery ML trains and predicts with SQL on supported model types.",
+        "Embeddings place similar meaning close together; vector search finds nearest neighbours.",
+        "Without an index VECTOR_SEARCH is exact brute force; IVF/TreeAH make it approximate and fast.",
+        "Standard edition has no BigQuery ML and no vector indexes.",
+        "Embed incrementally and store the model version with each vector.",
+        "BigQuery is not a low-latency serving store; serve online lookups elsewhere."
+       ],
+       "diagram": "bq-ai-vector",
+       "diagram_caption": "Embed, index, search and generate inside BigQuery; classic BigQuery ML alongside.",
+       "quiz": [
+        {
+         "q": "On Standard edition, what fails?",
+         "options": [
+          "Brute-force VECTOR_SEARCH",
+          "Using vector indexes, and CREATE MODEL",
+          "Loading data",
+          "Partitioning"
+         ],
+         "answer": 1,
+         "explain": "Standard can run VECTOR_SEARCH without an index but has no BigQuery ML or index use."
+        },
+        {
+         "q": "Why add a vector index?",
+         "options": [
+          "Exact results",
+          "Faster search on large tables at a small cost in recall",
+          "Required for COSINE",
+          "Free storage"
+         ],
+         "answer": 1,
+         "explain": "Indexes are approximate (not exact), not required for any distance type, and their storage is billed."
+        },
+        {
+         "q": "Predict which orders get returned from structured features. Best first tool?",
+         "options": [
+          "AI.GENERATE",
+          "A BigQuery ML classifier",
+          "VECTOR_SEARCH",
+          "A Dataflow job"
+         ],
+         "answer": 1,
+         "explain": "Structured prediction doesn't need an LLM or similarity search."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "Product wants similar-product lookups in <100 ms at 50 k requests/minute. Serve from BigQuery?",
+         "hint": "Analytics vs serving.",
+         "solution": "No. Compute embeddings and neighbours in BigQuery in batch, then serve from a low-latency store (Vertex AI Vector Search, AlloyDB/pgvector, Bigtable or a cache)."
+        },
+        {
+         "prompt": "Design incremental embeddings with model versioning.",
+         "hint": "Version column + filter.",
+         "solution": "ticket_emb(ticket_id, model_version, emb, embedded_at) partitioned by embedded_at; a scheduled job embeds rows missing for the current version; searches filter model_version = @current; on upgrade, backfill in budgeted batches, switch @current, drop the old version."
         }
        ]
       }

@@ -129,3 +129,65 @@ A team loads nightly, transforms hourly, and serves dashboards all day. They cre
 3. Write a resource monitor that notifies at 80% and hard-stops at 100% of 500 monthly credits, attached to a warehouse.
 4. Write the ACCOUNT_USAGE query to find your five most credit-hungry warehouses last month.
 5. Explain why `AUTO_SUSPEND` and the choice of scaling policy each involve a cost-vs-latency trade-off.
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+A school bus fleet. Size is how big each bus is (XS to 6XL, each size doubles the seats and the fuel). Multi-cluster is sending extra buses when a crowd shows up. Auto-suspend is turning the engine off when nobody's on board, and every engine start burns at least a minute of fuel.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/snow_credits.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+BI warehouse, 96 refreshes/day x 20 s of work, size M
+  auto_suspend= 600s ->  66.13 credits/day  = $   5,952/month (Enterprise)
+  auto_suspend= 300s ->  34.13 credits/day  = $   3,072/month (Enterprise)
+  auto_suspend=  60s ->   8.53 credits/day  = $     768/month (Enterprise)
+  actual work is only 2.13 credits/day: the 60 s minimum + idle tail is the rest
+
+Gen1 vs Gen2 for a 2-hour nightly ELT on L (Gen2 must finish faster to pay off):
+  Gen2 1.00x faster -> Gen1 16.0 vs Gen2 21.6 credits  (Gen1 cheaper or equal)
+  Gen2 1.20x faster -> Gen1 16.0 vs Gen2 18.0 credits  (Gen1 cheaper or equal)
+  Gen2 1.35x faster -> Gen1 16.0 vs Gen2 16.0 credits  (Gen1 cheaper or equal)
+  Gen2 1.60x faster -> Gen1 16.0 vs Gen2 13.5 credits  (Gen2 cheaper)
+
+Cloud services adjustment (daily):
+  warehouses 200 cr, cloud services 12 cr -> billable cloud services 0.0 cr
+  warehouses 200 cr, cloud services 35 cr -> billable cloud services 15.0 cr
+```
+
+What to look for: for bursty BI the idle tail before auto-suspend dominates the bill; Gen2 (1.35x credits per hour on AWS/GCP) has to run more than 1.35x faster to be cheaper. Rates come from the Service Consumption Table effective 2026-10-29.
+
+**Needs your account (free trial/tier):** create two warehouses (XS and M) in a trial, run the same heavy TPC-H query on each, and compare elapsed time and credits in `WAREHOUSE_METERING_HISTORY`. Then set `AUTO_SUSPEND = 60` and watch idle credits drop.
+
+## Exercises with solutions
+
+**Warm-up.** Credits for a Large Gen1 warehouse running 90 minutes?
+
+*Solution:* 8 credits/hour x 1.5 = 12 credits ($36 on Enterprise at $3).
+
+**Transfer.** Queries queue at 9 am but each is fast. Bigger size or multi-cluster?
+
+*Solution:* Multi-cluster (scale out, Enterprise edition): queueing is a concurrency problem; a bigger size helps individual slow queries, not many small ones.
+
+**Stretch.** Write the warehouse standards for a 20-team account.
+
+*Solution:* One warehouse per workload type, AUTO_SUSPEND 60 (BI) / 120-300 (ELT), sizes capped at L without approval, MAX_CLUSTER_COUNT <= 3 with ECONOMY for non-critical, resource monitors per group, budgets for serverless, everything in Terraform.
+
+## Interview questions
+
+- **(Junior) How is a warehouse billed?** Credits per hour by size, charged per second after a 60-second minimum each time it starts or resumes; suspended warehouses cost nothing.
+- **(Mid) Scale up vs scale out?** Up (bigger size) for single heavy queries, spilling, big joins; out (multi-cluster) for many concurrent queries queueing.
+- **(Senior) What are Gen2 warehouses and how do you decide?** Next-generation standard warehouses billed at 1.35 credits/hour for XS on AWS and GCP (1.25 on Azure), up to 4XL; adopt per workload only where measured speedup exceeds the price ratio.
+
+## Sources (checked 2026-11-03)
+
+- Warehouses overview: https://docs.snowflake.com/en/user-guide/warehouses-overview
+- Gen2 warehouses: https://docs.snowflake.com/en/user-guide/warehouses-gen2
+- Service Consumption Table: https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf
