@@ -3673,6 +3673,12 @@
    "level": "Medium",
    "q": "Why is a shared catalog important for interoperability?",
    "a": "Because the lakehouse promise is open: store data once, query with many engines. A shared catalog lets Spark, Trino, Flink, and warehouses all see the same table definitions over the same files — no copying or per-engine metadata. It's what prevents data silos and lock-in in a multi-engine architecture."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Why is pointing two catalogs at the same Iceberg table dangerous?",
+   "a": "Each catalog keeps its own idea of the current metadata file. A writer committing through catalog A moves A's pointer; catalog B still points to the old version, so readers through B see stale data and writers through B can commit on top of an old base, effectively forking or overwriting history. Use one catalog as the source of truth for each table, and give other engines read access through it or via federation."
   }
  ],
  "lake-format-comparison": [
@@ -3693,6 +3699,18 @@
    "level": "Medium",
    "q": "Copy-on-write vs merge-on-read?",
    "a": "Copy-on-write (CoW) rewrites affected data files on each update — slower writes, fast reads (clean files). Merge-on-read (MoR) writes deltas/delete files and merges at read time — fast writes (good for frequent upserts/streaming), slower reads until compaction. Choose CoW for read-heavy, MoR for write/upsert-heavy."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "Walk me through what happens on disk when you commit an append to an Iceberg table, and compare it with Delta.",
+   "a": "Iceberg: the writer writes new Parquet data files, a manifest listing them with column stats, a new manifest list for the snapshot, and a new table metadata file that adds the snapshot. Then it asks the catalog to atomically swap the table's pointer from the old metadata file to the new one; if the pointer moved meanwhile, it refreshes and retries. Delta: the writer writes data files, then tries to create the next numbered JSON file in _delta_log with add actions (and metaData/protocol if they changed). Creating version N+1 must be mutually exclusive; the loser re-reads and checks conflicts. Both are optimistic concurrency; Iceberg's commit point is the catalog, Delta's is the log file."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Copy-on-write vs merge-on-read: when do you choose each?",
+   "a": "Copy-on-write rewrites affected files on every update: reads are fast and simple, writes are expensive (write amplification), good for tables updated rarely or in big batches. Merge-on-read writes changes as delete files, deletion vectors or log files and merges at read time: cheap frequent writes and fresher data, but reads slow down until compaction runs. CDC upserts every few minutes favour merge-on-read plus scheduled compaction; a daily-rebuilt reporting table favours copy-on-write."
   }
  ],
  "lake-streaming-ingest": [

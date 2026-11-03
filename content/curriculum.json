@@ -16697,7 +16697,7 @@
        "title": "Catalogs & the metastore",
        "minutes": 11,
        "summary": "The directory that lets engines find lakehouse tables and governs access: the metastore/catalog, from Hive Metastore to Glue, Unity Catalog, and Iceberg REST catalogs.",
-       "concept": "A lakehouse table is files + metadata in object storage — but how does an engine know the table `sales` **exists** and **where** its metadata lives? That's the **catalog** (a.k.a. metastore).\n\n### What a catalog does\nA **catalog** is the **directory of tables**. It maps a logical name (`db.sales`) to the table's **metadata location** (the `_delta_log`/Iceberg metadata pointer), and tracks databases, tables, schemas, and often **permissions and lineage**. When you run `SELECT * FROM sales`, the engine asks the catalog 'what/where is sales?' and then reads the table's metadata and files.\n\nTwo layers, don't confuse them: the **table format** (Delta/Iceberg) tracks a *single table's* state; the **catalog** tracks *which tables exist* and points to each one's metadata.\n\n### The options\n- **Hive Metastore (HMS)** — the original; still widely used as the catalog behind Spark/Trino (covered in the Spark track).\n- **AWS Glue Data Catalog** — managed, Hive-compatible, the default catalog on AWS.\n- **Unity Catalog** (Databricks) — adds **fine-grained governance** (table/column/row access control), **lineage**, and discovery across the lakehouse.\n- **Iceberg REST catalog / Polaris / Nessie** — modern, **engine-agnostic** catalogs for Iceberg; Nessie even adds **git-like branching** of data.\n\n### Why it matters\nThe catalog is the **single source of truth for what tables exist**, enabling: many engines to share the **same** tables (Spark, Trino, Snowflake all resolve `sales` identically), **governance** (one place for access control and auditing), **discovery** (browse the data estate), and **lineage**. A lakehouse without a good catalog is hard to govern and share.\n\n### The trend\nCatalogs are becoming the **governance hub** of the lakehouse — moving from a passive name→location map (Hive) to active **access control + lineage + discovery** (Unity Catalog) and **open, engine-neutral** REST catalogs so no single engine owns your tables.",
+       "concept": "A lakehouse table is files + metadata in object storage — but how does an engine know the table `sales` **exists** and **where** its metadata lives? That's the **catalog** (a.k.a. metastore).\n\n### What a catalog does\nA **catalog** is the **directory of tables**. It maps a logical name (`db.sales`) to the table's **metadata location** (the `_delta_log`/Iceberg metadata pointer), and tracks databases, tables, schemas, and often **permissions and lineage**. When you run `SELECT * FROM sales`, the engine asks the catalog 'what/where is sales?' and then reads the table's metadata and files.\n\nTwo layers, don't confuse them: the **table format** (Delta/Iceberg) tracks a *single table's* state; the **catalog** tracks *which tables exist* and points to each one's metadata.\n\n### The options\n- **Hive Metastore (HMS)** — the original; still widely used as the catalog behind Spark/Trino (covered in the Spark track).\n- **AWS Glue Data Catalog** — managed, Hive-compatible, the default catalog on AWS.\n- **Unity Catalog** (Databricks) — adds **fine-grained governance** (table/column/row access control), **lineage**, and discovery across the lakehouse.\n- **Iceberg REST catalog / Polaris / Nessie** — modern, **engine-agnostic** catalogs for Iceberg; Nessie even adds **git-like branching** of data.\n\n### Why it matters\nThe catalog is the **single source of truth for what tables exist**, enabling: many engines to share the **same** tables (Spark, Trino, Snowflake all resolve `sales` identically), **governance** (one place for access control and auditing), **discovery** (browse the data estate), and **lineage**. A lakehouse without a good catalog is hard to govern and share.\n\n### The trend\nCatalogs are becoming the **governance hub** of the lakehouse — moving from a passive name→location map (Hive) to active **access control + lineage + discovery** (Unity Catalog) and **open, engine-neutral** REST catalogs so no single engine owns your tables.\n\n### The job people forget: the commit point\nFor Iceberg, the catalog holds each table's **current metadata-file pointer**, and a commit is an atomic **compare-and-swap** of that pointer (old version → new version). If another writer swapped first, the commit is rejected; the writer refreshes, checks for conflicts and retries. Appends retry safely; two jobs rewriting the same files conflict. So: **one catalog per table, never two**, and treat the catalog as a tier-1 service on every job's write path.",
        "example": "`SELECT * FROM analytics.sales` → the engine asks the **catalog** (say Glue or Unity) for `analytics.sales`, gets the table's metadata pointer + schema (and checks the user's **permissions**), then reads the Iceberg/Delta metadata and Parquet files. Spark, Trino, and Snowflake all resolve the **same** table through that catalog.",
        "keypoints": [
         "A catalog is the directory of tables: it maps a table name → its metadata location and tracks DBs/schemas (+ perms/lineage).",
@@ -16705,43 +16705,40 @@
         "Options: Hive Metastore (original), AWS Glue (managed, Hive-compatible), Unity Catalog (governance+lineage), Iceberg REST/Nessie/Polaris.",
         "The catalog lets many engines share the SAME tables, resolving names identically.",
         "It's the place for governance (access control, auditing), discovery, and lineage.",
-        "Trend: catalogs becoming the governance hub — active access control + lineage + open, engine-neutral REST catalogs."
+        "Trend: catalogs becoming the governance hub — active access control + lineage + open, engine-neutral REST catalogs.",
+        "For Iceberg the catalog is the commit point: a commit is an atomic swap of the table's metadata pointer, retried on conflict."
        ],
        "diagram": "metastore",
        "diagram_caption": "The catalog maps table names to their metadata/location so many engines share the same governed tables.",
        "quiz": [
+        [
+         ["q", "What is the catalog's core job in a lakehouse?"],
+         ["options", ["Store the data", "Map table names to their metadata location and track which tables exist (plus perms/lineage)", "Run queries", "Compress files"]],
+         ["answer", 1],
+         ["explain", "The catalog is the directory of tables: engines resolve a table name to its metadata via the catalog, which also tracks schemas, permissions, and lineage."]
+        ],
+        [
+         ["q", "How do the table format and the catalog differ?"],
+         ["options", ["They're the same", "The format tracks one table's state (files/versions); the catalog tracks which tables exist and points to each one's metadata", "The catalog stores Parquet", "The format governs access"]],
+         ["answer", 1],
+         ["explain", "A table format (Delta/Iceberg) manages a single table's transactional metadata; the catalog is the higher-level registry of all tables and their locations."]
+        ],
+        [
+         ["q", "What does Unity Catalog add beyond a basic Hive Metastore?"],
+         ["options", ["Nothing", "Fine-grained governance (table/column/row access control), lineage, and discovery across the lakehouse", "A new file format", "Faster Parquet"]],
+         ["answer", 1],
+         ["explain", "Modern catalogs like Unity Catalog turn the passive name→location map into an active governance hub with access control, lineage, and discovery."]
+        ],
         {
-         "q": "What is the catalog's core job in a lakehouse?",
+         "q": "Two Spark jobs append to the same Iceberg table at the same moment. What normally happens?",
          "options": [
-          "Store the data",
-          "Map table names to their metadata location and track which tables exist (plus perms/lineage)",
-          "Run queries",
-          "Compress files"
+          "One job's rows are silently lost",
+          "The catalog accepts the first pointer swap; the second is rejected, refreshes, re-applies its append and retries",
+          "Both commits succeed and the table has two current versions",
+          "The table is locked until an admin intervenes"
          ],
          "answer": 1,
-         "explain": "The catalog is the directory of tables: engines resolve a table name to its metadata via the catalog, which also tracks schemas, permissions, and lineage."
-        },
-        {
-         "q": "How do the table format and the catalog differ?",
-         "options": [
-          "They're the same",
-          "The format tracks one table's state (files/versions); the catalog tracks which tables exist and points to each one's metadata",
-          "The catalog stores Parquet",
-          "The format governs access"
-         ],
-         "answer": 1,
-         "explain": "A table format (Delta/Iceberg) manages a single table's transactional metadata; the catalog is the higher-level registry of all tables and their locations."
-        },
-        {
-         "q": "What does Unity Catalog add beyond a basic Hive Metastore?",
-         "options": [
-          "Nothing",
-          "Fine-grained governance (table/column/row access control), lineage, and discovery across the lakehouse",
-          "A new file format",
-          "Faster Parquet"
-         ],
-         "answer": 1,
-         "explain": "Modern catalogs like Unity Catalog turn the passive name→location map into an active governance hub with access control, lineage, and discovery."
+         "explain": "Commits are optimistic: the catalog's compare-and-swap lets exactly one writer move the pointer from a given version. Appends don't conflict, so the loser rebases and retries (the lab shows this). Nothing is lost silently, a table never has two current versions, and Iceberg doesn't take table locks."
         }
        ],
        "exercises": [
@@ -16770,7 +16767,7 @@
       {
        "id": "lake-format-comparison",
        "title": "Delta vs Iceberg vs Hudi — compared",
-       "minutes": 11,
+       "minutes": 18,
        "summary": "How the three table formats differ in origin, design, and sweet spots — and why they're converging — so you can choose deliberately.",
        "concept": "All three are **table formats** solving the same core problem (ACID tables over open files). They differ in **origin, design, ecosystem, and sweet spot**.\n\n### Delta Lake (Databricks)\n- **Design:** a transaction log (`_delta_log`) of JSON commits + Parquet checkpoints.\n- **Strengths:** the **smoothest Spark/Databricks** experience; mature, simple, great tooling (OPTIMIZE, Z-order, liquid clustering, deletion vectors). Now **open** (Delta UniForm even exposes Iceberg-compatible metadata).\n- **Sweet spot:** Spark-centric / Databricks shops.\n\n### Apache Iceberg (Netflix)\n- **Design:** a metadata tree (metadata file → manifest list → manifests → data files); **snapshots** for time travel.\n- **Strengths:** strongly **engine-agnostic** (Spark, Trino, Flink, **Snowflake, BigQuery**, DuckDB all support it); **hidden partitioning** (you don't put partition columns in queries) and **partition evolution** (change partitioning without rewriting data); excellent at **huge scale**. Broadest industry momentum.\n- **Sweet spot:** multi-engine, open, large-scale platforms; the emerging **default**.\n\n### Apache Hudi (Uber)\n- **Design:** built for **streaming upserts** and incremental processing; offers **Copy-on-Write** (rewrite files on update — read-optimized) vs **Merge-on-Read** (write deltas, merge on read — write-optimized) table types.\n- **Strengths:** fast **upsert/CDC** ingestion and **incremental pulls**.\n- **Sweet spot:** high-frequency streaming/CDC upsert workloads.\n\n### Choosing\n- **Spark/Databricks** → **Delta**.\n- **Multi-engine / open / large analytics** → **Iceberg** (broadest support, momentum).\n- **Heavy streaming upserts** → **Hudi**.\n\n### The convergence\nThe formats are **converging**: all now do ACID, time travel, schema evolution; Delta UniForm and cross-format catalogs let engines read multiple formats. The **decision matters less over time** — pick by your **primary engine and ecosystem**, and don't agonize. Iceberg's vendor-neutral adoption (Snowflake, BigQuery, etc.) is making it the common denominator.",
        "example": "A Databricks-centric team picks **Delta** for the smoothest integration. A company wanting **Snowflake and Spark and Trino** to all query one copy picks **Iceberg** for its broad, engine-neutral support. A team doing high-rate CDC upserts leans **Hudi** (or Iceberg/Delta with MERGE).",
@@ -16785,38 +16782,34 @@
        "diagram": "table-format-anatomy",
        "diagram_caption": "Delta, Iceberg, and Hudi all add a transactional metadata layer over open Parquet — differing in design and ecosystem.",
        "quiz": [
+        [
+         ["q", "What is Iceberg especially known for?"],
+         ["options", ["Spark-only support", "Being strongly engine-agnostic, with hidden partitioning and partition evolution; broadest adoption", "No time travel", "Streaming upserts only"]],
+         ["answer", 1],
+         ["explain", "Iceberg is designed to be engine-neutral (Spark, Trino, Snowflake, BigQuery…) with hidden partitioning and partition evolution, driving its broad industry momentum."]
+        ],
+        [
+         ["q", "Which format is purpose-built for high-frequency streaming upserts?"],
+         ["options", ["Delta", "Iceberg", "Hudi (with Copy-on-Write vs Merge-on-Read)", "None"]],
+         ["answer", 2],
+         ["explain", "Hudi originated at Uber for fast upsert/CDC ingestion and incremental processing, offering Copy-on-Write (read-optimized) and Merge-on-Read (write-optimized) tables."]
+        ],
+        [
+         ["q", "What's the practical takeaway on choosing among them?"],
+         ["options", ["Agonize over it", "They're converging (all ACID/time-travel/evolution) — choose by your primary engine/ecosystem; Iceberg is the emerging common denominator", "Always Hudi", "They're incompatible with Parquet"]],
+         ["answer", 1],
+         ["explain", "Feature gaps are narrowing; pick by primary engine (Delta for Databricks, Iceberg for multi-engine, Hudi for streaming upserts), with Iceberg increasingly the neutral default."]
+        ],
         {
-         "q": "What is Iceberg especially known for?",
+         "q": "You add a column to a 40 TB Iceberg table. How many data files are rewritten?",
          "options": [
-          "Spark-only support",
-          "Being strongly engine-agnostic, with hidden partitioning and partition evolution; broadest adoption",
-          "No time travel",
-          "Streaming upserts only"
-         ],
-         "answer": 1,
-         "explain": "Iceberg is designed to be engine-neutral (Spark, Trino, Snowflake, BigQuery…) with hidden partitioning and partition evolution, driving its broad industry momentum."
-        },
-        {
-         "q": "Which format is purpose-built for high-frequency streaming upserts?",
-         "options": [
-          "Delta",
-          "Iceberg",
-          "Hudi (with Copy-on-Write vs Merge-on-Read)",
-          "None"
+          "All of them, to add the column",
+          "Only files in the latest partition",
+          "None: schema evolution writes a new metadata file; old files read the column as null",
+          "It depends on the file format"
          ],
          "answer": 2,
-         "explain": "Hudi originated at Uber for fast upsert/CDC ingestion and incremental processing, offering Copy-on-Write (read-optimized) and Merge-on-Read (write-optimized) tables."
-        },
-        {
-         "q": "What's the practical takeaway on choosing among them?",
-         "options": [
-          "Agonize over it",
-          "They're converging (all ACID/time-travel/evolution) — choose by your primary engine/ecosystem; Iceberg is the emerging common denominator",
-          "Always Hudi",
-          "They're incompatible with Parquet"
-         ],
-         "answer": 1,
-         "explain": "Feature gaps are narrowing; pick by primary engine (Delta for Databricks, Iceberg for multi-engine, Hudi for streaming upserts), with Iceberg increasingly the neutral default."
+         "explain": "Iceberg tracks columns by ID in metadata, so ADD COLUMN is metadata-only and old Parquet files simply lack it (read as null). The lab shows 0 files rewritten. Partition and file format don't change that."
         }
        ],
        "exercises": [
