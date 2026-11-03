@@ -6116,7 +6116,7 @@
    "company": "Common DE loop",
    "level": "Hard",
    "q": "How do you get exactly-once results from a CDC pipeline when Kafka delivery is at-least-once?",
-   "a": "Don't chase exactly-once delivery; make the apply idempotent. Keep the primary key and the source position (LSN or binlog offset) on every event, land events append-only in bronze, then MERGE into silver taking the latest event per key and only applying events newer than the stored position. Deletes become deletes or soft-delete flags. A duplicate or a full replay then changes nothing. Verify with periodic count/checksum reconciliation against the source."
+   "a": "Don't chase exactly-once delivery; make the apply idempotent. Keep the primary key and the source position (LSN or binlog offset) on every event, land events append-only in bronze, then MERGE into silver taking the latest event per key and only applying events newer than the stored position, on every branch. Deletes become tombstones (is_deleted plus the delete's LSN), not hard deletes: a hard delete forgets the key, and a replayed older batch would re-insert it. Duplicates and replays in any order then change nothing. Verify with periodic count/checksum reconciliation against the source."
   },
   {
    "company": "Common DE loop",
@@ -6128,7 +6128,7 @@
    "company": "Common DE loop",
    "level": "Senior",
    "q": "Design CDC for 40 database shards into a lakehouse with a 15-minute freshness SLA.",
-   "a": "One Debezium connector (or task) per shard on Kafka Connect, a topic per table with the shard id in the key or as a column, keyed by primary key so per-row order holds. Avro/Protobuf with a schema registry and a compatibility rule. A streaming job lands every event into bronze Iceberg/Delta (append, partitioned by ingest date), and a micro-batch every 5–10 minutes MERGEs into silver with an LSN guard. Monitor connector status, slot lag per shard, consumer lag, and freshness of silver. Backfill new tables with incremental snapshots. Reconcile daily counts per shard."
+   "a": "One Debezium connector (or task) per shard on Kafka Connect, a topic per table with the shard id in the key or as a column, keyed by primary key so per-row order holds. Avro/Protobuf with a schema registry and a compatibility rule. A streaming job lands every event into bronze Iceberg/Delta (append, partitioned by ingest date), and a micro-batch every 5–10 minutes MERGEs into silver with an LSN guard on every branch, keeping deletes as tombstones. Monitor connector status, slot lag per shard, consumer lag, and freshness of silver. Backfill new tables with incremental snapshots. Reconcile daily counts per shard."
   }
  ],
  "sd-design-platform": [
@@ -6156,7 +6156,7 @@
    "company": "Common DE loop",
    "level": "Hard",
    "q": "Design CDC from 40 Postgres shards into a lakehouse with 15-minute freshness.",
-   "a": "Debezium per shard on Kafka Connect (pgoutput, one slot each), topics keyed by primary key, Avro + registry. Land every event append-only in bronze; MERGE into silver every 5–10 minutes taking the latest event per key and applying only newer LSNs; deletes become deletes. Monitor connector health, slot lag, consumer lag and silver freshness; backfill new tables with incremental snapshots; reconcile counts daily."
+   "a": "Debezium per shard on Kafka Connect (pgoutput, one slot each), topics keyed by primary key, Avro + registry. Land every event append-only in bronze; MERGE into silver every 5–10 minutes taking the latest event per key and applying only newer LSNs on every branch; deletes become tombstones (is_deleted + LSN) so replays can't resurrect rows. Monitor connector health, slot lag, consumer lag and silver freshness; backfill new tables with incremental snapshots; reconcile counts daily."
   }
  ],
  "sd-design-lakehouse": [

@@ -85,3 +85,49 @@ before = wh.execute("SELECT * FROM l_orders ORDER BY 1").fetchall()
 state["last_lsn"] = 0; wh.execute("DELETE FROM l_history"); log_based_sync()
 after = wh.execute("SELECT * FROM l_orders ORDER BY 1").fetchall()
 print("replay from lsn 0 gives same table:", before == after)
+
+# =====================================================================================
+# Part 2: applying changes with MERGE, and the replay trap.
+# Bronze keeps every change with its source position (LSN). Silver is built with MERGE.
+# We apply two daily batches, then RE-RUN day 1 (a backfill after a bug fix) and see
+# what each MERGE pattern does to an order that was deleted on day 2.
+# =====================================================================================
+print("\n--- Part 2: MERGE patterns under an out-of-order replay ---")
+wh.execute("""CREATE TABLE bronze AS SELECT * FROM (VALUES
+  (1, 10, 'c', 'placed', DATE '2026-11-01'), (1, 20, 'u', 'paid', DATE '2026-11-01'),
+  (1, 30, 'd', 'paid',   DATE '2026-11-02'),                            -- order 1 deleted on day 2
+  (2, 15, 'c', 'placed', DATE '2026-11-01'), (2, 25, 'd', 'placed', DATE '2026-11-01'),
+  (2, 35, 'c', 'placed', DATE '2026-11-02')                             -- order 2 deleted, then re-created
+) AS t(order_id, lsn, op, status, ingest_date)""")
+
+LATEST = """SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY lsn DESC) rn
+            FROM bronze WHERE ingest_date = ?) WHERE rn = 1"""
+
+HARD = """MERGE INTO silver_hard t USING ({latest}) s ON t.order_id = s.order_id
+WHEN MATCHED AND s.op = 'd'      THEN DELETE
+WHEN MATCHED AND s.lsn > t.lsn   THEN UPDATE SET status = s.status, lsn = s.lsn
+WHEN NOT MATCHED AND s.op <> 'd' THEN INSERT VALUES (s.order_id, s.status, s.lsn)""".format(latest=LATEST)
+
+SOFT = """MERGE INTO silver_soft t USING ({latest}) s ON t.order_id = s.order_id
+WHEN MATCHED AND s.lsn > t.lsn THEN UPDATE SET status = s.status, lsn = s.lsn, is_deleted = (s.op = 'd')
+WHEN NOT MATCHED               THEN INSERT VALUES (s.order_id, s.status, s.lsn, s.op = 'd')""".format(latest=LATEST)
+# every branch is guarded by the LSN, and a delete becomes a tombstone row instead of vanishing
+
+wh.execute("CREATE TABLE silver_hard (order_id INT PRIMARY KEY, status TEXT, lsn INT)")
+wh.execute("CREATE TABLE silver_soft (order_id INT PRIMARY KEY, status TEXT, lsn INT, is_deleted BOOLEAN)")
+def current(tbl):
+    where = " WHERE NOT is_deleted" if tbl == "silver_soft" else ""
+    return wh.execute(f"SELECT order_id, status, lsn FROM {tbl}{where} ORDER BY 1").fetchall()
+
+for day in ("2026-11-01", "2026-11-02"):
+    wh.execute(HARD, [day]); wh.execute(SOFT, [day])
+print("after day 1 + day 2  hard-delete MERGE :", current("silver_hard"))
+print("                     soft-delete MERGE :", current("silver_soft"), "(visible rows)")
+
+wh.execute(HARD, ["2026-11-01"]); wh.execute(SOFT, ["2026-11-01"])      # re-run day 1
+print("after re-running day 1")
+print("   hard-delete MERGE :", current("silver_hard"))
+print("      bug 1: order 1 is back from the dead (day 1's 'paid' hit WHEN NOT MATCHED -> INSERT)")
+print("      bug 2: live order 2 (lsn 35) is gone (day 1's old delete, lsn 25, hit the unguarded DELETE)")
+print("   soft-delete MERGE :", current("silver_soft"), "<- unchanged: day 1's lsn 20 < tombstone lsn 30")
+print("   tombstones kept   :", wh.execute("SELECT order_id, lsn FROM silver_soft WHERE is_deleted").fetchall())

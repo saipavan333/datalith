@@ -69,10 +69,27 @@ Copying events is half the job. Applying them wrong gives you a corrupt table th
 
 - **Apply in log order per key.** Kafka keeps order within a partition, and Debezium keys messages by primary key, so all changes for one order land in one partition, in order.
 - **Make the apply idempotent.** Kafka sinks deliver at least once, so you will see some events twice. Track the last applied log position (LSN) per key or per partition and skip anything older. Upsert, never blind insert.
-- **Turn `d` into a delete or a soft-delete flag.** Never drop delete events on the floor.
+- **Turn `d` into a tombstone, not a vanished row.** Keep the deleted key in silver with `is_deleted = true` and the delete's LSN, and expose current state through a view (`WHERE NOT is_deleted`). A hard `DELETE` throws away the one fact that protects you from replays: "this key was deleted at LSN 30". Purge old tombstones later, once no replay can reach back that far.
 - **Keep the raw change stream.** Land every event in an append-only bronze table first. Then build the current-state silver table with `MERGE`. If the merge logic has a bug, you replay from bronze instead of re-snapshotting production.
 
-A typical silver merge, written for a lakehouse table:
+The tempting silver merge hard-deletes. **Don't ship this one:**
+
+```sql
+-- BROKEN under replays: shown so you recognise it in code review
+MERGE INTO silver.orders AS t
+USING (latest change per order_id in this batch) AS s
+ON t.order_id = s.order_id
+WHEN MATCHED AND s.op = 'd'      THEN DELETE                      -- no LSN guard
+WHEN MATCHED AND s.lsn > t.lsn   THEN UPDATE SET status = s.status, lsn = s.lsn
+WHEN NOT MATCHED AND s.op <> 'd' THEN INSERT VALUES (s.order_id, s.status, s.lsn);
+```
+
+It works when batches arrive once, in order. Re-run an **older** batch (a backfill after a bug fix, a retried job) and it breaks two ways, both shown in the lab:
+
+- **Resurrection.** Order 1 was deleted on day 2, so its row is gone. Re-running day 1 finds no match, and day 1's `u` hits `WHEN NOT MATCHED ... INSERT`. The deleted order is back.
+- **Wrong delete.** Order 2 was deleted (LSN 25) and later re-created (LSN 35). Re-running day 1 replays the old delete, and the unguarded `DELETE` branch removes the live row.
+
+The replay-safe version keeps tombstones and guards **every** branch with the source position:
 
 ```sql
 MERGE INTO silver.orders AS t
@@ -81,16 +98,19 @@ USING (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY lsn DESC) AS rn
     FROM bronze.orders_changes
     WHERE ingest_date = :batch_date
-  ) WHERE rn = 1                         -- keep only the latest change per key in this batch
+  ) WHERE rn = 1                       -- latest change per key in this batch
 ) AS s
 ON t.order_id = s.order_id
-WHEN MATCHED AND s.op = 'd'            THEN DELETE
-WHEN MATCHED AND s.lsn > t.lsn         THEN UPDATE SET status = s.status, amount = s.amount, lsn = s.lsn
-WHEN NOT MATCHED AND s.op <> 'd'       THEN INSERT (order_id, status, amount, lsn)
-                                            VALUES (s.order_id, s.status, s.amount, s.lsn);
+WHEN MATCHED AND s.lsn > t.lsn THEN                -- only ever move forward in log order
+  UPDATE SET status = s.status, amount = s.amount, lsn = s.lsn, is_deleted = (s.op = 'd')
+WHEN NOT MATCHED THEN                               -- a delete for an unseen key still lands, as a tombstone
+  INSERT (order_id, status, amount, lsn, is_deleted)
+  VALUES (s.order_id, s.status, s.amount, s.lsn, s.op = 'd');
+
+CREATE VIEW silver.orders_current AS SELECT * FROM silver.orders WHERE NOT is_deleted;
 ```
 
-The `s.lsn > t.lsn` guard is what makes a replay harmless.
+With tombstones plus the guard on every branch, replays in **any** order are harmless: an older change always meets a stored LSN that is newer and does nothing. If you must hard-delete (storage or privacy rules), keep a separate per-key tombstone table (`order_id, deleted_lsn`) and check it in the merge. The guard needs a strictly increasing position per key: the Postgres LSN or the MySQL binlog file and position, never a wall-clock timestamp.
 
 ## 5. Worked example at real scale
 
@@ -99,7 +119,7 @@ A marketplace runs **40 Postgres shards** behind its checkout service. The `orde
 1. **Why not polling?** A 15-minute poll across 40 shards is 3,840 range scans a day on production, still blind to deletes. Ops has also seen bulk-fix scripts skip `updated_at`. Log-based CDC is the right call.
 2. **Event volume.** Debezium JSON events with schemas inline run around 1 KB each, so 25M x 1 KB is about 25 GB a day into Kafka. Switching to Avro with a schema registry cuts this to a few hundred bytes per event, roughly 5-8 GB a day. Kafka with 7 days of retention and replication factor 3 then needs about 25 GB x 7 x 3, around 525 GB, on JSON, or about a third of that on Avro.
 3. **Partitions.** At 3,000 events/s peak, one partition per topic would work for throughput, but the sink has to keep up while merging. 12 partitions keyed by `order_id` gives the sink 12 parallel workers and keeps per-order ordering.
-4. **The danger you must monitor.** A Postgres replication slot keeps WAL until the connector confirms it. If Kafka Connect is down for 6 hours while the shards write 3 GB of WAL an hour each, every primary is holding an extra 18 GB of WAL. Leave it for a weekend and a primary can fill its disk. Alert on slot lag (bytes and minutes) the same way you alert on CPU.
+4. **The danger you must monitor.** A Postgres replication slot keeps WAL until the connector confirms it. If Kafka Connect is down for 6 hours while each shard writes 3 GB of WAL an hour (WAL covers every table on the shard and full-page writes, not just the orders changes), every primary is holding an extra 18 GB of WAL. Leave it for a weekend and a primary can fill its disk. Alert on slot lag (bytes and minutes) the same way you alert on CPU.
 5. **Backfilling a new table.** Product wants the 600 GB `refunds` table added. Use an incremental snapshot signal so it is read in chunks while live changes keep flowing, instead of a blocking snapshot.
 
 The arithmetic here is the method to copy. The exact numbers are a teaching scenario.
@@ -196,6 +216,52 @@ before = wh.execute("SELECT * FROM l_orders ORDER BY 1").fetchall()
 state["last_lsn"] = 0; wh.execute("DELETE FROM l_history"); log_based_sync()
 after = wh.execute("SELECT * FROM l_orders ORDER BY 1").fetchall()
 print("replay from lsn 0 gives same table:", before == after)
+
+# =====================================================================================
+# Part 2: applying changes with MERGE, and the replay trap.
+# Bronze keeps every change with its source position (LSN). Silver is built with MERGE.
+# We apply two daily batches, then RE-RUN day 1 (a backfill after a bug fix) and see
+# what each MERGE pattern does to an order that was deleted on day 2.
+# =====================================================================================
+print("\n--- Part 2: MERGE patterns under an out-of-order replay ---")
+wh.execute("""CREATE TABLE bronze AS SELECT * FROM (VALUES
+  (1, 10, 'c', 'placed', DATE '2026-11-01'), (1, 20, 'u', 'paid', DATE '2026-11-01'),
+  (1, 30, 'd', 'paid',   DATE '2026-11-02'),                            -- order 1 deleted on day 2
+  (2, 15, 'c', 'placed', DATE '2026-11-01'), (2, 25, 'd', 'placed', DATE '2026-11-01'),
+  (2, 35, 'c', 'placed', DATE '2026-11-02')                             -- order 2 deleted, then re-created
+) AS t(order_id, lsn, op, status, ingest_date)""")
+
+LATEST = """SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY lsn DESC) rn
+            FROM bronze WHERE ingest_date = ?) WHERE rn = 1"""
+
+HARD = """MERGE INTO silver_hard t USING ({latest}) s ON t.order_id = s.order_id
+WHEN MATCHED AND s.op = 'd'      THEN DELETE
+WHEN MATCHED AND s.lsn > t.lsn   THEN UPDATE SET status = s.status, lsn = s.lsn
+WHEN NOT MATCHED AND s.op <> 'd' THEN INSERT VALUES (s.order_id, s.status, s.lsn)""".format(latest=LATEST)
+
+SOFT = """MERGE INTO silver_soft t USING ({latest}) s ON t.order_id = s.order_id
+WHEN MATCHED AND s.lsn > t.lsn THEN UPDATE SET status = s.status, lsn = s.lsn, is_deleted = (s.op = 'd')
+WHEN NOT MATCHED               THEN INSERT VALUES (s.order_id, s.status, s.lsn, s.op = 'd')""".format(latest=LATEST)
+# every branch is guarded by the LSN, and a delete becomes a tombstone row instead of vanishing
+
+wh.execute("CREATE TABLE silver_hard (order_id INT PRIMARY KEY, status TEXT, lsn INT)")
+wh.execute("CREATE TABLE silver_soft (order_id INT PRIMARY KEY, status TEXT, lsn INT, is_deleted BOOLEAN)")
+def current(tbl):
+    where = " WHERE NOT is_deleted" if tbl == "silver_soft" else ""
+    return wh.execute(f"SELECT order_id, status, lsn FROM {tbl}{where} ORDER BY 1").fetchall()
+
+for day in ("2026-11-01", "2026-11-02"):
+    wh.execute(HARD, [day]); wh.execute(SOFT, [day])
+print("after day 1 + day 2  hard-delete MERGE :", current("silver_hard"))
+print("                     soft-delete MERGE :", current("silver_soft"), "(visible rows)")
+
+wh.execute(HARD, ["2026-11-01"]); wh.execute(SOFT, ["2026-11-01"])      # re-run day 1
+print("after re-running day 1")
+print("   hard-delete MERGE :", current("silver_hard"))
+print("      bug 1: order 1 is back from the dead (day 1's 'paid' hit WHEN NOT MATCHED -> INSERT)")
+print("      bug 2: live order 2 (lsn 35) is gone (day 1's old delete, lsn 25, hit the unguarded DELETE)")
+print("   soft-delete MERGE :", current("silver_soft"), "<- unchanged: day 1's lsn 20 < tombstone lsn 30")
+print("   tombstones kept   :", wh.execute("SELECT order_id, lsn FROM silver_soft WHERE is_deleted").fetchall())
 ```
 
 Expected output (from a real run on 2026-11-03, Python 3.14, DuckDB 2.0.0):
@@ -210,6 +276,16 @@ query-based   : [(1, 'placed'), (2, 'shipped'), (3, 'placed')]
 log-based     : [(1, 'placed'), (2, 'shipped')]
 order 2 history seen by log-based CDC: ['placed', 'paid', 'shipped']
 replay from lsn 0 gives same table: True
+
+--- Part 2: MERGE patterns under an out-of-order replay ---
+after day 1 + day 2  hard-delete MERGE : [(2, 'placed', 35)]
+                     soft-delete MERGE : [(2, 'placed', 35)] (visible rows)
+after re-running day 1
+   hard-delete MERGE : [(1, 'paid', 20)]
+      bug 1: order 1 is back from the dead (day 1's 'paid' hit WHEN NOT MATCHED -> INSERT)
+      bug 2: live order 2 (lsn 35) is gone (day 1's old delete, lsn 25, hit the unguarded DELETE)
+   soft-delete MERGE : [(2, 'placed', 35)] <- unchanged: day 1's lsn 20 < tombstone lsn 30
+   tombstones kept   : [(1, 30)]
 ```
 
 What to look for:
@@ -217,7 +293,8 @@ What to look for:
 - **Sync 2: polling saw 1 row, the log saw 3 events.** Polling got order 2's final state only and never noticed order 3 vanished.
 - **`query-based` still has order 3**, which no longer exists at the source. That is the phantom row your finance team will find.
 - **The log-based copy heard `placed, paid, shipped`** for order 2, so "time to payment" is computable.
-- **Replay from LSN 0 gives the same table.** Upserts plus a delete for `d` make the apply idempotent.
+- **Replay from LSN 0 gives the same table.** Replaying the whole log in order is safe even with simple upserts.
+- **Part 2 is the trap.** Re-running day 1 after day 2 makes the hard-delete `MERGE` resurrect order 1 and delete the live order 2. The tombstone `MERGE`, guarded by LSN on every branch, doesn't change.
 
 To try real Debezium (needs Docker, around 2 GB of images, not free disk on this course's laptop budget): the Debezium tutorial runs Kafka, Kafka Connect, MySQL and the connector with `docker compose`, then you register the connector with a `POST` to Kafka Connect's REST API on port 8083. Follow the official tutorial linked below rather than a copied compose file, since image tags change.
 
@@ -232,7 +309,7 @@ To try real Debezium (needs Docker, around 2 GB of images, not free disk on this
 ## 8. Interview angles
 
 - *"Why log-based over polling?"* Deletes, intermediate states, no dependence on `updated_at`, and far less source load. Cost: needs replication rights, slot monitoring and a streaming stack.
-- *"How do you make the sink exactly-once?"* You usually can't make delivery exactly-once end to end. You make the *apply* idempotent: key by primary key, keep the source LSN, merge only newer positions, and treat replays as normal.
+- *"How do you make the sink exactly-once?"* You usually can't make delivery exactly-once end to end. You make the *apply* idempotent: key by primary key, keep the source LSN, merge only newer positions on every branch, and keep deletes as tombstones so an out-of-order replay can't resurrect a row.
 - *"How do you add a 2 TB table without downtime?"* Incremental snapshot, chunked, concurrent with streaming. Then reconcile row counts and checksums per day against the source.
 
 ## Sources
