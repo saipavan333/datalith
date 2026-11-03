@@ -1,5 +1,7 @@
 # The AWS data stack — hands-on map
 
+**Name check (Nov 2026):** Amazon QuickSight became **Amazon Quick Sight**, part of **Amazon Quick Suite** (announced 2025-10-09); Kinesis Data Firehose has been **Amazon Data Firehose** since February 2024; Kinesis Data Analytics is **Amazon Managed Service for Apache Flink**. Sources: https://aws.amazon.com/blogs/business-intelligence/reimagine-business-intelligence-amazon-quicksight-evolves-to-amazon-quick-suite and https://aws.amazon.com/about-aws/whats-new/2024/02/amazon-data-firehose-formerly-kinesis-data-firehose
+
 How the building blocks fit, with real paths and a decision guide for picking engines.
 
 @@diagram:aws-stack

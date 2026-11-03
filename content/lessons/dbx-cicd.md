@@ -1,5 +1,7 @@
 # Git, Asset Bundles & CI/CD — the complete guide
 
+**Name check (Nov 2026):** Databricks Asset Bundles are now documented as **Declarative Automation Bundles** (formerly Databricks Asset Bundles); `databricks.yml` and the `databricks bundle` CLI workflow are unchanged. Source: https://docs.databricks.com/aws/en/dev-tools/bundles/
+
 Production data pipelines deserve the same rigor as application code: **version control, testing, and repeatable deployment**. Databricks supports this with **Repos** (Git), **Databricks Asset Bundles** (package + deploy), and **CI/CD**. Master these and "it worked in my notebook" becomes "it's tested, reviewed, and deploys identically to prod." This chapter is the full workflow.
 
 @@diagram:dbx-cicd

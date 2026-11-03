@@ -1,5 +1,7 @@
 # Capstone — a reference AWS data platform
 
+**Name check (Nov 2026):** Amazon QuickSight is now **Amazon Quick Sight** inside **Amazon Quick Suite** (2025-10-09), and Kinesis Data Firehose is **Amazon Data Firehose** (2024). Sources: https://aws.amazon.com/blogs/business-intelligence/reimagine-business-intelligence-amazon-quicksight-evolves-to-amazon-quick-suite and https://aws.amazon.com/about-aws/whats-new/2024/02/amazon-data-firehose-formerly-kinesis-data-firehose
+
 Wire every service in this course into one coherent, cost-aware, governed platform.
 
 @@diagram:aws-reference-arch

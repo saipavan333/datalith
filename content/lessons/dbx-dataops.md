@@ -1,5 +1,7 @@
 # Capstone — DataOps with Asset Bundles & CI/CD
 
+**Name check (Nov 2026):** Databricks Asset Bundles are now documented as **Declarative Automation Bundles** (formerly Databricks Asset Bundles); `databricks.yml` and the `databricks bundle` CLI workflow are unchanged. Source: https://docs.databricks.com/aws/en/dev-tools/bundles/
+
 Ship Databricks pipelines like software, over the full governed lakehouse.
 
 @@diagram:dbx-dataops
