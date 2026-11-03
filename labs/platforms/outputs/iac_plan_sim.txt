@@ -1,0 +1,17 @@
+Refreshing state... (reading the real world)
+  ! drift detected on databricks_cluster_policy.jobs_small: {'max_workers': (8, 50)}
+
+Terraform will perform the following actions:
+  -/+ google_bigquery_dataset.raw  {"location": ["EU", "US"], "forces replacement": ["location"]}
+  +   google_bigquery_dataset.mart  {"dataset_id": "mart", "location": "US", "labels": {"team": "analytics"}}
+  ~   snowflake_warehouse.bi  {"auto_suspend": [600, 60]}
+  ~   databricks_cluster_policy.jobs_small  {"max_workers": [50, 8]}
+  -   snowflake_warehouse.old_adhoc  {}
+
+Plan: 2 to add, 2 to change, 2 to destroy.
+
+What to look for:
+ - A BigQuery dataset's location can't change in place: -/+ means destroy and recreate. With tables inside,
+   the google provider refuses the destroy unless delete_contents_on_destroy = true (then it is data loss).
+ - The UI edit (max_workers=50) is drift; the plan puts it back to 8. Code is the source of truth.
+ - ADHOC_WH was deleted from code, so plan destroys it. Review every '-' before you apply.

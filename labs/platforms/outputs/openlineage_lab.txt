@@ -1,0 +1,20 @@
+events collected: 8
+run states: [('ingest_orders', 'START'), ('ingest_orders', 'COMPLETE'), ('build_fct_orders', 'START'), ('build_fct_orders', 'COMPLETE'), ('revenue_forecast', 'START'), ('revenue_forecast', 'COMPLETE'), ('reverse_etl_to_snowflake', 'START'), ('reverse_etl_to_snowflake', 'FAIL')]
+
+lineage edges:
+  bigquery/acme-prod.mart.fct_orders     --[revenue_forecast]--> bigquery/acme-prod.ml.revenue_forecast
+  bigquery/acme-prod.mart.fct_orders     --[reverse_etl_to_snowflake]--> snowflake://acme.us-east-1/FINANCE.PUBLIC.ORDERS_DAILY
+  bigquery/acme-prod.raw.customers       --[build_fct_orders]--> bigquery/acme-prod.mart.fct_orders
+  bigquery/acme-prod.raw.orders          --[build_fct_orders]--> bigquery/acme-prod.mart.fct_orders
+  postgres://orders-db:5432/shop.public.orders --[ingest_orders]--> bigquery/acme-prod.raw.orders
+
+Impact analysis: everything downstream of postgres orders (a column is being renamed)
+    depth 1: bigquery/acme-prod.raw.orders
+      depth 2: bigquery/acme-prod.mart.fct_orders
+        depth 3: bigquery/acme-prod.ml.revenue_forecast
+        depth 3: snowflake://acme.us-east-1/FINANCE.PUBLIC.ORDERS_DAILY
+
+Last failed run (who to page): [('reverse_etl_to_snowflake', datetime.datetime(2026, 11, 3, 8, 20, tzinfo=<DstTzInfo 'Asia/Calcutta' IST+5:30:00 STD>))]
+
+What to look for: no tool had to know about the others; each just emitted START/COMPLETE with
+inputs/outputs, and the graph (and blast radius) falls out of a join.

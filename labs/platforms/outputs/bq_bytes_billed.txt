@@ -1,0 +1,18 @@
+rows in table: 1,200,000  (30 daily partitions)
+
+scale factor to a 30 x 800 GiB table: x122,292
+
+query                                                 local MB  at scale GiB  on-demand cost
+1  SELECT * , no filter (whole table)                    201.0        24,000         $146.48   (100.0% of SELECT *)
+2  4 columns, no partition filter                         33.2         3,963          $24.19   ( 16.5% of SELECT *)
+3  4 columns, partition filter: last 7 days                7.7           924           $5.64   (  3.9% of SELECT *)
+4  + clustered on country, WHERE country = 'IN'            1.3           155           $0.95   (  0.6% of SELECT *)
+
+A tiny lookup query on this table still bills max(10 MB, bytes read): 10 MB.
+
+What to look for:
+ - SELECT * pays for the two long STRING columns even though the question never uses them.
+ - The partition filter cuts bytes to ~7/30 because whole daily partitions are skipped.
+ - Clustering only pays off on top of pruning when the filter column is the cluster key.
+ - Tiny queries still bill 10 MB: the minimum is per table referenced.
+ - Compare the cost column: the same question can cost 100x more written badly.

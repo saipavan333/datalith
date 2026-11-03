@@ -1,0 +1,23 @@
+append-only table (every change, as delivered):
+   ('u1', 1000, 'INSERT', 1, 500.0)
+   ('u2', 1001, 'INSERT', 2, 80.0)
+   ('u4', 1003, 'UPDATE-INSERT', 1, 450.0)
+   ('u3', 1002, 'UPDATE-INSERT', 1, 470.0)
+   ('u5', 1004, 'DELETE', 2, None)
+   ('u6', 1005, 'INSERT', 3, 1200.0)
+   ('u6', 1005, 'INSERT', 3, 1200.0)
+
+WRONG current state: last row by ARRIVAL order
+   [(1, 470.0), (3, 1200.0)]
+RIGHT current state: dedupe by uuid, latest by SOURCE_TIMESTAMP, drop deletes (what merge mode maintains)
+   [(1, 450.0), (3, 1200.0)]
+
+Cost check with the Nov-2026 list price (CDC $2.00/GiB for the first 2,500 GiB/month;
+processed bytes can be 2-5x the raw row size per the pricing page):
+    50 GiB raw changes x2 ->   100 GiB processed -> $200/month
+    50 GiB raw changes x5 ->   250 GiB processed -> $500/month
+   300 GiB raw changes x2 ->   600 GiB processed -> $1,200/month
+   300 GiB raw changes x5 ->  1500 GiB processed -> $3,000/month
+
+What to look for: account 1 must end at 450 (the u4 commit is newer), account 2 is deleted,
+account 3 appears once. Ordering by arrival gets account 1 wrong.

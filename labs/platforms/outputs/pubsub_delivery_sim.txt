@@ -1,0 +1,9 @@
+200 messages, true revenue = 39900
+
+naive INSERT (not idempotent)              deliveries=268  rows=268  revenue=53143
+INSERT ... ON CONFLICT (message_id) DO NOTHING deliveries=258  rows=200  revenue=39900
+
+What to look for: a slow ack makes Pub/Sub redeliver; the naive sink double-counts revenue,
+the idempotent sink keyed on message_id (or a business key) lands exactly the right total.
+Note: here a slow message is simply retried until one attempt acks in time. In production you
+extend the deadline (modifyAckDeadline / client lease management) or set a dead-letter topic.

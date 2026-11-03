@@ -1,0 +1,32 @@
+== 1. the transaction log is just ordered JSON commits ==
+  00000000000000000000.json: {'commitInfo': 1, 'protocol': 1, 'metaData': 1, 'add': 1}
+  00000000000000000001.json: {'commitInfo': 1, 'add': 1}
+  00000000000000000002.json: {'commitInfo': 1, 'add': 1, 'cdc': 1, 'remove': 1}
+  00000000000000000003.json: {'commitInfo': 1, 'add': 1, 'cdc': 1, 'remove': 1}
+
+== 2. versions and time travel == current version = 3
+  v0: WRITE
+  v1: WRITE
+  v2: MERGE
+  v3: DELETE
+  VERSION AS OF 0: 1000 rows
+  VERSION AS OF 1: 2000 rows
+  VERSION AS OF 2: 2200 rows
+  VERSION AS OF 3: 2150 rows
+
+== 3. Change Data Feed (row-level changes between versions) ==
+  v2 insert             200 rows
+  v2 update_postimage   500 rows
+  v2 update_preimage    500 rows
+  v3 delete             50 rows
+
+== 4. small files, then OPTIMIZE ZORDER BY (country) and data skipping ==
+  before: 22 files; WHERE country='IN' must open 22
+  OPTIMIZE: removed 22 files, added 5
+  after:  5 files; WHERE country='IN' must open 2  (min/max stats now narrow)
+
+== 5. VACUUM: old files stay until retention passes (that is what keeps time travel working) ==
+  files a 0-hour vacuum WOULD delete: 24 (default retention is 7 days; we only dry-run)
+
+What to look for: commits are JSON (add/remove/metaData/protocol/commitInfo); old versions stay
+readable until VACUUM; MERGE writes update_preimage/postimage in the CDF; Z-order narrows min/max.

@@ -1,0 +1,12 @@
+Base weights:
+  BigQuery-centred       4.05
+  Databricks lakehouse   3.90
+  Snowflake              3.75
+
+Sensitivity: what if the ML team doubles and lock-in becomes a board concern?
+  Databricks lakehouse   4.20
+  BigQuery-centred       3.85
+  Snowflake              3.65
+
+What to look for: the winner flips when priorities change. Write the weights down and get them
+agreed BEFORE scoring, or the matrix just launders a decision someone already made.

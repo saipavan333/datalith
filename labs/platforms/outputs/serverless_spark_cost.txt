@@ -1,0 +1,12 @@
+default footprint check: driver+2 executors = 12 DCUs (docs say 12)
+
+Nightly job: 2 TiB of Parquet -> joins -> 400 GiB shuffle, 25 minutes
+  10 executors x 4 vCPU/ 16 GiB ->   44.0 DCU  standard $  1.11  premium $  1.64 per run
+  20 executors x 4 vCPU/ 16 GiB ->   84.0 DCU  standard $  2.11  premium $  3.12 per run
+  20 executors x 8 vCPU/ 64 GiB ->  228.0 DCU  standard $  5.71  premium $  8.46 per run
+  10 executors x 8 vCPU/ 96 GiB ->  180.0 DCU  standard $  4.51  premium $  6.68 per run
+
+  30 nightly runs (20 x 4/16): $63/month, and $0 between runs (scale to zero).
+
+What to look for: memory above 8 GiB/vCPU costs double per GiB; premium must finish >1.48x faster
+to break even (0.089/0.06); a cluster you forget to delete bills 24x7, serverless only bills while running.
