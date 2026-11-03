@@ -12638,24 +12638,39 @@
        "diagram": "partitions-shuffle",
        "diagram_caption": "Narrow ops stay within a partition; a wide op shuffles data across the network by key.",
        "quiz": [
-        [
-         ["q", "What triggers a shuffle?"],
-         ["options", ["filter", "select", "groupBy / join / distinct / orderBy (wide ops)", "withColumn"]],
-         ["answer", 2],
-         ["explain", "Wide operations need same-key rows together, so they redistribute data across the network — the shuffle. Narrow ops (filter/select) don't move data."]
-        ],
-        [
-         ["q", "What's the difference between repartition(n) and coalesce(n)?"],
-         ["options", ["Nothing", "repartition does a full shuffle to change/rebalance partitions; coalesce reduces partitions without a full shuffle", "coalesce increases partitions", "repartition is for reading only"]],
-         ["answer", 1],
-         ["explain", "repartition(n) fully shuffles (can increase or rebalance); coalesce(n) merges partitions to reduce them cheaply, e.g. before writing fewer files."]
-        ],
-        [
-         ["q", "199 tasks finish in seconds but 1 runs for an hour. What's wrong?"],
-         ["options", ["Too few partitions", "Data skew — one key has most of the rows, overloading its task", "The driver is slow", "Too much cache"]],
-         ["answer", 1],
-         ["explain", "Skew: a shuffle sends all rows for a key to one task, so a giant key makes one task do most of the work. Fix with salting or AQE skew splitting."]
-        ],
+        {
+         "q": "What triggers a shuffle?",
+         "options": [
+          "filter",
+          "select",
+          "groupBy / join / distinct / orderBy (wide ops)",
+          "withColumn"
+         ],
+         "answer": 2,
+         "explain": "Wide operations need same-key rows together, so they redistribute data across the network — the shuffle. Narrow ops (filter/select) don't move data."
+        },
+        {
+         "q": "What's the difference between repartition(n) and coalesce(n)?",
+         "options": [
+          "Nothing",
+          "repartition does a full shuffle to change/rebalance partitions; coalesce reduces partitions without a full shuffle",
+          "coalesce increases partitions",
+          "repartition is for reading only"
+         ],
+         "answer": 1,
+         "explain": "repartition(n) fully shuffles (can increase or rebalance); coalesce(n) merges partitions to reduce them cheaply, e.g. before writing fewer files."
+        },
+        {
+         "q": "199 tasks finish in seconds but 1 runs for an hour. What's wrong?",
+         "options": [
+          "Too few partitions",
+          "Data skew — one key has most of the rows, overloading its task",
+          "The driver is slow",
+          "Too much cache"
+         ],
+         "answer": 1,
+         "explain": "Skew: a shuffle sends all rows for a key to one task, so a giant key makes one task do most of the work. Fix with salting or AQE skew splitting."
+        },
         {
          "q": "AQE is on (the default). Your groupBy(seller_id) has one seller with 30% of rows. Does AQE's skew handling fix it?",
          "options": [
@@ -15625,24 +15640,39 @@
        "diagram": "kafka-partition-log",
        "diagram_caption": "One partition: offsets in segment files, a consumer group's committed offset, and the high watermark set by the slowest in-sync replica.",
        "quiz": [
-        [
-         ["q", "What does Kafka guarantee about message ordering?"],
-         ["options", ["Global order across the topic", "Order within a partition, not across partitions", "No ordering ever", "Order only with one consumer"]],
-         ["answer", 1],
-         ["explain", "Each partition is an ordered log, but Kafka doesn't order across partitions — so to keep related events ordered you route them to the same partition (via a key)."]
-        ],
-        [
-         ["q", "How do you keep all of one user's events ordered while still scaling?"],
-         ["options", ["Use one partition", "Key events by user_id so they hash to the same partition (ordered) while other users spread across partitions", "Disable partitions", "Use processing time"]],
-         ["answer", 1],
-         ["explain", "Keying by user_id sends each user's events to one partition (preserving their order) while different users distribute across partitions for parallelism."]
-        ],
-        [
-         ["q", "In a consumer group of 4 reading a 12-partition topic, how is work divided?"],
-         ["options", ["All 4 read everything", "Each partition goes to exactly one consumer in the group (≈3 partitions each) for parallelism", "Only one consumer works", "Randomly per message"]],
-         ["answer", 1],
-         ["explain", "Within a group, each partition is assigned to one consumer, so the 12 partitions split across the 4 consumers — adding consumers (up to 12) scales throughput."]
-        ],
+        {
+         "q": "What does Kafka guarantee about message ordering?",
+         "options": [
+          "Global order across the topic",
+          "Order within a partition, not across partitions",
+          "No ordering ever",
+          "Order only with one consumer"
+         ],
+         "answer": 1,
+         "explain": "Each partition is an ordered log, but Kafka doesn't order across partitions — so to keep related events ordered you route them to the same partition (via a key)."
+        },
+        {
+         "q": "How do you keep all of one user's events ordered while still scaling?",
+         "options": [
+          "Use one partition",
+          "Key events by user_id so they hash to the same partition (ordered) while other users spread across partitions",
+          "Disable partitions",
+          "Use processing time"
+         ],
+         "answer": 1,
+         "explain": "Keying by user_id sends each user's events to one partition (preserving their order) while different users distribute across partitions for parallelism."
+        },
+        {
+         "q": "In a consumer group of 4 reading a 12-partition topic, how is work divided?",
+         "options": [
+          "All 4 read everything",
+          "Each partition goes to exactly one consumer in the group (≈3 partitions each) for parallelism",
+          "Only one consumer works",
+          "Randomly per message"
+         ],
+         "answer": 1,
+         "explain": "Within a group, each partition is assigned to one consumer, so the 12 partitions split across the 4 consumers — adding consumers (up to 12) scales throughput."
+        },
         {
          "q": "Producer uses acks=all. The topic has RF 3 but both followers just dropped out of the ISR. min.insync.replicas is the default (1). The leader's disk then dies for good. What happened to the last writes?",
          "options": [
@@ -15857,24 +15887,39 @@
        "diagram": "schema-evolution",
        "diagram_caption": "A central registry validates each new schema version's compatibility so producers and consumers evolve independently.",
        "quiz": [
-        [
-         ["q", "What does a schema registry do?"],
-         ["options", ["Stores the events", "Centrally stores event schemas and enforces compatibility; messages carry a schema id consumers resolve", "Replaces Kafka", "Encrypts data"]],
-         ["answer", 1],
-         ["explain", "The registry holds schemas (so messages carry only a small id) and validates that new schema versions are compatible, preventing producer changes from breaking consumers."]
-        ],
-        [
-         ["q", "Adding a new OPTIONAL field with a default to an event schema is…"],
-         ["options", ["A breaking change", "A safe, compatible change — old/new readers handle it (backward/forward compatible)", "Impossible", "Forward-incompatible"]],
-         ["answer", 1],
-         ["explain", "Optional fields with defaults let new consumers read old data and old consumers ignore the new field — a safe evolution the registry accepts."]
-        ],
-        [
-         ["q", "What does 'backward compatible' mean for schemas?"],
-         ["options", ["Old consumers read new data", "New consumers can read old data (so you can upgrade consumers first)", "Nothing changes", "Producers break"]],
-         ["answer", 1],
-         ["explain", "Backward compatibility means a new schema can read data written with the old schema, so consumers can be upgraded before producers without breaking."]
-        ],
+        {
+         "q": "What does a schema registry do?",
+         "options": [
+          "Stores the events",
+          "Centrally stores event schemas and enforces compatibility; messages carry a schema id consumers resolve",
+          "Replaces Kafka",
+          "Encrypts data"
+         ],
+         "answer": 1,
+         "explain": "The registry holds schemas (so messages carry only a small id) and validates that new schema versions are compatible, preventing producer changes from breaking consumers."
+        },
+        {
+         "q": "Adding a new OPTIONAL field with a default to an event schema is…",
+         "options": [
+          "A breaking change",
+          "A safe, compatible change — old/new readers handle it (backward/forward compatible)",
+          "Impossible",
+          "Forward-incompatible"
+         ],
+         "answer": 1,
+         "explain": "Optional fields with defaults let new consumers read old data and old consumers ignore the new field — a safe evolution the registry accepts."
+        },
+        {
+         "q": "What does 'backward compatible' mean for schemas?",
+         "options": [
+          "Old consumers read new data",
+          "New consumers can read old data (so you can upgrade consumers first)",
+          "Nothing changes",
+          "Producers break"
+         ],
+         "answer": 1,
+         "explain": "Backward compatibility means a new schema can read data written with the old schema, so consumers can be upgraded before producers without breaking."
+        },
         {
          "q": "Compatibility is BACKWARD (the default). A producer adds a required field `coupon` with no default. What happens at registration?",
          "options": [
@@ -16725,24 +16770,39 @@
        "diagram": "metastore",
        "diagram_caption": "The catalog maps table names to their metadata/location so many engines share the same governed tables.",
        "quiz": [
-        [
-         ["q", "What is the catalog's core job in a lakehouse?"],
-         ["options", ["Store the data", "Map table names to their metadata location and track which tables exist (plus perms/lineage)", "Run queries", "Compress files"]],
-         ["answer", 1],
-         ["explain", "The catalog is the directory of tables: engines resolve a table name to its metadata via the catalog, which also tracks schemas, permissions, and lineage."]
-        ],
-        [
-         ["q", "How do the table format and the catalog differ?"],
-         ["options", ["They're the same", "The format tracks one table's state (files/versions); the catalog tracks which tables exist and points to each one's metadata", "The catalog stores Parquet", "The format governs access"]],
-         ["answer", 1],
-         ["explain", "A table format (Delta/Iceberg) manages a single table's transactional metadata; the catalog is the higher-level registry of all tables and their locations."]
-        ],
-        [
-         ["q", "What does Unity Catalog add beyond a basic Hive Metastore?"],
-         ["options", ["Nothing", "Fine-grained governance (table/column/row access control), lineage, and discovery across the lakehouse", "A new file format", "Faster Parquet"]],
-         ["answer", 1],
-         ["explain", "Modern catalogs like Unity Catalog turn the passive name→location map into an active governance hub with access control, lineage, and discovery."]
-        ],
+        {
+         "q": "What is the catalog's core job in a lakehouse?",
+         "options": [
+          "Store the data",
+          "Map table names to their metadata location and track which tables exist (plus perms/lineage)",
+          "Run queries",
+          "Compress files"
+         ],
+         "answer": 1,
+         "explain": "The catalog is the directory of tables: engines resolve a table name to its metadata via the catalog, which also tracks schemas, permissions, and lineage."
+        },
+        {
+         "q": "How do the table format and the catalog differ?",
+         "options": [
+          "They're the same",
+          "The format tracks one table's state (files/versions); the catalog tracks which tables exist and points to each one's metadata",
+          "The catalog stores Parquet",
+          "The format governs access"
+         ],
+         "answer": 1,
+         "explain": "A table format (Delta/Iceberg) manages a single table's transactional metadata; the catalog is the higher-level registry of all tables and their locations."
+        },
+        {
+         "q": "What does Unity Catalog add beyond a basic Hive Metastore?",
+         "options": [
+          "Nothing",
+          "Fine-grained governance (table/column/row access control), lineage, and discovery across the lakehouse",
+          "A new file format",
+          "Faster Parquet"
+         ],
+         "answer": 1,
+         "explain": "Modern catalogs like Unity Catalog turn the passive name→location map into an active governance hub with access control, lineage, and discovery."
+        },
         {
          "q": "Two Spark jobs append to the same Iceberg table at the same moment. What normally happens?",
          "options": [
@@ -16796,24 +16856,39 @@
        "diagram": "table-format-anatomy",
        "diagram_caption": "Delta, Iceberg, and Hudi all add a transactional metadata layer over open Parquet — differing in design and ecosystem.",
        "quiz": [
-        [
-         ["q", "What is Iceberg especially known for?"],
-         ["options", ["Spark-only support", "Being strongly engine-agnostic, with hidden partitioning and partition evolution; broadest adoption", "No time travel", "Streaming upserts only"]],
-         ["answer", 1],
-         ["explain", "Iceberg is designed to be engine-neutral (Spark, Trino, Snowflake, BigQuery…) with hidden partitioning and partition evolution, driving its broad industry momentum."]
-        ],
-        [
-         ["q", "Which format is purpose-built for high-frequency streaming upserts?"],
-         ["options", ["Delta", "Iceberg", "Hudi (with Copy-on-Write vs Merge-on-Read)", "None"]],
-         ["answer", 2],
-         ["explain", "Hudi originated at Uber for fast upsert/CDC ingestion and incremental processing, offering Copy-on-Write (read-optimized) and Merge-on-Read (write-optimized) tables."]
-        ],
-        [
-         ["q", "What's the practical takeaway on choosing among them?"],
-         ["options", ["Agonize over it", "They're converging (all ACID/time-travel/evolution) — choose by your primary engine/ecosystem; Iceberg is the emerging common denominator", "Always Hudi", "They're incompatible with Parquet"]],
-         ["answer", 1],
-         ["explain", "Feature gaps are narrowing; pick by primary engine (Delta for Databricks, Iceberg for multi-engine, Hudi for streaming upserts), with Iceberg increasingly the neutral default."]
-        ],
+        {
+         "q": "What is Iceberg especially known for?",
+         "options": [
+          "Spark-only support",
+          "Being strongly engine-agnostic, with hidden partitioning and partition evolution; broadest adoption",
+          "No time travel",
+          "Streaming upserts only"
+         ],
+         "answer": 1,
+         "explain": "Iceberg is designed to be engine-neutral (Spark, Trino, Snowflake, BigQuery…) with hidden partitioning and partition evolution, driving its broad industry momentum."
+        },
+        {
+         "q": "Which format is purpose-built for high-frequency streaming upserts?",
+         "options": [
+          "Delta",
+          "Iceberg",
+          "Hudi (with Copy-on-Write vs Merge-on-Read)",
+          "None"
+         ],
+         "answer": 2,
+         "explain": "Hudi originated at Uber for fast upsert/CDC ingestion and incremental processing, offering Copy-on-Write (read-optimized) and Merge-on-Read (write-optimized) tables."
+        },
+        {
+         "q": "What's the practical takeaway on choosing among them?",
+         "options": [
+          "Agonize over it",
+          "They're converging (all ACID/time-travel/evolution) — choose by your primary engine/ecosystem; Iceberg is the emerging common denominator",
+          "Always Hudi",
+          "They're incompatible with Parquet"
+         ],
+         "answer": 1,
+         "explain": "Feature gaps are narrowing; pick by primary engine (Delta for Databricks, Iceberg for multi-engine, Hudi for streaming upserts), with Iceberg increasingly the neutral default."
+        },
         {
          "q": "You add a column to a 40 TB Iceberg table. How many data files are rewritten?",
          "options": [
@@ -31662,18 +31737,28 @@
        "diagram": "sd-design-lakehouse",
        "diagram_caption": "Lakehouse platform: sources → ingest (batch + CDC) → medallion lakehouse (Delta/Iceberg) → warehouse/serving → BI/ML, with orchestration, governance, and observability.",
        "quiz": [
-        [
-         ["q", "For a standard BI analytics platform with hourly freshness, batch or streaming, and why?"],
-         ["options", ["Streaming always — it's modern", "Batch — hourly freshness doesn't need streaming, and batch is simpler and cheaper; add a thin streaming path only if a real-time need appears", "Neither", "Both always"]],
-         ["answer", 1],
-         ["explain", "Match latency to the requirement: hourly BI is fine with batch (simpler/cheaper); don't pay streaming's complexity/cost unless a real-time use case demands it."]
-        ],
-        [
-         ["q", "Why land data in an open lakehouse (Delta/Iceberg) rather than only loading a warehouse?"],
-         ["options", ["It's slower", "One open copy is queried by many engines (SQL/Spark/ML) — no duplication, avoids lock-in; the warehouse/serving layer adds fast BI on top", "Warehouses can't do BI", "Lakehouses can't be governed"]],
-         ["answer", 1],
-         ["explain", "The open lakehouse decouples storage from compute so multiple engines query one copy; you add a serving layer for fast BI without duplicating or locking in data."]
-        ],
+        {
+         "q": "For a standard BI analytics platform with hourly freshness, batch or streaming, and why?",
+         "options": [
+          "Streaming always — it's modern",
+          "Batch — hourly freshness doesn't need streaming, and batch is simpler and cheaper; add a thin streaming path only if a real-time need appears",
+          "Neither",
+          "Both always"
+         ],
+         "answer": 1,
+         "explain": "Match latency to the requirement: hourly BI is fine with batch (simpler/cheaper); don't pay streaming's complexity/cost unless a real-time use case demands it."
+        },
+        {
+         "q": "Why land data in an open lakehouse (Delta/Iceberg) rather than only loading a warehouse?",
+         "options": [
+          "It's slower",
+          "One open copy is queried by many engines (SQL/Spark/ML) — no duplication, avoids lock-in; the warehouse/serving layer adds fast BI on top",
+          "Warehouses can't do BI",
+          "Lakehouses can't be governed"
+         ],
+         "answer": 1,
+         "explain": "The open lakehouse decouples storage from compute so multiple engines query one copy; you add a serving layer for fast BI without duplicating or locking in data."
+        },
         {
          "q": "Spark, Trino and Snowflake all need the same Iceberg tables. What is the single most important design decision?",
          "options": [
@@ -31687,11 +31772,11 @@
         }
        ],
        "exercises": [
-        [
-         ["prompt", "Design a data platform for BI from an app OLTP DB, a SaaS source, and event logs. Walk the framework with trade-offs."],
-         ["hint", "Clarify → ingest(batch+CDC) → medallion lakehouse → serving → cross-cutting → trade-offs."],
-         ["solution", "**Clarify:** Goal = BI dashboards + ad-hoc analytics for analysts (SQL/BI); **latency** = hourly/daily is fine → **batch ELT**; **volume** = moderate (app DB + SaaS + logs); **constraints** = cloud, budget, PII governance. **Architecture (walk the lifecycle):** **Ingestion** — **CDC** the **OLTP** app DB (Datastream/Debezium) to capture changes without heavy source queries; **batch EL** the **SaaS** source (Fivetran/Airbyte); **Auto Loader/COPY** the **event logs** — all landing in **bronze**. **Storage** — a **medallion lakehouse** on **S3/GCS**: **bronze** (raw/immutable), **silver** (cleaned, deduped, conformed), **gold** (modeled **star schemas / marts / aggregates**), as **partitioned Parquet/Delta/Iceberg**. **Processing** — **dbt/SQL** (or Spark) builds bronze→silver→gold with **data tests**, orchestrated as a **DAG** (Airflow/Composer). **Serving** — analysts query **gold** via the **warehouse/lakehouse SQL engine** (BigQuery/Snowflake/Databricks SQL) + a **BI tool**; optional **reverse-ETL** and **ML** on the lake. **Cross-cutting** — **orchestration**, **governance** (Unity Catalog/Lake Formation/Dataplex for access, **PII**, lineage), **observability** (freshness/volume/quality/lineage + alerts), **cost** controls. **Scale & trade-offs:** the **lakehouse + elastic warehouse** scales to TBs; **partition/cluster** + columnar keep queries cheap. **Trade-offs to state:** chose **batch** (hourly) over **streaming** — **simpler/cheaper**, latency not needed (add a thin streaming path only if a real-time use case appears); used an **open lakehouse** queried by many engines (**one copy, no lock-in**) with a serving layer for fast BI; controlled **cost** via layout + right-sized compute; **CDC** keeps the OLTP source fresh without load. This **requirement-driven, framework-structured** design — with explicit trade-offs — is the canonical answer to the most common DE design prompt."]
-        ],
+        {
+         "prompt": "Design a data platform for BI from an app OLTP DB, a SaaS source, and event logs. Walk the framework with trade-offs.",
+         "hint": "Clarify → ingest(batch+CDC) → medallion lakehouse → serving → cross-cutting → trade-offs.",
+         "solution": "**Clarify:** Goal = BI dashboards + ad-hoc analytics for analysts (SQL/BI); **latency** = hourly/daily is fine → **batch ELT**; **volume** = moderate (app DB + SaaS + logs); **constraints** = cloud, budget, PII governance. **Architecture (walk the lifecycle):** **Ingestion** — **CDC** the **OLTP** app DB (Datastream/Debezium) to capture changes without heavy source queries; **batch EL** the **SaaS** source (Fivetran/Airbyte); **Auto Loader/COPY** the **event logs** — all landing in **bronze**. **Storage** — a **medallion lakehouse** on **S3/GCS**: **bronze** (raw/immutable), **silver** (cleaned, deduped, conformed), **gold** (modeled **star schemas / marts / aggregates**), as **partitioned Parquet/Delta/Iceberg**. **Processing** — **dbt/SQL** (or Spark) builds bronze→silver→gold with **data tests**, orchestrated as a **DAG** (Airflow/Composer). **Serving** — analysts query **gold** via the **warehouse/lakehouse SQL engine** (BigQuery/Snowflake/Databricks SQL) + a **BI tool**; optional **reverse-ETL** and **ML** on the lake. **Cross-cutting** — **orchestration**, **governance** (Unity Catalog/Lake Formation/Dataplex for access, **PII**, lineage), **observability** (freshness/volume/quality/lineage + alerts), **cost** controls. **Scale & trade-offs:** the **lakehouse + elastic warehouse** scales to TBs; **partition/cluster** + columnar keep queries cheap. **Trade-offs to state:** chose **batch** (hourly) over **streaming** — **simpler/cheaper**, latency not needed (add a thin streaming path only if a real-time use case appears); used an **open lakehouse** queried by many engines (**one copy, no lock-in**) with a serving layer for fast BI; controlled **cost** via layout + right-sized compute; **CDC** keeps the OLTP source fresh without load. This **requirement-driven, framework-structured** design — with explicit trade-offs — is the canonical answer to the most common DE design prompt."
+        },
         {
          "prompt": "**Transfer.** Queries on a streaming-fed silver table got 5x slower over a month, with no data growth beyond normal. What do you check first and what do you schedule?",
          "hint": "Count files and snapshots.",
@@ -31766,18 +31851,28 @@
        "diagram": "sd-design-cdc",
        "diagram_caption": "CDC: tail the DB log (Debezium/Datastream) → stream change events (Kafka, partitioned by PK) → idempotent MERGE by primary key into a mirror; snapshot then incremental.",
        "quiz": [
-        [
-         ["q", "Why use log-based CDC instead of repeated batch SELECT * dumps to replicate a database?"],
-         ["options", ["Dumps are faster", "CDC tails the transaction log (low source impact), captures every change including deletes, and is fresher — dumps are expensive, stale, and miss deletes", "CDC can't capture updates", "They're the same"]],
-         ["answer", 1],
-         ["explain", "Log-based CDC reads the WAL/binlog with minimal source load and captures inserts/updates/deletes continuously; batch dumps are heavy, stale, and miss deletes."]
-        ],
-        [
-         ["q", "How do you apply CDC change events correctly into a mirror table?"],
-         ["options", ["Append every event", "An idempotent MERGE/upsert by primary key (apply insert/update/delete), with per-key ordering (partition by PK) and dedup — so redelivery is safe", "Random updates", "DROP and recreate each time"]],
-         ["answer", 1],
-         ["explain", "Apply changes with a MERGE by PK (idempotent), partition by PK for ordering, and dedup to latest — so at-least-once delivery doesn't corrupt or double-apply."]
-        ],
+        {
+         "q": "Why use log-based CDC instead of repeated batch SELECT * dumps to replicate a database?",
+         "options": [
+          "Dumps are faster",
+          "CDC tails the transaction log (low source impact), captures every change including deletes, and is fresher — dumps are expensive, stale, and miss deletes",
+          "CDC can't capture updates",
+          "They're the same"
+         ],
+         "answer": 1,
+         "explain": "Log-based CDC reads the WAL/binlog with minimal source load and captures inserts/updates/deletes continuously; batch dumps are heavy, stale, and miss deletes."
+        },
+        {
+         "q": "How do you apply CDC change events correctly into a mirror table?",
+         "options": [
+          "Append every event",
+          "An idempotent MERGE/upsert by primary key (apply insert/update/delete), with per-key ordering (partition by PK) and dedup — so redelivery is safe",
+          "Random updates",
+          "DROP and recreate each time"
+         ],
+         "answer": 1,
+         "explain": "Apply changes with a MERGE by PK (idempotent), partition by PK for ordering, and dedup to latest — so at-least-once delivery doesn't corrupt or double-apply."
+        },
         {
          "q": "Your CDC sink gets each event at least once. What makes the silver table correct anyway?",
          "options": [
@@ -31791,11 +31886,11 @@
         }
        ],
        "exercises": [
-        [
-         ["prompt", "Design CDC replication of a Postgres OLTP database into a Delta lakehouse table, fresh and low-impact. Cover capture, transport, apply, bootstrap, and the hard parts."],
-         ["hint", "WAL via Debezium → Kafka by PK → idempotent MERGE; snapshot+incremental; ordering/deletes/schema/idempotency."],
-         ["solution", "**Clarify:** replicate Postgres **orders** into a **Delta** mirror, **minutes-fresh**, **low source impact**, capturing **I/U/D**, **exactly-once** end state. **Capture:** use **log-based CDC** — **Debezium** (or **Datastream/DMS**) tails the Postgres **WAL**, emitting a change event per row mutation (with op type and PK). This has **low source impact** (reads the log, not the tables) and is **continuous/fresh**, unlike heavy `SELECT *` dumps (expensive, stale, **miss deletes**). **Transport:** publish change events to **Kafka**, **one topic per table**, **partitioned by primary key** (`order_id`) so all changes to a given row stay **ordered** (out-of-order apply would corrupt state). **Apply (sink):** a consumer (Spark/Flink `foreachBatch`) **reduces to the latest change per key** within each micro-batch (dedup), then runs an **idempotent MERGE** into the **Delta `orders`** mirror by `order_id`: `WHEN MATCHED AND op='D' THEN DELETE`, `WHEN MATCHED THEN UPDATE SET *`, `WHEN NOT MATCHED AND op<>'D' THEN INSERT *`. Because MERGE-by-PK is **idempotent**, **at-least-once** redelivery is **safe** (no double-apply) — exactly-once end state. **Bootstrap:** take an **initial snapshot** of existing rows (Debezium snapshot or a one-time load), then switch to **incremental** CDC. **Hard parts handled:** **idempotency** (MERGE + dedup), **per-key ordering** (PK partitioning), **deletes** (applied — a dump would miss them), **schema changes** (handle source DDL via schema evolution on the Delta table), and **late/duplicate** events (dedup + MERGE). **Downstream:** enable **Change Data Feed** on the mirror to propagate changes **incrementally** to Silver/Gold (no full re-scan). **Result:** a **fresh, exact, low-impact** replica. The strong answer emphasizes **log-based capture (low impact)** and the **idempotent, ordered MERGE** (the hard parts) — which is what separates a robust CDC design from a naive append."]
-        ],
+        {
+         "prompt": "Design CDC replication of a Postgres OLTP database into a Delta lakehouse table, fresh and low-impact. Cover capture, transport, apply, bootstrap, and the hard parts.",
+         "hint": "WAL via Debezium → Kafka by PK → idempotent MERGE; snapshot+incremental; ordering/deletes/schema/idempotency.",
+         "solution": "**Clarify:** replicate Postgres **orders** into a **Delta** mirror, **minutes-fresh**, **low source impact**, capturing **I/U/D**, **exactly-once** end state. **Capture:** use **log-based CDC** — **Debezium** (or **Datastream/DMS**) tails the Postgres **WAL**, emitting a change event per row mutation (with op type and PK). This has **low source impact** (reads the log, not the tables) and is **continuous/fresh**, unlike heavy `SELECT *` dumps (expensive, stale, **miss deletes**). **Transport:** publish change events to **Kafka**, **one topic per table**, **partitioned by primary key** (`order_id`) so all changes to a given row stay **ordered** (out-of-order apply would corrupt state). **Apply (sink):** a consumer (Spark/Flink `foreachBatch`) **reduces to the latest change per key** within each micro-batch (dedup), then runs an **idempotent MERGE** into the **Delta `orders`** mirror by `order_id`: `WHEN MATCHED AND op='D' THEN DELETE`, `WHEN MATCHED THEN UPDATE SET *`, `WHEN NOT MATCHED AND op<>'D' THEN INSERT *`. Because MERGE-by-PK is **idempotent**, **at-least-once** redelivery is **safe** (no double-apply) — exactly-once end state. **Bootstrap:** take an **initial snapshot** of existing rows (Debezium snapshot or a one-time load), then switch to **incremental** CDC. **Hard parts handled:** **idempotency** (MERGE + dedup), **per-key ordering** (PK partitioning), **deletes** (applied — a dump would miss them), **schema changes** (handle source DDL via schema evolution on the Delta table), and **late/duplicate** events (dedup + MERGE). **Downstream:** enable **Change Data Feed** on the mirror to propagate changes **incrementally** to Silver/Gold (no full re-scan). **Result:** a **fresh, exact, low-impact** replica. The strong answer emphasizes **log-based capture (low impact)** and the **idempotent, ordered MERGE** (the hard parts) — which is what separates a robust CDC design from a naive append."
+        },
         {
          "prompt": "**Transfer.** Add a 2 TB table to a live CDC pipeline without pausing the other tables. Outline the steps and the checks.",
          "hint": "Incremental snapshot via signal.",
