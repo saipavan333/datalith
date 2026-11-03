@@ -3389,6 +3389,24 @@
    "level": "Medium",
    "q": "How does Kafka guarantee ordering, and what's the catch?",
    "a": "Ordering is guaranteed only WITHIN a partition (appended and read in order); across partitions there's no global order. So for ordered per-entity processing (per user), partition by that key (same key → same partition → ordered). The catch: the partition key determines both ordering and load distribution."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "What do acks=all and min.insync.replicas each guarantee, and how do you configure a topic so an acknowledged write can't be lost to one broker failure?",
+   "a": "acks=all makes the leader wait for every replica currently in the ISR before acknowledging. If the ISR has shrunk to just the leader, that's one copy. min.insync.replicas sets the minimum ISR size for an acks=all write to succeed; below it the producer gets NotEnoughReplicas. Use replication factor 3, min.insync.replicas=2, acks=all, unclean leader election disabled, and spread replicas across racks/zones. You lose write availability when two replicas are down, which is the intended trade."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "What is the high watermark and why can't consumers read past it?",
+   "a": "It's the smallest log-end offset among in-sync replicas: every in-sync copy has all records below it. Consumers only fetch below it so they never read a record that could vanish if the leader fails and a follower without that record takes over. Records between the HW and the leader's log end become visible as followers catch up."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Kafka 4.x removed ZooKeeper. What replaced it and what does that change operationally?",
+   "a": "KRaft: cluster metadata is an internal Raft-replicated log managed by controller nodes (process.roles=controller, or combined broker,controller on small clusters). One system to secure, monitor and upgrade instead of two; faster controller failover and metadata propagation, which supports more partitions per cluster. Migrating an old cluster means moving to KRaft on a 3.x release before upgrading to 4.x."
   }
  ],
  "stream-lambda-kappa": [

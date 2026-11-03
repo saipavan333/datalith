@@ -15603,53 +15603,60 @@
       {
        "id": "stream-kafka-internals",
        "title": "Kafka internals — partitions, consumer groups & offsets",
-       "minutes": 12,
+       "minutes": 20,
        "summary": "How Kafka scales and stays ordered/durable: topics split into partitions, keys for routing, brokers & replication, consumer groups for parallelism, and offsets for replay.",
-       "concept": "Kafka's power comes from a few internal mechanics. Understanding them explains ordering, scaling, and replay.\n\n### Topics → partitions (parallelism + ordering)\nA **topic** is split into **partitions** — each an independent ordered log. This is the unit of **parallelism** (more partitions = more throughput) and the unit of **ordering**: Kafka guarantees order **within a partition**, **not across** partitions. So 'global order' isn't guaranteed unless you have one partition (which doesn't scale).\n\n### Keys → partition routing\nA producer can give each event a **key**; Kafka hashes the key to choose a partition, so **all events with the same key go to the same partition** — and are therefore **ordered** relative to each other. Keying by `user_id` keeps each user's events in order while still spreading load across partitions. No key → round-robin (no per-key ordering).\n\n### Brokers & replication (durability)\nPartitions live on **brokers** (servers) and are **replicated** across them. One replica is the **leader** (handles reads/writes); **followers** copy it. The **in-sync replicas (ISR)** are the up-to-date copies; if the leader's broker dies, a follower is promoted — **no data loss**. `acks=all` makes a producer wait until replicas have the data (durability over latency).\n\n### Consumer groups (scaling consumers)\nConsumers reading a topic form a **consumer group**. Kafka assigns each **partition to exactly one consumer in the group**, so the group splits the work (parallelism) — add consumers (up to the partition count) to scale. **Different groups** each get the **full** stream (fan-out for independent uses). Reassignment when a consumer joins/leaves is a **rebalance**.\n\n### Offsets (position + replay)\nEach consumer tracks its **offset** — its position in each partition. **Committing** offsets records progress, so after a restart it resumes where it left off. Because offsets are just positions in a retained log, you can **reset** them to **replay** history or skip ahead. Offset handling is central to delivery guarantees (commit after processing = at-least-once).",
+       "concept": "Kafka's power comes from a few internal mechanics. Understanding them explains ordering, scaling, and replay.\n\n### Topics → partitions (parallelism + ordering)\nA **topic** is split into **partitions** — each an independent ordered log. This is the unit of **parallelism** (more partitions = more throughput) and the unit of **ordering**: Kafka guarantees order **within a partition**, **not across** partitions. So 'global order' isn't guaranteed unless you have one partition (which doesn't scale).\n\n### Keys → partition routing\nA producer can give each event a **key**; Kafka hashes the key to choose a partition, so **all events with the same key go to the same partition** — and are therefore **ordered** relative to each other. Keying by `user_id` keeps each user's events in order while still spreading load across partitions. No key → the producer fills one **sticky** partition per batch, then switches (since Kafka 2.4; older docs said round-robin). No per-key ordering either way. **Adding partitions later remaps most keys**, so size partition counts with headroom.\n\n### Brokers & replication (durability)\nPartitions live on **brokers** (servers) and are **replicated** across them. One replica is the **leader** (handles reads/writes); **followers** copy it. The **in-sync replicas (ISR)** are the up-to-date copies; if the leader's broker dies, an in-sync follower is promoted. `acks=all` (the producer default) waits for every replica **currently in the ISR**, but if the ISR has shrunk to the leader alone that is just one copy. Pair it with **`min.insync.replicas=2`** (broker default is 1) and replication factor 3 so no acknowledged write lives on a single disk. Consumers only see records below the **high watermark**, the offset every in-sync replica has.\n\n### Consumer groups (scaling consumers)\nConsumers reading a topic form a **consumer group**. Kafka assigns each **partition to exactly one consumer in the group**, so the group splits the work (parallelism) — add consumers (up to the partition count) to scale. **Different groups** each get the **full** stream (fan-out for independent uses). Reassignment when a consumer joins/leaves is a **rebalance**; Kafka 4.0 made the broker-driven, incremental protocol (KIP-848, `group.protocol=consumer`) GA. **Share groups** (production-ready in 4.2) let many consumers share one partition, queue-style.\n\n### Offsets (position + replay)\nEach consumer tracks its **offset** — its position in each partition. **Committing** offsets records progress, so after a restart it resumes where it left off. Because offsets are just positions in a retained log, you can **reset** them to **replay** history or skip ahead. Offset handling is central to delivery guarantees (commit after processing = at-least-once).\n\n### Cluster metadata: KRaft\nSince Kafka 4.0, ZooKeeper is gone: metadata lives in a Raft log on controller nodes (KRaft).",
        "example": "An `orders` topic with 12 partitions keyed by `customer_id`: each customer's orders stay ordered in one partition; a consumer group of 4 splits the 12 partitions (3 each) for parallelism; a separate analytics group reads all 12 independently; and resetting offsets to 0 replays every order.",
        "keypoints": [
         "A topic is split into partitions — the unit of parallelism; ordering is guaranteed within a partition, not across.",
-        "A producer key hashes to a partition, so same-key events share a partition and stay ordered (e.g. key by user_id).",
-        "Partitions live on brokers, replicated (leader + follower ISR); a follower is promoted on failure → no data loss (acks=all).",
-        "A consumer group assigns each partition to one consumer in the group → parallel consumption; add consumers to scale (≤ partitions).",
-        "Different consumer groups each receive the full stream (fan-out); joins/leaves trigger a rebalance.",
-        "Offsets track each consumer's position; commit to resume after restart, reset to replay history — central to delivery guarantees."
+        "A key is hashed (murmur2) to a partition, so same-key events stay ordered; no key → sticky batching, and adding partitions remaps most keys.",
+        "acks=all waits for the current ISR only; use min.insync.replicas=2 with RF 3 so an acknowledged write is never on one disk.",
+        "Consumers read only below the high watermark — the smallest log-end offset among in-sync replicas.",
+        "A consumer group gives each partition to one member (≤ partitions busy); committed offsets in __consumer_offsets let it resume or replay.",
+        "Kafka 4.x is KRaft-only (no ZooKeeper); KIP-848 rebalancing is GA; share groups add queue-style consumption."
        ],
-       "diagram": "consumer-groups",
-       "diagram_caption": "Partitions split a topic for parallelism; a consumer group shares them out (one partition per consumer); offsets mark position.",
+       "diagram": "kafka-partition-log",
+       "diagram_caption": "One partition: offsets in segment files, a consumer group's committed offset, and the high watermark set by the slowest in-sync replica.",
        "quiz": [
+        [
+         ["q", "What does Kafka guarantee about message ordering?"],
+         ["options", ["Global order across the topic", "Order within a partition, not across partitions", "No ordering ever", "Order only with one consumer"]],
+         ["answer", 1],
+         ["explain", "Each partition is an ordered log, but Kafka doesn't order across partitions — so to keep related events ordered you route them to the same partition (via a key)."]
+        ],
+        [
+         ["q", "How do you keep all of one user's events ordered while still scaling?"],
+         ["options", ["Use one partition", "Key events by user_id so they hash to the same partition (ordered) while other users spread across partitions", "Disable partitions", "Use processing time"]],
+         ["answer", 1],
+         ["explain", "Keying by user_id sends each user's events to one partition (preserving their order) while different users distribute across partitions for parallelism."]
+        ],
+        [
+         ["q", "In a consumer group of 4 reading a 12-partition topic, how is work divided?"],
+         ["options", ["All 4 read everything", "Each partition goes to exactly one consumer in the group (≈3 partitions each) for parallelism", "Only one consumer works", "Randomly per message"]],
+         ["answer", 1],
+         ["explain", "Within a group, each partition is assigned to one consumer, so the 12 partitions split across the 4 consumers — adding consumers (up to 12) scales throughput."]
+        ],
         {
-         "q": "What does Kafka guarantee about message ordering?",
+         "q": "Producer uses acks=all. The topic has RF 3 but both followers just dropped out of the ISR. min.insync.replicas is the default (1). The leader's disk then dies for good. What happened to the last writes?",
          "options": [
-          "Global order across the topic",
-          "Order within a partition, not across partitions",
-          "No ordering ever",
-          "Order only with one consumer"
+          "Safe: acks=all means three copies",
+          "Lost: acks=all only waited for the ISR, which was just the leader",
+          "Safe: Kafka refuses writes when followers lag",
+          "Lost only if enable.idempotence=false"
          ],
          "answer": 1,
-         "explain": "Each partition is an ordered log, but Kafka doesn't order across partitions — so to keep related events ordered you route them to the same partition (via a key)."
+         "explain": "acks=all means 'all replicas currently in the ISR'. With the ISR down to the leader and min.insync.replicas=1, one copy was enough to acknowledge. Kafka only refuses such writes when min.insync.replicas is 2 or more. Idempotence prevents duplicates from retries; it doesn't add copies."
         },
         {
-         "q": "How do you keep all of one user's events ordered while still scaling?",
+         "q": "You grow a keyed topic from 12 to 16 partitions. What happens to per-key ordering?",
          "options": [
-          "Use one partition",
-          "Key events by user_id so they hash to the same partition (ordered) while other users spread across partitions",
-          "Disable partitions",
-          "Use processing time"
+          "Nothing; keys stay on their partitions",
+          "Most keys now hash to a different partition, so old and new events for a key can be read out of order",
+          "Kafka rebalances old data into the new partitions",
+          "Ordering becomes global"
          ],
          "answer": 1,
-         "explain": "Keying by user_id sends each user's events to one partition (preserving their order) while different users distribute across partitions for parallelism."
-        },
-        {
-         "q": "In a consumer group of 4 reading a 12-partition topic, how is work divided?",
-         "options": [
-          "All 4 read everything",
-          "Each partition goes to exactly one consumer in the group (≈3 partitions each) for parallelism",
-          "Only one consumer works",
-          "Randomly per message"
-         ],
-         "answer": 1,
-         "explain": "Within a group, each partition is assigned to one consumer, so the 12 partitions split across the 4 consumers — adding consumers (up to 12) scales throughput."
+         "explain": "The partition is hash % count, so changing the count moves most keys (75% in the lab). Kafka does not move existing data, which is why old events stay behind on the old partition. Ordering is never global with more than one partition."
         }
        ],
        "exercises": [
