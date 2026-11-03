@@ -386,11 +386,24 @@ function renderCheatsheet(trackId) {
   }).catch(() => { $("#cs-body").innerHTML = "<p>Cheat sheet unavailable.</p>"; });
 }
 
+/* Deterministic option order per question: seeded by the question text, so the order is stable
+   across reloads (and for every learner) but the correct answer isn't always in the same slot.
+   Buttons keep their ORIGINAL index in data-oi, so q.answer still maps to the right option. */
+function quizOrder(q) {
+  let h = 2166136261;                                   // FNV-1a hash of the question text
+  for (const ch of q.q) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const idx = q.options.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {            // Fisher-Yates with an LCG seeded by h
+    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
+    const j = (h >>> 16) % (i + 1); [idx[i], idx[j]] = [idx[j], idx[i]];   // high bits: better spread
+  }
+  return idx;
+}
 function renderQuiz(quiz, mount) {
   mount.innerHTML = quiz.map((q, qi) => `
     <div class="quiz" data-qi="${qi}">
       <div class="quiz-q">${qi + 1}. ${mdInline(q.q)}</div>
-      ${q.options.map((o, oi) => `<button class="quiz-opt" data-oi="${oi}">${mdInline(o)}</button>`).join("")}
+      ${quizOrder(q).map(oi => `<button class="quiz-opt" data-oi="${oi}">${mdInline(q.options[oi])}</button>`).join("")}
       <div class="quiz-explain"></div>
     </div>`).join("");
   $$(".quiz", mount).forEach((qEl, qi) => {
@@ -404,7 +417,7 @@ function renderQuiz(quiz, mount) {
         expl.className = "quiz-explain ok show"; expl.innerHTML = "✓ Correct. " + mdInline(q.explain || "");
       } else {
         opt.classList.add("wrong");
-        $$(".quiz-opt", qEl)[q.answer].classList.add("correct");
+        $(`.quiz-opt[data-oi="${q.answer}"]`, qEl).classList.add("correct");
         expl.className = "quiz-explain no show"; expl.innerHTML = "Not quite. " + mdInline(q.explain || "");
       }
     }));
