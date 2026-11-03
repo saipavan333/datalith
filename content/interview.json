@@ -2729,6 +2729,12 @@
    "level": "Medium",
    "q": "What triggers a shuffle, and how do you reduce shuffles?",
    "a": "Wide operations: joins, groupBy/aggregations, distinct, repartition, and window functions. Reduce them by filtering/aggregating early (less data to shuffle), broadcasting small tables (avoid shuffling both sides), pre-partitioning by the join key, and avoiding unnecessary repartitions. Fewer/smaller shuffles = faster jobs."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "How do you choose spark.sql.shuffle.partitions for a large job, and what does AQE change?",
+   "a": "Estimate shuffle bytes (from the Spark UI's shuffle write or input size after projection/filter) and aim for ~100-200 MB per reduce partition, so 600 GB → ~4,800. The default 200 suits ~25 GB. With AQE on (default), Spark can coalesce small partitions after the map stage (by default only to a 1 MB minimum because parallelismFirst=true; set it false on busy clusters to honour the 64 MB advisory size) and split skewed join partitions. A common pattern is to set a generous partition count and let AQE coalesce."
   }
  ],
  "bd-dataframes-sql": [

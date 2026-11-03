@@ -12638,38 +12638,45 @@
        "diagram": "partitions-shuffle",
        "diagram_caption": "Narrow ops stay within a partition; a wide op shuffles data across the network by key.",
        "quiz": [
+        [
+         ["q", "What triggers a shuffle?"],
+         ["options", ["filter", "select", "groupBy / join / distinct / orderBy (wide ops)", "withColumn"]],
+         ["answer", 2],
+         ["explain", "Wide operations need same-key rows together, so they redistribute data across the network — the shuffle. Narrow ops (filter/select) don't move data."]
+        ],
+        [
+         ["q", "What's the difference between repartition(n) and coalesce(n)?"],
+         ["options", ["Nothing", "repartition does a full shuffle to change/rebalance partitions; coalesce reduces partitions without a full shuffle", "coalesce increases partitions", "repartition is for reading only"]],
+         ["answer", 1],
+         ["explain", "repartition(n) fully shuffles (can increase or rebalance); coalesce(n) merges partitions to reduce them cheaply, e.g. before writing fewer files."]
+        ],
+        [
+         ["q", "199 tasks finish in seconds but 1 runs for an hour. What's wrong?"],
+         ["options", ["Too few partitions", "Data skew — one key has most of the rows, overloading its task", "The driver is slow", "Too much cache"]],
+         ["answer", 1],
+         ["explain", "Skew: a shuffle sends all rows for a key to one task, so a giant key makes one task do most of the work. Fix with salting or AQE skew splitting."]
+        ],
         {
-         "q": "What triggers a shuffle?",
+         "q": "AQE is on (the default). Your groupBy(seller_id) has one seller with 30% of rows. Does AQE's skew handling fix it?",
          "options": [
-          "filter",
-          "select",
-          "groupBy / join / distinct / orderBy (wide ops)",
-          "withColumn"
-         ],
-         "answer": 2,
-         "explain": "Wide operations need same-key rows together, so they redistribute data across the network — the shuffle. Narrow ops (filter/select) don't move data."
-        },
-        {
-         "q": "What's the difference between repartition(n) and coalesce(n)?",
-         "options": [
-          "Nothing",
-          "repartition does a full shuffle to change/rebalance partitions; coalesce reduces partitions without a full shuffle",
-          "coalesce increases partitions",
-          "repartition is for reading only"
-         ],
-         "answer": 1,
-         "explain": "repartition(n) fully shuffles (can increase or rebalance); coalesce(n) merges partitions to reduce them cheaply, e.g. before writing fewer files."
-        },
-        {
-         "q": "199 tasks finish in seconds but 1 runs for an hour. What's wrong?",
-         "options": [
-          "Too few partitions",
-          "Data skew — one key has most of the rows, overloading its task",
-          "The driver is slow",
-          "Too much cache"
+          "Yes, AQE splits any skewed partition",
+          "No: AQE skew handling targets sort-merge joins; salt the key or aggregate in two steps",
+          "Yes, if you raise spark.sql.shuffle.partitions",
+          "No, skew can't be fixed in Spark"
          ],
          "answer": 1,
-         "explain": "Skew: a shuffle sends all rows for a key to one task, so a giant key makes one task do most of the work. Fix with salting or AQE skew splitting."
+         "explain": "spark.sql.adaptive.skewJoin splits skewed partitions in sort-merge joins. A hot groupBy key still lands on one reducer; more partitions don't help because one key can't be split by hashing. Salting (or a partial then final aggregation) fixes it, as the lab shows."
+        },
+        {
+         "q": "A job shuffles 600 GB with the default spark.sql.shuffle.partitions. Roughly how big is each reduce partition?",
+         "options": [
+          "~128 MB",
+          "~3 GB",
+          "~64 MB because AQE resizes it",
+          "~600 MB"
+         ],
+         "answer": 1,
+         "explain": "600 GB / 200 = 3 GB per partition, which spills and risks OOM. AQE can coalesce small partitions but doesn't split a big non-skewed aggregation into more; you set a higher partition count (~4,800 for 128 MB)."
         }
        ],
        "exercises": [
