@@ -11,6 +11,7 @@ Source: https://docs.snowflake.com/en/user-guide/tables-clustering-micropartitio
 Run:  python labs/platforms/snow_pruning.py
 """
 import os
+import shutil
 import tempfile
 import duckdb
 
@@ -59,3 +60,4 @@ print("\nWhat to look for:")
 print(" - Random arrival order puts every date in almost every partition: nothing can be pruned.")
 print(" - Sorted (clustered) data gives each partition a narrow date range, so ~97% are skipped.")
 print(" - 'depth' is SYSTEM$CLUSTERING_DEPTH's idea: how many partitions overlap one value. Lower is better.")
+shutil.rmtree(tmp, ignore_errors=True)  # remove the temp folder this lab created

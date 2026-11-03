@@ -13,6 +13,7 @@ Run:  python labs/platforms/openlineage_lab.py
 """
 import json
 import os
+import shutil
 import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -21,7 +22,8 @@ import duckdb
 
 SCHEMA_URL = "https://openlineage.io/spec/2-0-2/OpenLineage.json#/definitions/RunEvent"
 PRODUCER = "https://github.com/datalith/labs/openlineage_lab"
-out = os.path.join(tempfile.mkdtemp(prefix="ol_"), "events.jsonl")
+tmpdir = tempfile.mkdtemp(prefix="ol_")
+out = os.path.join(tmpdir, "events.jsonl")
 t0 = datetime(2026, 11, 3, 2, 0, tzinfo=timezone.utc)
 
 
@@ -76,3 +78,5 @@ print("\nLast failed run (who to page):",
       con.execute("SELECT job.name, eventTime FROM ev WHERE eventType='FAIL'").fetchall())
 print("\nWhat to look for: no tool had to know about the others; each just emitted START/COMPLETE with")
 print("inputs/outputs, and the graph (and blast radius) falls out of a join.")
+con.close()
+shutil.rmtree(tmpdir, ignore_errors=True)  # remove the temp folder this lab created

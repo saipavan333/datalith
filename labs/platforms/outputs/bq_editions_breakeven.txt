@@ -1,11 +1,13 @@
 Workload: 900 TiB scanned/month, 95,000 slot-hours/month
 
-on-demand                $      5,619
-Standard PAYG            $      4,750   (autoscale only)   $    5,770  (100 baseline + autoscale)
-Enterprise PAYG          $      7,125   (autoscale only)   $    8,655  (100 baseline + autoscale)
-Enterprise 1-yr CUD      $      5,700   (autoscale only)   $    6,924  (100 baseline + autoscale)
-Enterprise 3-yr CUD      $      4,275   (autoscale only)   $    5,193  (100 baseline + autoscale)
-Enterprise Plus PAYG     $     11,875   (autoscale only)   $   14,425  (100 baseline + autoscale)
+on-demand                    $      5,619
+Standard PAYG                $      4,750   (autoscale only)   $    5,770  (100 baseline + autoscale)
+Enterprise PAYG              $      7,125   (autoscale only)   $    8,655  (100 baseline + autoscale)
+Enterprise spend CUD 1-yr    $      6,412   (autoscale only)   $    7,790  (100 baseline + autoscale)
+Enterprise spend CUD 3-yr    $      5,700   (autoscale only)   $    6,924  (100 baseline + autoscale)
+Ent. resource CUD 1-yr base          n/a   (autoscale only)   $    7,779  (100 baseline + autoscale)
+Ent. resource CUD 3-yr base          n/a   (autoscale only)   $    6,903  (100 baseline + autoscale)
+Enterprise Plus PAYG         $     11,875   (autoscale only)   $   14,425  (100 baseline + autoscale)
 
 This workload burns 106 slot-hours per TiB. Same 900 TiB, different query shapes:
     20 slot-h/TiB  on-demand $  5,619   enterprise PAYG $  1,350   -> editions
@@ -20,4 +22,4 @@ What to look for:
  - The deciding number is slot-hours per TiB, which depends on query shape, not data size.
    Heavy joins/sorts burn many slots per TiB (editions lose); simple scans burn few (editions win).
  - Always measure from INFORMATION_SCHEMA.JOBS before buying commitments.
- - Baseline slots are paid every hour of the month, used or not.
+ - Baseline slots are paid every hour of the month, used or not; resource CUD prices apply only to them.

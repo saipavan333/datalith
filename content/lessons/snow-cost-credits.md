@@ -11,7 +11,7 @@ Snowflake bills almost everything in **credits**, and a credit has a dollar pric
 - **Cloud services** (compilation, metadata, auth) are charged only for the part above **10% of that day's warehouse credits**.
 - **AI features** bill **AI Credits per million tokens** by model (Cortex AI Functions).
 - **Storage**: on-demand **$23 per TB-month** in AWS US East (compressed bytes, including Time Travel and Fail-safe).
-- **Price per credit (on-demand, AWS US East):** Standard **$2**, Enterprise **$3**, Business Critical **$4**, VPS **$6**. Other regions cost more (e.g. AWS Mumbai $2/$3/$4, Frankfurt $2.60/$3.90/$5.20). Capacity contracts are discounted.
+- **Price per credit (on-demand, AWS US East):** Standard **$2**, Enterprise **$3**, Business Critical **$4**, VPS **$6**. Other regions cost more (e.g. AWS London $2.70/$4.00/$5.40, Frankfurt $2.60/$3.90/$5.20; AWS Mumbai is the same as US East). Capacity contracts are discounted.
 
 Controls:
 - **Resource monitors** (ACCOUNTADMIN creates them) set a credit quota per period with triggers `NOTIFY`, `SUSPEND` (let running queries finish) or `SUSPEND_IMMEDIATE`. They work for **warehouses only**.

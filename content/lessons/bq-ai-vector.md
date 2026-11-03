@@ -42,7 +42,8 @@ OPTIONS (index_type = 'IVF', distance_type = 'COSINE');
 SELECT query.ticket_id AS new_ticket, base.ticket_id AS similar, distance
 FROM VECTOR_SEARCH(TABLE support.ticket_emb, 'emb',
        (SELECT ticket_id, emb FROM support.ticket_emb WHERE ticket_id = 'T-90211'),
-       top_k => 5, distance_type => 'COSINE');
+       top_k => 6, distance_type => 'COSINE')
+WHERE base.ticket_id != query.ticket_id;   -- the query ticket is in the base table too
 ```
 
 (The exact argument shape of `AI.GENERATE_EMBEDDING` depends on whether you use a remote model or a built-in endpoint; check the function reference for your project. The `VECTOR_SEARCH` signature above is from the reference page.)
@@ -106,7 +107,7 @@ What to look for: the search mechanics work (closest first), but "money back for
 
 **Warm-up.** Add two tickets to the lab ("refund for returned shoes still pending", "UPI payment failed twice") and re-run. Which queries change? *Solution:* both new tickets rank near the top for "refund pending" and "payment failed" respectively, because they share words; "money back..." still misses.
 
-**Transfer.** Product wants "similar products" on the website with <100 ms latency for 50 k requests/minute. Is BigQuery VECTOR_SEARCH the serving layer? *Solution:* no. BigQuery is an analytics engine with query start-up overhead, not a low-latency key-value store. Compute embeddings and even nearest neighbours in BigQuery in batch, then serve from a low-latency store (Vertex AI Vector Search, AlloyDB/pgvector, Bigtable or a cache).
+**Transfer.** Product wants "similar products" on the website with <100 ms latency for 50 k requests/minute. Is BigQuery VECTOR_SEARCH the serving layer? *Solution:* no. BigQuery is an analytics engine with query start-up overhead, not a low-latency key-value store. Compute embeddings and even nearest neighbours in BigQuery in batch, then serve from a low-latency store (Vector Search in Gemini Enterprise Agent Platform (formerly Vertex AI Vector Search), AlloyDB/pgvector, Bigtable or a cache).
 
 **Stretch.** Design incremental embedding with model versioning. *Solution:* `ticket_emb(ticket_id, model_version, emb, embedded_at)` partitioned by `embedded_at`; a scheduled job embeds rows where no row exists for the current `model_version`; searches filter `model_version = @current`; on a model upgrade, backfill in batches under a budget, then switch `@current` and drop the old version.
 
@@ -122,4 +123,5 @@ What to look for: the search mechanics work (closest first), but "money back for
 - VECTOR_SEARCH reference (signature, distance types, options): https://cloud.google.com/bigquery/docs/reference/standard-sql/search_functions
 - Vector indexes (IVF, TreeAH): https://cloud.google.com/bigquery/docs/vector-index
 - Generative AI functions overview: https://cloud.google.com/bigquery/docs/generative-ai-overview
+- Vertex AI renamed Gemini Enterprise Agent Platform (2026-04-22): https://cloud.google.com/gemini-enterprise-agent-platform/release-notes
 - Edition feature matrix: https://cloud.google.com/bigquery/docs/editions-intro

@@ -14,6 +14,7 @@ Run:  python labs/platforms/autoloader_sim.py
 import json
 import os
 import sqlite3
+import shutil
 import tempfile
 
 import duckdb
@@ -94,3 +95,5 @@ for row in sink.execute("SELECT * FROM bronze_orders ORDER BY order_id").fetchal
 print("checkpoint:", ckpt.execute("SELECT * FROM seen ORDER BY path").fetchall())
 print("\nWhat to look for: each file is ingested exactly once (batch 2 found nothing), a bad value goes to")
 print("_rescued_data instead of vanishing, and a new column stops the stream once, then flows after restart.")
+ckpt.close()
+shutil.rmtree(land, ignore_errors=True)  # remove the temp folder this lab created

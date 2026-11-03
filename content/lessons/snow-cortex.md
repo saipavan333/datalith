@@ -1,6 +1,6 @@
 # Cortex — AI & ML in SQL, the complete guide
 
-**Name check (Nov 2026):** Snowflake now documents the SQL AI functions as **Cortex AI Functions**: `AI_COMPLETE`, `AI_CLASSIFY`, `AI_FILTER`, `AI_AGG`, `AI_SUMMARIZE_AGG`, `AI_EXTRACT`, `AI_SENTIMENT`, `AI_TRANSLATE`, `AI_EMBED`, `AI_PARSE_DOCUMENT`, `AI_TRANSCRIBE`, `AI_REDACT` and more. The older `SNOWFLAKE.CORTEX.COMPLETE/SUMMARIZE/SENTIMENT/...` functions are called *legacy*; Snowflake's migration guide maps each one (e.g. COMPLETE -> AI_COMPLETE, SENTIMENT -> AI_SENTIMENT with a changed output format) and says new development targets the AI_* functions. AI functions bill in AI Credits per million tokens. Sources: https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql and https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql-migrate-legacy-functions
+**Name check (Nov 2026):** Snowflake now documents the SQL AI functions as **Cortex AI Functions**: `AI_COMPLETE`, `AI_CLASSIFY`, `AI_FILTER`, `AI_AGG`, `AI_SUMMARIZE` (Preview), `AI_SUMMARIZE_AGG`, `AI_EXTRACT`, `AI_SENTIMENT`, `AI_TRANSLATE`, `AI_EMBED`, `AI_PARSE_DOCUMENT`, `AI_TRANSCRIBE`, `AI_REDACT` and more. The older `SNOWFLAKE.CORTEX.COMPLETE/SUMMARIZE/SENTIMENT/...` functions are called *legacy*; Snowflake's migration guide maps each one (e.g. COMPLETE -> AI_COMPLETE, SENTIMENT -> AI_SENTIMENT, which returns category labels in an OBJECT instead of a -1..1 score) and says new development targets the AI_* functions. AI functions bill in AI Credits per million tokens. Sources: https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql and https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql-migrate-legacy-functions
 
 Cortex is how a data engineer adds LLMs and ML to a pipeline without standing up any ML infrastructure: you call functions from **SQL**, the work runs **serverless** where the governed data already is, and nothing moves. This chapter covers the function families, Analyst/Search, cost, and when to use Cortex vs Snowpark ML vs an external platform.
 
@@ -14,11 +14,11 @@ No models to host, no data to export, no separate ML platform to feed. **Cortex*
 
 ```sql
 select review_id,
-       ai_sentiment(text)                                            as sentiment,   -- legacy: snowflake.cortex.sentiment (-1..1)
-       ai_summarize(text)                                            as summary,     -- legacy: snowflake.cortex.summarize
-       snowflake.cortex.translate(text,'es','en')                    as english,
+       ai_sentiment(text):categories[0]:sentiment::string AS sentiment,  -- 'positive'|'negative'|'neutral'|'mixed'|'unknown' (legacy SENTIMENT returned -1..1)
+       ai_summarize(text)                                            as summary,     -- AI_SUMMARIZE is Preview
+       ai_translate(text, 'es', 'en')                                as english,
        ai_classify(text, ['billing','bug','howto']):labels[0]::string as label,     -- legacy: complete() with a prompt
-       snowflake.cortex.extract_answer(text,'What is the order id?') as order_id
+       ai_extract(text, {'order_id': 'What is the order id?'})       as order_fields  -- returns an OBJECT; see the AI_EXTRACT reference
 from reviews;
 ```
 
@@ -72,7 +72,7 @@ The progression is **least-effort → most-control**: try Cortex, graduate to Sn
 
 ## Scenario — an AI-enriched support pipeline
 
-Support tickets land in Snowflake. A **Dynamic Table** enriches **only new** tickets with **Cortex**: `sentiment(body)`, `summarize(body)`, and a constrained `complete('<model>', 'Return one of [billing,bug,howto]: '||body)` for category — producing a governed `support.enriched` table that BI reads. A separate **`ML.FORECAST`** predicts next-week ticket volume for staffing, and **`ANOMALY_DETECTION`** flags spikes. Managers ask questions in plain English via **Cortex Analyst** over a semantic model, and an assistant answers from the docs via **Cortex Search (RAG)**. Cost is controlled by **incremental** enrichment (new tickets only), a **right-sized model**, and a **sample-based estimate** before rollout. No ML platform was provisioned, no ticket data left Snowflake, and everything inherits the account's **governance** — AI delivered as SQL on the data that's already there.
+Support tickets land in Snowflake. A **Dynamic Table** enriches **only new** tickets with **Cortex**: `AI_SENTIMENT(body)`, `AI_SUMMARIZE(body)` (Preview), and `AI_CLASSIFY(body, ['billing','bug','howto'])` for category — producing a governed `support.enriched` table that BI reads. A separate **`ML.FORECAST`** predicts next-week ticket volume for staffing, and **`ANOMALY_DETECTION`** flags spikes. Managers ask questions in plain English via **Cortex Analyst** over a semantic model, and an assistant answers from the docs via **Cortex Search (RAG)**. Cost is controlled by **incremental** enrichment (new tickets only), a **right-sized model**, and a **sample-based estimate** before rollout. No ML platform was provisioned, no ticket data left Snowflake, and everything inherits the account's **governance** — AI delivered as SQL on the data that's already there.
 
 ## Practice
 

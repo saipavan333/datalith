@@ -14,7 +14,7 @@
 | Billing | per TiB scanned or per slot-hour | DBUs (+ cloud VMs on classic) | credits per warehouse-second, serverless multipliers |
 | Sweet spot | SQL-heavy analytics on GCP, spiky ad-hoc use, little ops | heavy Spark, streaming, ML and unstructured data, open-format lakes | many concurrent BI users, data sharing, strong governance, SQL-first teams |
 | Streaming | Storage Write API, Pub/Sub BigQuery subscriptions, continuous queries (Enterprise+) | Structured Streaming, Lakeflow pipelines | Snowpipe Streaming, Dynamic Tables (60 s minimum lag) |
-| ML/AI | BigQuery ML, AI.* functions, vector search, Vertex AI | MLflow 3, Model Serving, AI Search, AI Functions | Cortex AI Functions, Snowpark ML, Cortex Search |
+| ML/AI | BigQuery ML, AI.* functions, vector search, Gemini Enterprise Agent Platform (formerly Vertex AI) | MLflow 3, Model Serving, AI Search, AI Functions | Cortex AI Functions, Snowpark ML, Cortex Search |
 
 None of the three is "best". Each is best at something, and all three can read Iceberg (and Delta in Databricks' case) so a mixed estate is normal, not a failure.
 
@@ -86,7 +86,7 @@ What to look for: a 0.15 lead flips with a plausible change in priorities. That 
 
 ## 7. Exercises
 
-**Warm-up.** Change the lab's weights so cost predictability is 30%. Who wins? *Solution:* re-run with the weights renormalised to 1.0; Snowflake's higher predictability score gains, but BigQuery stays close. Write down which single weight change flips the order.
+**Warm-up.** Change the lab's weights so cost predictability is 30%. Who wins? *Solution:* set cost predictability to 0.30 and scale the other six weights down proportionally so they sum to 0.70: BigQuery 3.86, Snowflake 3.79, Databricks 3.74. BigQuery still wins, and Snowflake overtakes Databricks. Write down which single weight change flips the order.
 
 **Transfer.** A fintech on AWS, 60 analysts, strict data residency, wants a governed warehouse fast; ML is outsourced. Recommend and justify in five sentences. *Solution (one defensible answer):* Snowflake on AWS in the required region (Business Critical if regulated data needs it): SQL-first team, strong RBAC, masking and row policies, no cluster management, fast start. Databricks is the runner-up if ML comes in-house. BigQuery is out because they're on AWS. Bake-off: two heaviest monthly reports and one masking-policy scenario. Revisit if in-house ML or streaming becomes a priority.
 
@@ -104,3 +104,4 @@ What to look for: a 0.15 lead flips with a plausible change in priorities. That 
 - Databricks Free Edition limits: https://docs.databricks.com/aws/en/getting-started/free-edition-limitations
 - Snowflake warehouses and trial: https://docs.snowflake.com/en/user-guide/warehouses-overview , https://docs.snowflake.com/en/user-guide/admin-trial-account
 - Snowflake Dynamic Tables target lag (60 s minimum): https://docs.snowflake.com/en/user-guide/dynamic-tables-target-lag
+- Vertex AI renamed Gemini Enterprise Agent Platform (2026-04-22): https://cloud.google.com/gemini-enterprise-agent-platform/release-notes

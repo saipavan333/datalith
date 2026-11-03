@@ -35,7 +35,7 @@ SELECT * FROM ML.EVALUATE(MODEL ds.churn);
 ```
 
 - Supports **regression, classification, clustering (k-means), time-series (ARIMA+), matrix factorization**, and **importing/connecting** models.
-- Integrates with **Vertex AI**; can even **call LLMs** (remote models) from SQL.
+- Integrates with **Gemini Enterprise Agent Platform (formerly Vertex AI, renamed 2026-04-22)** (source: https://cloud.google.com/gemini-enterprise-agent-platform/release-notes); can even **call LLMs** (remote models) from SQL.
 - Brings ML to **SQL users** and keeps it **next to the data** (no pipeline to move data out).
 
 ## 4. BigLake
@@ -60,7 +60,7 @@ A typical stack: **MVs** precompute the heavy rollups, **BI Engine** makes the d
 - **MV freshness/cost** — auto-refresh has a cost; very rapidly-changing base tables refresh often (weigh freshness vs cost).
 - **MV restrictions** — MVs support a subset of SQL; check supported aggregations/joins.
 - **BI Engine capacity** — you reserve memory; size it to the hot data.
-- **BQML scope** — great for many models, but deep custom DL may belong in **Vertex AI** (BQML integrates with it).
+- **BQML scope** — great for many models, but deep custom DL may belong in **Agent Platform** (BQML integrates with it).
 - **BigLake vs duplicate load** — use BigLake to **avoid copying** lake/other-cloud data; don't load what should stay open.
 - **Approximate/MV correctness** — ensure MV definitions and any approximations match business requirements.
 

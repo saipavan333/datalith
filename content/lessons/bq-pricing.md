@@ -76,7 +76,7 @@ A startup with **spiky, ad-hoc** analytics runs **on-demand** (pay-per-query, no
 
 A taxi meter vs renting a car by the hour. On-demand is the meter: you pay per kilometre (TiB) and nothing when you don't ride. Editions are renting cars (slots) by the hour: cheaper if you drive a lot of short, simple trips, wasteful if the car sits parked or every trip is a slow crawl through traffic (heavy joins).
 
-### Current list prices (US, read from the pricing page 2026-11-03)
+### Current list prices (read from the pricing page 2026-11-03; tables labelled US, worked example us-central1; other locations differ)
 
 | Item | Price |
 |---|---|
@@ -104,12 +104,14 @@ Recorded output (2026-11-03):
 ```text
 Workload: 900 TiB scanned/month, 95,000 slot-hours/month
 
-on-demand                $      5,619
-Standard PAYG            $      4,750   (autoscale only)   $    5,770  (100 baseline + autoscale)
-Enterprise PAYG          $      7,125   (autoscale only)   $    8,655  (100 baseline + autoscale)
-Enterprise 1-yr CUD      $      5,700   (autoscale only)   $    6,924  (100 baseline + autoscale)
-Enterprise 3-yr CUD      $      4,275   (autoscale only)   $    5,193  (100 baseline + autoscale)
-Enterprise Plus PAYG     $     11,875   (autoscale only)   $   14,425  (100 baseline + autoscale)
+on-demand                    $      5,619
+Standard PAYG                $      4,750   (autoscale only)   $    5,770  (100 baseline + autoscale)
+Enterprise PAYG              $      7,125   (autoscale only)   $    8,655  (100 baseline + autoscale)
+Enterprise spend CUD 1-yr    $      6,412   (autoscale only)   $    7,790  (100 baseline + autoscale)
+Enterprise spend CUD 3-yr    $      5,700   (autoscale only)   $    6,924  (100 baseline + autoscale)
+Ent. resource CUD 1-yr base          n/a   (autoscale only)   $    7,779  (100 baseline + autoscale)
+Ent. resource CUD 3-yr base          n/a   (autoscale only)   $    6,903  (100 baseline + autoscale)
+Enterprise Plus PAYG         $     11,875   (autoscale only)   $   14,425  (100 baseline + autoscale)
 
 This workload burns 106 slot-hours per TiB. Same 900 TiB, different query shapes:
     20 slot-h/TiB  on-demand $  5,619   enterprise PAYG $  1,350   -> editions
@@ -133,7 +135,7 @@ What to look for: the winner depends on **slot-hours per TiB**, i.e. query shape
 
 **Transfer.** A team burns 60 slot-hours per TiB on 500 TiB a month. On-demand or Enterprise PAYG?
 
-*Solution:* On-demand: 499 x 6.25 = $3,119. Enterprise: 500 x 60 x 1.25 x $0.06 = $2,250. Editions win, and a 1-year CUD ($0.048 spend-based) would lower it further.
+*Solution:* On-demand: 499 x 6.25 = $3,119. Enterprise: 500 x 60 x 1.25 x $0.06 = $2,250. Editions win, and a 1-year spend-based CUD ($0.054) would lower it further; resource CUDs ($0.048 1-yr) apply only to committed baseline slots, not autoscaled ones.
 
 **Stretch.** Design a mixed setup for steady ELT plus spiky ad-hoc analysis.
 

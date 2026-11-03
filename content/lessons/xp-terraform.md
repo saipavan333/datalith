@@ -12,7 +12,7 @@ Terraform keeps three things in view:
 - **State** (`terraform.tfstate`): what Terraform *created last time*, with real IDs. Teams keep it in a remote **backend** (for GCP, a GCS bucket) so everyone shares one copy and two people can't apply at once.
 - **The real world**: what actually exists right now. `terraform plan` first **refreshes** state from the APIs, which is how it notices **drift** (changes made outside Terraform).
 
-`plan` is a diff between desired and real: `+` create, `~` update in place, `-/+` replace (destroy then create, because an argument can't change in place), `-` destroy. `apply` executes that diff. Each platform is a **provider** plugin: `hashicorp/google`, `databricks/databricks`, `snowflakedb/snowflake` (the Snowflake provider moved from `Snowflake-Labs/snowflake` to the `snowflakedb` namespace; v2.20.0 was released 2026-08-21).
+`plan` is a diff between desired and real: `+` create, `~` update in place, `-/+` replace (destroy then create, because an argument can't change in place), `-` destroy. `apply` executes that diff. Each platform is a **provider** plugin: `hashicorp/google`, `databricks/databricks`, `snowflakedb/snowflake` (the Snowflake provider moved from `Snowflake-Labs/snowflake` to the `snowflakedb` namespace; v2.x; v2.22.1 was released 2026-10-29).
 
 ## 2. School-kid picture
 
@@ -60,7 +60,7 @@ resource "databricks_cluster_policy" "jobs_small" {
   name = "jobs-small"
   definition = jsonencode({
     "autotermination_minutes" : { "type" : "fixed", "value" : 20 },
-    "num_workers"             : { "type" : "range", "maxValue" : 8 }
+    "autoscale.max_workers"   : { "type" : "range", "maxValue" : 8 }
   })
 }
 
