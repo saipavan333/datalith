@@ -15848,7 +15848,7 @@
         "Adding optional fields with defaults is safe; removing/renaming required fields or changing types breaks compatibility."
        ],
        "diagram": "schema-evolution",
-       "diagram_caption": "Compatibility modes: who can read whom, what changes are safe, and which side upgrades first.",
+       "diagram_caption": "A central registry validates each new schema version's compatibility so producers and consumers evolve independently.",
        "quiz": [
         [
          ["q", "What does a schema registry do?"],
