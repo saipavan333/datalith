@@ -6136,7 +6136,7 @@
    "company": "Common DE loop",
    "level": "Senior",
    "q": "Design the data platform for a 30M-user marketplace. Walk me through it.",
-   "a": "Scope consumers and freshness (BI hourly, fraud seconds, finance daily and exact), sources (40 Postgres shards, clickstream, SaaS) and constraints (PII deletion, retention, team of 8). Size it: ~1.1 TB/day raw, ~50 MB/s peak, ~6 TB Kafka with 7d RF3, ~24 TB bronze for 90 days. Design: Debezium CDC and a clickstream collector into Kafka with Avro and a registry; managed EL for SaaS; one catalog over Iceberg/Delta; bronze append-only, silver merged with an LSN guard every 10–15 minutes, gold dimensional via dbt with a semantic layer; asset-aware orchestration; serving to BI, ML features and reverse ETL. Then the failure table (hot keys, slot lag, small files, schema changes, late data, deletion, cost) and a build sequence starting with orders and payments for finance."
+   "a": "Scope consumers and freshness (BI hourly, fraud seconds, finance daily and exact), sources (40 Postgres shards, clickstream, SaaS) and constraints (PII deletion, retention, team of 8). Size it: ~1.1 TB/day raw, ~50 MB/s peak, ~7.6 TB Kafka with 7d RF3, ~24 TB bronze for 90 days. Design: Debezium CDC and a clickstream collector into Kafka with Avro and a registry; managed EL for SaaS; one catalog over Iceberg/Delta; bronze append-only, silver merged with an LSN guard every 10–15 minutes, gold dimensional via dbt with a semantic layer; asset-aware orchestration; serving to BI, ML features and reverse ETL. Then the failure table (hot keys, slot lag, small files, schema changes, late data, deletion, cost) and a build sequence starting with orders and payments for finance."
   },
   {
    "company": "Common DE loop",
@@ -6165,6 +6165,26 @@
    "level": "Senior",
    "q": "Bronze, silver, gold: what goes in each and what guarantees does each give?",
    "a": "Bronze: raw, append-only, as received (events, CDC envelopes), partitioned by ingest date; guarantee: nothing lost, replayable. Silver: cleaned, typed, deduplicated, CDC merged to current state, conformed keys; guarantee: one correct row per entity/event. Gold: business-level facts, dimensions and metrics for consumers; guarantee: tested, documented, contract-backed. Rebuild silver from bronze and gold from silver when logic changes."
+  }
+ ],
+ "pipe-dbt-materializations": [
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "Which dbt incremental strategy would you pick for a 2-billion-row event table with late-arriving events, and why?",
+   "a": "Usually merge on a unique event_id with a lookback window, or microbatch (dbt 1.9+) on event_time with batch_size='day' and lookback of a few batches. Microbatch makes each day its own query, so a failed day retries alone and backfills are one command (--event-time-start/--event-time-end). Append is only safe if events are never re-sent or corrected. insert_overwrite of daily partitions is a good fit on BigQuery/Spark."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "An order was hard-deleted in the source, but it still shows in your incremental fct_orders. Why, and how do you fix it?",
+   "a": "Incremental models only process rows the SELECT returns; a hard-deleted row is never selected again, so no strategy removes it. Fixes: have the source soft-delete (is_deleted) and filter or merge on it; ingest via CDC so deletes arrive as events; or periodically full-refresh / reconcile keys against the source. A snapshot with hard_deletes: invalidate records the deletion in history."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "With the timestamp strategy, what does dbt put in dbt_valid_to when a row changes?",
+   "a": "The new version's updated_at value, so the old row is valid until the moment the change happened in the source. It is not the time the snapshot job ran. Current rows have NULL (or the value set by dbt_valid_to_current). Only hard deletes with hard_deletes: invalidate use the snapshot run time, because the source has no timestamp for a deletion."
   }
  ]
 }
