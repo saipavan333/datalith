@@ -3249,6 +3249,18 @@
    "level": "Medium",
    "q": "Why might a team move off Airflow?",
    "a": "Pain points: awkward testing/local dev, clunky dynamic pipelines, the confusing logical-date model, and being task- (not data-) centric so lineage/observability are bolted on. Teams move to Dagster (asset-based, typed, testable) or Prefect (Pythonic, dynamic) for better developer experience and data-awareness. Airflow still dominates by ubiquity."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "A source re-sends last Tuesday's file. How does an asset-based orchestrator handle it differently from a task-based one?",
+   "a": "Task-based: you identify every DAG that consumed the file (directly or indirectly) and clear Tuesday's runs, relying on tribal knowledge of lineage. Asset-based: the updated upstream partition makes every downstream asset partition for Tuesday stale; you materialize the stale set, and blocking asset checks stop bad data reaching marts. The key is that the orchestrator records which upstream versions each partition was built from."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "What changed for DAG authors in Airflow 3?",
+   "a": "Authoring imports moved to airflow.sdk (DAG, dag, task) with old paths deprecated; classic operators moved to the standard provider; task code can't use the metadata DB directly (Task SDK + API server); SubDAGs and execution_date were removed (use TaskGroups and logical_date); catchup defaults to False; Datasets became Assets for data-aware scheduling."
   }
  ],
  "pipe-testing": [
