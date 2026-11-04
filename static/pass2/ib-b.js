@@ -196,7 +196,7 @@
         ["Still one seat, no second charge", "Server returns the stored result"],
         ["The box office's list of sold seats", "Server-side store of keys and responses"],
       ],
-      breaks: "a ticket is valid for one film forever. Keys are remembered only for a limited time (Stripe documents about 24 hours), so a very late retry is treated as new.",
+      breaks: "a ticket is valid for one film forever. Keys are remembered only for a limited time: Stripe may delete a key once it is at least 24 hours old, and a retry after that is treated as a new request.",
     },
     svg: () => {
       let b = loop("Stripe: correctness is the whole game", [["screen", "SQL + coding", "warn"], ["SQL", "ledgers", "acc"], ["coding", "real world", "acc"], ["finance", "modelling", "acc"], ["design", "correctness", "bad"], ["principles", null, "good"]]);

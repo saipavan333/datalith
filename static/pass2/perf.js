@@ -188,17 +188,17 @@
       ],
       breaks: "a taxi meter shows the cost as you ride. Cloud bills arrive later and in aggregate, so without tags and dashboards nobody knows which job spent the money.",
     },
-    svg: () => P["perf-cost"]._fig(2000),
+    svg: () => P["perf-cost"]._fig(2048),
     _fig: gb => {
       const tib = gb / 1024, usd = tib * 6.25, day = usd, mon = usd * 30;
-      let b = t(240, 20, "BigQuery on-demand: one daily query scanning " + (gb >= 1024 ? (gb / 1024).toFixed(1) + " TiB" : gb + " GB"), { bold: true, size: 12.5 });
+      let b = t(240, 20, "BigQuery on-demand: one daily query scanning " + (gb >= 1024 ? (gb / 1024).toFixed(1) + " TiB" : gb + " GiB"), { bold: true, size: 12.5 });
       b += table(60, 40, ["per run", "per month (30 runs)"], [["$" + day.toFixed(2), "$" + mon.toFixed(0)]], { cw: [170, 190], rh: 30, size: 13, hl: { 0: mon > 500 ? "bad" : mon > 50 ? "warn" : "good" } });
       b += t(240, 128, "price: $6.25 per TiB scanned (US multi-region, on-demand)", { size: 11.5, fill: C.dim });
       b += box(20, 142, 440, 44, "partition + 2 columns instead of SELECT *: often 10-200x less", null, "plain", { size: 12 });
       return svg(480, 200, b, "Monthly cost of a daily query by bytes scanned");
     },
-    caption: "A daily SELECT * over 2 TB costs about $370 a month; pruning to a few GB costs about a dollar.",
-    ix: el => slider(el, { label: "Bytes scanned per run (GB)", min: 1, max: 10000, step: 1, value: 50 }, v => ({ svg: P["perf-cost"]._fig(v), note: "First 1 TiB per month is free on on-demand pricing; capacity (slot) pricing bills compute instead. Prices change: check the BigQuery pricing page." })),
+    caption: "A daily SELECT * over 2 TiB costs about $375 a month; pruning to a few GiB costs about a dollar.",
+    ix: el => slider(el, { label: "Bytes scanned per run (GiB)", min: 1, max: 10000, step: 1, value: 50 }, v => ({ svg: P["perf-cost"]._fig(v), note: "First 1 TiB per month is free on on-demand pricing; capacity (slot) pricing bills compute instead. Prices change: check the BigQuery pricing page." })),
     oneline: "In the cloud you pay for what you scan and run, so reading less makes jobs cheaper as well as faster.",
   };
 

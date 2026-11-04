@@ -144,14 +144,15 @@
         last = i;
         const k = kinds[i], rows = ranks(k, byClass);
         const hl = {}; rows.forEach((r, j) => { hl[j] = r[1] === "A" ? "acc" : "vio"; });
-        let b = t(240, 24, `${k === "AVG(score)" ? "AVG(score)" : k === "NTILE(2)" ? "NTILE(2)" : k + "()"} OVER (${byClass ? "PARTITION BY class " : ""}ORDER BY score DESC)`, { mono: true, size: 12, fill: C.tx });
+        const over = k === "AVG(score)" ? (byClass ? "PARTITION BY class" : "") : (byClass ? "PARTITION BY class " : "") + "ORDER BY score DESC";
+        let b = t(240, 24, `${k === "AVG(score)" ? "AVG(score)" : k === "NTILE(2)" ? "NTILE(2)" : k + "()"} OVER (${over})`, { mono: true, size: 12, fill: C.tx });
         b += table(60, 48, ["name", "class", "score", k.length > 10 ? "value" : k.toLowerCase()], rows, { cw: [90, 80, 90, 100], rh: 28, hl: byClass ? hl : {} });
         const notes = {
           ROW_NUMBER: "1, 2, 3 ... with no ties. Ben or Cai could swap places between runs, because they tie.",
           RANK: "Ties share a number and leave a gap after them (2, 2, then 4).",
           DENSE_RANK: "Ties share a number with no gap (2, 2, then 3).",
           "NTILE(2)": "Splits each window into 2 nearly equal buckets: top half 1, bottom half 2.",
-          "AVG(score)": "Any aggregate works with OVER. With PARTITION BY it repeats each class's average on every row.",
+          "AVG(score)": "Any aggregate works with OVER. With PARTITION BY and no ORDER BY it repeats each class's average on every row. Add <code>ORDER BY score DESC</code> inside OVER and it becomes a running average instead (Ava 90, Ben and Cai 86.7, Dev 82.5), because the default frame then stops at the current row and its ties.",
         };
         return { svg: svg(480, 48 + 28 * 7 + 16, b, k + " result"), note: notes[k] + (byClass ? "" : " <b>Without PARTITION BY</b>, all six rows form one window.") };
       });

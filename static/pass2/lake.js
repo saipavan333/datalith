@@ -324,7 +324,7 @@
       ],
       breaks: "an old jar thrown away harms nobody. VACUUM with too short a retention can delete files a long-running query or a slow reader still needs, which is why Delta blocks retention under 7 days by default.",
     },
-    svg: () => P["lake-optimize"]._fig(0),
+    svg: () => P["lake-optimize"]._fig(1),
     _fig: s => {
       let b = t(240, 20, ["before: 2,000 small files", "after OPTIMIZE", "after VACUUM (7 days)"][s], { bold: true, size: 14 });
       if (s === 0) for (let i = 0; i < 120; i++) b += `<rect x="${16 + (i % 30) * 15}" y="${40 + Math.floor(i / 30) * 15}" width="11" height="11" style="fill:${C.warnS}"/>`;
@@ -335,7 +335,7 @@
       return svg(480, 240, b, "Table files before and after OPTIMIZE and VACUUM");
     },
     caption: "OPTIMIZE adds big files and keeps the old small ones for time travel until VACUUM removes them.",
-    ix: el => choice(el, { label: "Step", options: ["before", "OPTIMIZE", "VACUUM"], value: 1 }, i => ({ svg: P["lake-optimize"]._fig(i), note: ["Each query opens thousands of small files: slow planning, slow reads.", "Reads are fast now, but storage doubled for a while.", "Storage is back down; versions older than the retention can no longer be read."][i] })),
+    ix: el => choice(el, { label: "Step", options: ["before", "OPTIMIZE", "VACUUM"], value: 0 }, i => ({ svg: P["lake-optimize"]._fig(i), note: ["Each query opens thousands of small files: slow planning, slow reads.", "Reads are fast now, but storage doubled for a while.", "Storage is back down; versions older than the retention can no longer be read."][i] })),
     oneline: "OPTIMIZE merges small files for speed, and VACUUM deletes old ones to save storage.",
   };
 

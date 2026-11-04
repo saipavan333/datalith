@@ -154,7 +154,7 @@
   P["py-concurrency"] = {
     simple: [
       "**Concurrency** means doing several jobs in overlapping time. It helps most when a job spends time **waiting**, for a network reply or a disk.",
-      "**Threads** share one program. In the standard CPython build, the **GIL** (Global Interpreter Lock) lets only one thread run Python code at a time. That is fine while threads wait on I/O, but it stops them from speeding up heavy maths.",
+      "**Threads** share one program. In the standard CPython build, the **GIL** (Global Interpreter Lock) lets only one thread run Python code at a time. That is fine while threads wait on I/O (input/output: network, disk), but it stops them from speeding up heavy maths.",
       "For CPU-heavy work, use **processes** (`multiprocessing`, `ProcessPoolExecutor`): each has its own interpreter. For thousands of network calls, **asyncio** switches between tasks on one thread.",
     ],
     analogy: {

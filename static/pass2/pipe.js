@@ -146,7 +146,8 @@
   P["pipe-scheduling-backfill"] = {
     simple: [
       "Pipelines run on a **schedule** (`@daily`, a cron string) or on a **trigger** (a file arrives, an upstream dataset updates).",
-      "With an interval timetable (Airflow 2's default for cron schedules), each run covers a **data interval**: the daily run for 4 November processes 4 November's data, so it starts just after midnight on the 5th, once that day is complete. Airflow 3 instead treats a cron schedule as a trigger time by default (`CronTriggerTimetable`, `create_cron_data_intervals = False`), so check which timetable your version uses.",
+      "In the classic setup, each run looks after one finished window of time, its **data interval**. The daily run for 4 November processes 4 November's data, so it starts just after midnight on the 5th, once that day is complete.",
+      "Airflow 3 changed the default for cron schedules: a run simply fires at the clock time, with no window of its own (`CronTriggerTimetable`, `create_cron_data_intervals = False`). Check which one your version and DAG use.",
       "**Catchup** decides what happens if the DAG's start date is in the past: with catchup on, Airflow creates one run for every missed interval. Airflow 3 turns catchup off by default (`catchup_by_default = False`); Airflow 2 had it on.",
     ],
     analogy: {
@@ -163,15 +164,15 @@
     svg: () => P["pipe-scheduling-backfill"]._fig(30),
     _fig: d => {
       let b = t(240, 22, "start_date " + d + " days ago, @daily, catchup=True", { bold: true, size: 13, mono: true });
-      const n = Math.min(d, 10);
+      const n = d > 10 ? 9 : d;
       for (let i = 0; i < n; i++) {
         const x = 20 + i * 44;
         b += box(x, 44, 40, 46, "D-" + (d - i), null, "acc", { size: 11, mono: true });
       }
-      if (d > 10) b += t(466, 72, "+" + (d - 10), { a: "end", size: 12, fill: C.accT, bold: true });
+      if (d > 10) b += t(420, 72, "+" + (d - 9) + " more", { a: "start", size: 12, fill: C.accT, bold: true });
       b += t(240, 116, d + " runs are queued at once, one per missed day", { size: 12.5, fill: C.tx });
       b += box(20, 132, 440, 38, "catchup=False: only the latest interval runs", null, "good", { size: 12.5 });
-      b += box(20, 182, 440, 50, "Each run sees its own data_interval_start / end", "e.g. 2026-11-04 00:00 to 2026-11-05 00:00 UTC", "plain", { size: 12.5, size2: 11, mono2: true });
+      b += box(20, 182, 440, 50, "Interval timetable: each run gets its own window", "e.g. 2026-11-04 00:00 to 2026-11-05 00:00 UTC", "plain", { size: 12.5, size2: 11, mono2: true });
       return svg(480, 246, b, "Runs created by catchup for a start date in the past");
     },
     caption: "With catchup on, a start date 30 days back creates 30 runs, one per missed daily interval.",

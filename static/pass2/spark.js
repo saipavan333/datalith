@@ -344,7 +344,7 @@
   P["bd-partitions-shuffle"] = {
     simple: [
       "A **partition** is one slice of the data. Spark runs one task per partition, so the number of partitions sets how much work runs in parallel.",
-      "Some operations, like `groupBy`, `join` on non-matching layouts, and `distinct`, need all rows with the same key in one place. Spark then **shuffles**: every task writes its rows sorted by key, and the next stage's tasks fetch their keys across the network.",
+      "Some operations, like `groupBy`, `distinct`, and a `join` of two tables that aren't already split the same way, need all rows with the same key in one place. Spark then **shuffles**: every task sorts its rows into buckets, one per destination partition, writes them to disk, and the next stage's tasks fetch their bucket across the network.",
       "Shuffles are the most expensive thing Spark does. If one key has far more rows than others (**skew**), one task gets most of the work and the whole stage waits for it.",
     ],
     analogy: {

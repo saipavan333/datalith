@@ -75,7 +75,7 @@
   P["bd-join-strategies"] = {
     simple: [
       "Joining two big tables in Spark usually means a **sort-merge join**: shuffle both tables by the join key, sort each side, then walk them together. It works at any size, but both shuffles are costly.",
-      "If one side is small, Spark can **broadcast** it: send a full copy to every executor, so the big table never moves. By default it does this when the small side is under 10 MB (`spark.sql.autoBroadcastJoinThreshold`).",
+      "If one side is small, Spark can **broadcast** it: send a full copy to every **executor** (the worker processes that run tasks), so the big table never moves. By default it does this when the small side is under 10 MB (`spark.sql.autoBroadcastJoinThreshold`).",
       "A **shuffle-hash join** shuffles both sides but builds a hash table instead of sorting; Spark picks it in a few cases. You can force a broadcast with `broadcast(df)`.",
     ],
     analogy: {

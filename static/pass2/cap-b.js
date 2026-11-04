@@ -27,7 +27,7 @@
         ["Copying changes in the order they were written", "Ordering per key by commit position (LSN)"],
         ["Copying a page twice changes nothing", "Idempotent MERGE"],
       ],
-      breaks: "a notebook keeps every page. Databases recycle old log files, so a CDC reader that is stopped too long must start again from a fresh snapshot.",
+      breaks: "a notebook keeps every page. A database log doesn't: MySQL purges old binlogs, and Postgres holds WAL back for a stalled replication slot until its disk fills or a size cap drops the slot. Either way, a CDC reader stopped too long must start again from a fresh snapshot.",
     },
     svg: () => {
       let b = t(240, 18, "Log-based CDC from Postgres into the silver table", { bold: true, size: 13 });
