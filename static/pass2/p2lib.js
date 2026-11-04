@@ -225,6 +225,20 @@ window.P2LEG = (function () {
     // how far a label pokes out of the picture (0 when inside)
     const over = b => Math.max(0, vb.x - b.x, b.x + b.width - vb.x - vb.width, vb.y - b.y, b.y + b.height - vb.y - vb.height);
     const spills = (t, l) => t.dataset.max && l > Number(t.dataset.max) + 0.5;
+    // lines and arrowheads: a grown label must not newly cross one
+    const segs = [...svg.querySelectorAll("line")].map(l => ["x1", "y1", "x2", "y2"].map(a => Number(l.getAttribute(a)) || 0));
+    const heads = [...svg.querySelectorAll("polygon")].map(bb);
+    const crosses = (r, [x1, y1, x2, y2]) => { // Liang-Barsky clip of the segment against the label box (shrunk 0.5)
+      const L = r.x + 0.5, R = r.x + r.width - 0.5, T = r.y + 0.5, B = r.y + r.height - 0.5;
+      if (L >= R || T >= B) return false;
+      const dx = x2 - x1, dy = y2 - y1; let u0 = 0, u1 = 1;
+      for (const [pp, q] of [[-dx, x1 - L], [dx, R - x1], [-dy, y1 - T], [dy, B - y1]]) {
+        if (pp === 0) { if (q < 0) return false; continue; }
+        const u = q / pp;
+        if (pp < 0) { if (u > u1) return false; if (u > u0) u0 = u; } else { if (u < u0) return false; if (u < u1) u1 = u; }
+      }
+      return true;
+    };
     const b0 = texts.map(bb), l0 = texts.map(len);
     small.forEach(t => { t.dataset.fs0 = t.style.fontSize || ""; t.style.fontSize = need.toFixed(2) + "px"; });
     const b1 = texts.map(bb), l1 = texts.map(len);
@@ -232,7 +246,12 @@ window.P2LEG = (function () {
     for (let i = 0; i < texts.length && !bad; i++) {
       if (over(b1[i]) > Math.max(over(b0[i]), 0.25) + 0.05) bad = true;
       if (spills(texts[i], l1[i]) && !spills(texts[i], l0[i])) bad = true;
-      for (let k = 0; k < rects.length && !bad; k++) if (inside(b0[i], rects[k]) && !inside(b1[i], rects[k])) bad = true;
+      for (let k = 0; k < rects.length && !bad; k++) {
+        if (inside(b0[i], rects[k])) { if (!inside(b1[i], rects[k])) bad = true; }
+        else if (hit(b1[i], rects[k]) && !hit(b0[i], rects[k])) bad = true; // grew onto another box
+      }
+      for (let k = 0; k < segs.length && !bad; k++) if (crosses(b1[i], segs[k]) && !crosses(b0[i], segs[k])) bad = true;
+      for (let k = 0; k < heads.length && !bad; k++) if (hit(b1[i], heads[k]) && !hit(b0[i], heads[k])) bad = true;
       for (let j = i + 1; j < texts.length && !bad; j++) if (hit(b1[i], b1[j]) && !hit(b0[i], b0[j])) bad = true;
     }
     if (!bad) return;
