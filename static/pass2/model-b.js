@@ -375,11 +375,11 @@
     },
     svg: () => {
       let b = box(20, 30, 200, 60, "fact_sales", "2,000,000,000 rows", "plain", { size: 15, size2: 13 });
-      b += arrow(222, 60, 258, 60, { label: "GROUP BY day, region", dy: -10, size: 11 });
+      b += arrow(222, 60, 258, 60, { label: "GROUP BY day, region", dy: -40, size: 11 });
       b += box(262, 30, 200, 60, "agg_daily_region", "≈ 3,650 rows / year", "good", { size: 14, size2: 13 });
       b += box(140, 140, 200, 46, "dashboard query", "monthly revenue by region", "acc", { size: 14, size2: 12 });
-      b += arrow(300, 138, 350, 94, { stroke: C.goodS, sw: 2.4, label: "reads", dx: 26 });
-      b += arrow(180, 138, 120, 94, { stroke: C.badS, dash: true, label: "avoids", dx: -28 });
+      b += arrow(300, 138, 350, 94, { stroke: C.goodS, sw: 2.4, label: "reads", dx: 36, dy: 0 });
+      b += arrow(180, 138, 120, 94, { stroke: C.badS, dash: true, label: "avoids", dx: -40, dy: 0 });
       b += t(240, 220, "Example: 10 regions × 365 days ≈ 3,650 rows a year.", { size: 12.5, fill: C.dim });
       return svg(480, 236, b, "An aggregate table summarises a large fact so dashboards read far fewer rows");
     },
