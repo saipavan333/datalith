@@ -76,3 +76,16 @@
   .p2-ix { padding: 10px 0 8px; margin-left: -14px; margin-right: -14px; border-left: 0; border-right: 0; border-radius: 0; }
   .p2-ix .p2-ctl, .p2-ix .p2-note { padding: 0 14px; }
 }
+
+/* Phone legibility (pass-2 review follow-up, p2lib.js P2LEG). A diagram whose small labels
+   cannot grow to 9 px without colliding keeps its drawing and scrolls sideways instead. */
+.p2-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.p2-scroll > svg { max-width: none !important; }
+.p2-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.p2-scrolling::after {
+  content: "swipe sideways to see the whole diagram \2192"; display: block; position: sticky; left: 0;
+  font-size: 12.5px; color: var(--text-dim); padding: 5px 0 2px; text-align: left;
+}
+@media (max-width: 520px) {
+  .p2-scrolling::after { padding-left: 14px; padding-right: 14px; }
+}
