@@ -65,3 +65,14 @@
   .topbar-actions .btn { flex-shrink: 0; }
   .progress-label { display: none; }
 }
+
+/* Phone gutters (pass 2 review). The base layout kept 40 px side padding at 390 px, so
+   480-wide diagrams rendered at about 0.62x and most labels came out at 6-8 px.
+   A 14 px gutter plus edge-to-edge figures bring them to about 0.81x (most labels 9-11 px). */
+@media (max-width: 520px) {
+  .content { padding-left: 14px; padding-right: 14px; }
+  .p2-fig { margin-left: -14px; margin-right: -14px; }
+  .p2-fig figcaption { padding: 0 14px; }
+  .p2-ix { padding: 10px 0 8px; margin-left: -14px; margin-right: -14px; border-left: 0; border-right: 0; border-radius: 0; }
+  .p2-ix .p2-ctl, .p2-ix .p2-note { padding: 0 14px; }
+}
