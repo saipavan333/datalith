@@ -5,7 +5,7 @@
 
   /* ---------------------------------------------------------------- aws-athena-partitioning */
   const apFig = (days) => {
-    let b = t(240, 20, `WHERE dt >= current_date - interval '${days}' day  (365 daily partitions)`, { bold: true, size: 12, mono: true });
+    let b = t(240, 20, `WHERE dt >= current_date - interval '${days}' day  (365 daily partitions)`, { bold: true, size: 11, mono: true });
     for (let d = 0; d < 365; d++) {
       const x = 14 + (d % 73) * 6.2, y = 36 + Math.floor(d / 73) * 14, hit = d >= 365 - days;
       b += `<rect x="${x}" y="${y}" width="5" height="11" style="fill:${hit ? C.accS : "#2b3446"}"/>`;
@@ -34,7 +34,7 @@
     },
     svg: () => svg(480, 210, apFig(7), "Seven of 365 daily partitions read by a date filter"),
     caption: "A last-7-days filter reads 7 of 365 partitions, under 2% of the table.",
-    ix: el => slider(el, { label: "Days in the filter", min: 1, max: 365, step: 1, value: 7, fmt: v => v + " days" }, v => ({ svg: svg(480, 210, apFig(v), "Partitions read"), note: `${v} day${v > 1 ? "s" : ""} → ${v} partitions → about ${(v / 365 * 100).toFixed(1)}% of the bytes. A filter on a non-partition column (like amount) wouldn't skip any partition.` })),
+    ix: el => slider(el, { label: "Days in the filter", min: 1, max: 365, step: 1, value: 365, fmt: v => v + " days" }, v => ({ svg: svg(480, 210, apFig(v), "Partitions read"), note: `${v} day${v > 1 ? "s" : ""} → ${v} partitions → about ${(v / 365 * 100).toFixed(1)}% of the bytes. A filter on a non-partition column (like amount) wouldn't skip any partition.` })),
     oneline: "Partitions let Athena skip whole days of data, and partition projection makes new days queryable instantly.",
   };
 
@@ -188,7 +188,7 @@
       b += box(x, 36, 140, 110, null, null, "plain") + t(x + 70, 54, "slice " + s, { size: 12, bold: true, fill: C.dim });
       const ord = i === 0 ? ["c" + ((s + 1) % 3), "c" + ((s + 2) % 3)] : ["c" + s, "c" + s];
       b += box(x + 8, 64, 60, 30, "ord " + ord[0], null, "acc", { size: 11, mono: true }) + box(x + 8, 100, 60, 30, "ord " + ord[1], null, "acc", { size: 11, mono: true });
-      b += box(x + 74, 64, 58, 66, i === 2 ? "all cust" : "cust c" + s, null, "good", { size: 11, mono: true });
+      b += box(x + 74, 64, 58, 66, i === 2 ? "cust" : "cust c" + s, i === 2 ? "all" : null, "good", { size: 11, mono: true });
     });
     if (!local) { b += arrow(84, 148, 230, 148, { stroke: C.badS }) + arrow(240, 152, 396, 152, { stroke: C.badS }); }
     b += box(80, 166, 320, 38, local ? "join runs locally on every slice" : "redistribute rows over the network first", null, local ? "good" : "bad", { size: 13.5 });
@@ -394,7 +394,7 @@
     svg: () => { const r = ksFig(4, 3); return svg(480, r.h, r.b, "Four shards handling 3 MB/s of writes"); },
     caption: "3 MB/s across 4 shards: each shard runs at three-quarters of its write limit.",
     ix: el => {
-      el.innerHTML = `<div class="p2-ctl"><label>Shards</label><input type="range" min="1" max="10" value="4" aria-label="shards"><output class="p2-val"></output></div><div class="p2-ixfig"></div><div class="p2-note"></div>`;
+      el.innerHTML = `<div class="p2-ctl"><label>Shards</label><input type="range" min="1" max="10" value="2" aria-label="shards"><output class="p2-val"></output></div><div class="p2-ixfig"></div><div class="p2-note"></div>`;
       const inp = el.querySelector("input"), out = el.querySelector("output"), fig = el.querySelector(".p2-ixfig"), note = el.querySelector(".p2-note");
       const upd = () => { const s = Number(inp.value); out.textContent = s + " shards"; const r = ksFig(s, 3); fig.innerHTML = svg(480, r.h, r.b, "Shards vs throughput"); note.innerHTML = s < 3 ? `3 MB/s needs at least 3 shards of about 1 MB/s each; with ${s}, producers get throttled and must retry.` : `Spare capacity ${s - 3} MB/s, assuming keys spread evenly. On-demand mode adds shards for you.`; };
       inp.addEventListener("input", upd); upd();
@@ -437,7 +437,7 @@
     },
     svg: () => svg(480, 204, fhFig(300), "Firehose buffering records and flushing every 300 seconds"),
     caption: "A 300-second interval writes about 288 files a day; size or time, whichever comes first, triggers a flush.",
-    ix: el => slider(el, { label: "Buffer interval", min: 60, max: 900, step: 60, value: 300, fmt: v => v + " s" }, v => ({ svg: svg(480, 204, fhFig(v), "Buffer interval vs file count"), note: `Flushing every ${v} s gives about ${Math.round(86400 / v).toLocaleString()} files a day (when the size limit isn't hit first). Data in S3 is at most about ${Math.round(v / 60)} minute${v >= 120 ? "s" : ""} behind.` })),
+    ix: el => slider(el, { label: "Buffer interval", min: 60, max: 900, step: 60, value: 60, fmt: v => v + " s" }, v => ({ svg: svg(480, 204, fhFig(v), "Buffer interval vs file count"), note: `Flushing every ${v} s gives about ${Math.round(86400 / v).toLocaleString()} files a day (when the size limit isn't hit first). Data in S3 is at most about ${Math.round(v / 60)} minute${v >= 120 ? "s" : ""} behind.` })),
     oneline: "Firehose collects streaming records and drops them into S3 or Redshift in batches, with no servers to run.",
   };
 
@@ -581,7 +581,7 @@
     },
     svg: () => svg(480, 210, lftFig(0), "Analyst granted by LF-Tags sees three columns, PII email hidden"),
     caption: "The analyst's tag grant excludes the PII-tagged email column.",
-    ix: el => choice(el, { label: "Principal", options: LFT.map(l => l[0]), value: 0 }, i => ({ svg: svg(480, 210, lftFig(i), "Columns and rows by principal"), note: LFT[i][2] })),
+    ix: el => choice(el, { label: "Principal", options: LFT.map(l => l[0]), value: 1 }, i => ({ svg: svg(480, 210, lftFig(i), "Columns and rows by principal"), note: LFT[i][2] })),
     oneline: "LF-Tags let you grant access by label, so new tables and columns are protected the moment they're tagged.",
   };
 
@@ -791,7 +791,7 @@
     },
     svg: () => svg(480, 194, lamFig(4), "Four-minute task fits under the 15-minute Lambda limit"),
     caption: "Anything under 15 minutes fits; longer work must move elsewhere.",
-    ix: el => slider(el, { label: "Work per event", min: 1, max: 30, step: 1, value: 4, fmt: v => v + " min" }, v => ({ svg: svg(480, 194, lamFig(v), "Task duration vs Lambda limit"), note: v <= 15 ? (v > 10 ? "Fits, but close to the limit: data growth will push it over. Plan the move to Glue or EMR now." : "Comfortably inside Lambda's limit: a good fit for event-driven glue.") : "Lambda stops at 15 minutes. Let the function start a Glue job, an EMR step or a container task, and return." })),
+    ix: el => slider(el, { label: "Work per event", min: 1, max: 30, step: 1, value: 20, fmt: v => v + " min" }, v => ({ svg: svg(480, 194, lamFig(v), "Task duration vs Lambda limit"), note: v <= 15 ? (v > 10 ? "Fits, but close to the limit: data growth will push it over. Plan the move to Glue or EMR now." : "Comfortably inside Lambda's limit: a good fit for event-driven glue.") : "Lambda stops at 15 minutes. Let the function start a Glue job, an EMR step or a container task, and return." })),
     oneline: "Lambda is perfect for quick jobs triggered by events, and it hands anything longer than 15 minutes to bigger tools.",
   };
 

@@ -592,7 +592,7 @@
     svg: () => svg(480, 238, mpFig(10, 13).b, "Eight micro-partitions with date ranges; a filter scans two"),
     caption: "A filter on days 10-13 opens 2 of the 8 micro-partitions; their min/max ranges rule out the rest.",
     ix: el => {
-      el.innerHTML = `<div class="p2-ctl"><label>Filter width</label><input type="range" min="0" max="29" step="1" value="3" aria-label="filter width in days"><output class="p2-val"></output></div><div class="p2-ixfig"></div><div class="p2-note"></div>`;
+      el.innerHTML = `<div class="p2-ctl"><label>Filter width</label><input type="range" min="0" max="29" step="1" value="9" aria-label="filter width in days"><output class="p2-val"></output></div><div class="p2-ixfig"></div><div class="p2-note"></div>`;
       const inp = el.querySelector("input"), out = el.querySelector("output"), fig = el.querySelector(".p2-ixfig"), note = el.querySelector(".p2-note");
       const upd = () => {
         const w = Number(inp.value), lo = 10, hi = Math.min(30, 10 + w); out.textContent = (hi - lo + 1) + " days";

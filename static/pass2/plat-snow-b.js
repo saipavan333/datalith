@@ -90,7 +90,7 @@
     },
     svg: () => svg(480, 222, cacheFig(0), "Query checking result cache, local disk cache and remote storage in order"),
     caption: "A query tries the cheapest layer first and falls through only on a miss.",
-    ix: el => choice(el, { label: "Situation", options: CACHE.map(c => c[0]), value: 0 }, i => ({ svg: svg(480, 222, cacheFig(i), "Which cache layer answers"), note: CACHE[i][2] })),
+    ix: el => choice(el, { label: "Situation", options: CACHE.map(c => c[0]), value: 1 }, i => ({ svg: svg(480, 222, cacheFig(i), "Which cache layer answers"), note: CACHE[i][2] })),
     oneline: "Snowflake answers from saved results first, then from the warehouse's own disk, and only then from storage.",
   };
 
@@ -298,7 +298,7 @@
     },
     svg: () => svg(480, 236, rpFig(0).b, "Row access policy filtering a sales table to India rows for SALES_IN"),
     caption: "The policy checks the mapping table for each row; SALES_IN sees only Indian orders.",
-    ix: el => choice(el, { label: "Query as role", options: RP.map(r => r[0]), value: 0 }, i => {
+    ix: el => choice(el, { label: "Query as role", options: RP.map(r => r[0]), value: 1 }, i => {
       const r = rpFig(i);
       return { svg: svg(480, 236, r.b, "Rows visible per role"), note: `Same <code>select * from sales</code>, <b>${r.vis}</b> rows returned. The struck-out rows are filtered before the query sees them.` };
     }),
@@ -579,7 +579,7 @@
     },
     svg: () => svg(480, 182, ccFig(600).b, "Credits per day for 96 short queries with a 10-minute auto-suspend"),
     caption: "With AUTO_SUSPEND = 600 s, each 20-second query keeps the warehouse up for 10 more minutes.",
-    ix: el => slider(el, { label: "AUTO_SUSPEND (seconds)", min: 0, max: 600, step: 30, value: 600, fmt: v => v + " s" }, v => {
+    ix: el => slider(el, { label: "AUTO_SUSPEND (seconds)", min: 0, max: 600, step: 30, value: 60, fmt: v => v + " s" }, v => {
       const r = ccFig(v);
       return { svg: svg(480, 182, r.b, "Credits by auto-suspend setting"), note: `At ${v} s: <b>${r.credits.toFixed(2)}</b> credits a day. 600 s gives 66.13, 60 s gives 8.53 (the lesson's worked example). Below about 40 s nothing more is saved, because each resume bills at least 60 s, and the warehouse cache is lost more often.` };
     }),

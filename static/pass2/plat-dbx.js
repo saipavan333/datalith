@@ -111,7 +111,7 @@
     },
     svg: () => svg(480, 276, ucFig(3), "Unity Catalog hierarchy: metastore, catalog, schema, table"),
     caption: "prod.sales.orders: each level nests in the one above, and grants follow the same path.",
-    ix: el => choice(el, { label: "Level", options: ["Metastore", "Catalog", "Schema", "Table"], value: 3 }, i => ({ svg: svg(480, 276, ucFig(i), "Unity Catalog level"), note: ["The metastore is the top container for one region. Admins attach it to workspaces so they all see the same catalogs.", "A catalog groups schemas, usually per environment (prod, dev) or per business domain. USE CATALOG lets you step inside.", "A schema groups tables and views. USE SCHEMA is the second key you need.", "A table, view, volume, function or model. SELECT here only works if you also hold USE CATALOG and USE SCHEMA above it."][i] })),
+    ix: el => choice(el, { label: "Level", options: ["Metastore", "Catalog", "Schema", "Table"], value: 1 }, i => ({ svg: svg(480, 276, ucFig(i), "Unity Catalog level"), note: ["The metastore is the top container for one region. Admins attach it to workspaces so they all see the same catalogs.", "A catalog groups schemas, usually per environment (prod, dev) or per business domain. USE CATALOG lets you step inside.", "A schema groups tables and views. USE SCHEMA is the second key you need.", "A table, view, volume, function or model. SELECT here only works if you also hold USE CATALOG and USE SCHEMA above it."][i] })),
     oneline: "Unity Catalog gives every table a three-part address and one set of rules for who may open it.",
   };
 
@@ -153,7 +153,7 @@
     ["Good order", -1, "It passes every layer: kept raw in bronze, cleaned in silver, counted in gold."],
     ["Duplicate event", 1, "Bronze keeps both copies (it's the raw record). Silver de-duplicates on the event key, so gold counts it once."],
     ["NULL customer_id", 1, "A silver expectation like <code>EXPECT (customer_id IS NOT NULL) ON VIOLATION DROP ROW</code> stops it, and the pipeline's metrics count the drop."],
-    ["Wrong currency code", 2, "It passes silver's type checks but fails the gold business rule (only known currencies), so it's quarantined before the revenue table."],
+    ["Bad currency", 2, "It passes silver's type checks but fails the gold business rule (only known currencies), so it's quarantined before the revenue table."],
   ];
   const medFig = (i) => {
     const stop = MED[i][1];
@@ -400,7 +400,7 @@
     },
     svg: () => svg(480, 230, exFig(20), "20 tasks scheduled on 8 cores in three waves"),
     caption: "20 partitions on 8 cores need 3 waves, and the last wave leaves 4 cores idle.",
-    ix: el => slider(el, { label: "Partitions in the stage", min: 4, max: 48, step: 1, value: 20, fmt: v => v + " partitions" }, v => ({ svg: svg(480, 230, exFig(v), "Tasks over cores"), note: `${v} tasks on 8 cores. A multiple of the core count (8, 16, 24...) fills every wave. Spark's default for shuffles is 200 partitions; Adaptive Query Execution can merge small ones after the shuffle.` })),
+    ix: el => slider(el, { label: "Partitions in the stage", min: 4, max: 48, step: 1, value: 16, fmt: v => v + " partitions" }, v => ({ svg: svg(480, 230, exFig(v), "Tasks over cores"), note: `${v} tasks on 8 cores. A multiple of the core count (8, 16, 24...) fills every wave. Spark's default for shuffles is 200 partitions; Adaptive Query Execution can merge small ones after the shuffle.` })),
     oneline: "Spark turns an action into a job, the job into stages, and each stage into one task per partition running on free cores.",
   };
 
@@ -442,7 +442,7 @@
     },
     svg: () => svg(480, 236, joinFig(4), "Broadcast hash join: small table copied to every task"),
     caption: "A 4 MB dimension is copied to every task, so the large fact table never shuffles.",
-    ix: el => slider(el, { label: "Size of the smaller table", min: 1, max: 200, step: 1, value: 4, fmt: v => v + " MB" }, v => ({ svg: svg(480, 236, joinFig(v), "Join strategy by size"), note: v <= 10 ? "Under the threshold: Spark broadcasts. You can also force it with <code>broadcast(df)</code>, as long as it fits in executor memory." : "Over the threshold: both sides shuffle. If the small side is really only a little over, a broadcast hint or a higher threshold can avoid the shuffle; AQE may also switch at runtime." })),
+    ix: el => slider(el, { label: "Size of the smaller table", min: 1, max: 200, step: 1, value: 50, fmt: v => v + " MB" }, v => ({ svg: svg(480, 236, joinFig(v), "Join strategy by size"), note: v <= 10 ? "Under the threshold: Spark broadcasts. You can also force it with <code>broadcast(df)</code>, as long as it fits in executor memory." : "Over the threshold: both sides shuffle. If the small side is really only a little over, a broadcast hint or a higher threshold can avoid the shuffle; AQE may also switch at runtime." })),
     oneline: "Spark joins fast by copying a small table everywhere, and slow by shuffling both big tables across the network.",
   };
 
@@ -521,7 +521,7 @@
     },
     svg: () => svg(480, 234, logFig(2), "Delta log replayed to version 2: files a, c and b2 are live"),
     caption: "Replaying commits 000-002 gives files a, c and b2; b.parquet is removed but still on disk.",
-    ix: el => slider(el, { label: "Read the table at version", min: 0, max: 3, step: 1, value: 2, fmt: v => "v" + v }, v => ({ svg: svg(480, 234, logFig(v), "Table at a version"), note: `Version ${v} = commits 000 to 00${v} replayed. Live files: <b>${LOG[v][2].map(f => f + ".parquet").join(", ")}</b>. This is also how <code>VERSION AS OF ${v}</code> works.` })),
+    ix: el => slider(el, { label: "Read the table at version", min: 0, max: 3, step: 1, value: 3, fmt: v => "v" + v }, v => ({ svg: svg(480, 234, logFig(v), "Table at a version"), note: `Version ${v} = commits 000 to 00${v} replayed. Live files: <b>${LOG[v][2].map(f => f + ".parquet").join(", ")}</b>. This is also how <code>VERSION AS OF ${v}</code> works.` })),
     oneline: "A Delta table is whatever its log of numbered commits says, replayed in order.",
   };
 
@@ -627,7 +627,7 @@
     },
     svg: () => svg(480, 194, optFig(5000), "Table in 5,000 small files"),
     caption: "A 10 GB table in 5,000 small files needs about 5,000 scan tasks. Compacted to ~1 GB files, about 10.",
-    ix: el => slider(el, { label: "Number of files", min: 10, max: 5000, step: 10, value: 5000, fmt: v => v.toLocaleString() }, v => ({ svg: svg(480, 194, optFig(v), "Files vs scan tasks"), note: v > 100 ? `Average file ${Math.round(10240 / v)} MB. Each file costs a task, a listing call and its own overhead. <code>OPTIMIZE</code> bin-packs them toward ~1 GB.` : "Around 1 GB per file: few tasks, cheap listing. This is what OPTIMIZE aims for." })),
+    ix: el => slider(el, { label: "Number of files", min: 10, max: 5000, step: 10, value: 100, fmt: v => v.toLocaleString() }, v => ({ svg: svg(480, 194, optFig(v), "Files vs scan tasks"), note: v > 100 ? `Average file ${Math.round(10240 / v)} MB. Each file costs a task, a listing call and its own overhead. <code>OPTIMIZE</code> bin-packs them toward ~1 GB.` : "Around 1 GB per file: few tasks, cheap listing. This is what OPTIMIZE aims for." })),
     oneline: "OPTIMIZE packs many tiny files into a few big ones, and clustering groups rows so queries can skip whole files.",
   };
 
@@ -665,7 +665,7 @@
     },
     svg: () => svg(480, 212, vacFig(7), "VACUUM with 7-day retention keeps a week of old files"),
     caption: "With the default 7 days, the last week of old files stays, so time travel works for a week.",
-    ix: el => slider(el, { label: "Retention (days)", min: 0, max: 14, step: 1, value: 7, fmt: v => v + " days" }, v => ({ svg: svg(480, 212, vacFig(v), "Retention vs time travel"), note: v < 7 ? "Below 7 days Delta refuses unless you turn off <code>retentionDurationCheck</code>, because running queries or streams may still need those files." : `Longer retention means more time travel and more storage paid for. ${v} days of old files are kept.` })),
+    ix: el => slider(el, { label: "Retention (days)", min: 0, max: 14, step: 1, value: 14, fmt: v => v + " days" }, v => ({ svg: svg(480, 212, vacFig(v), "Retention vs time travel"), note: v < 7 ? "Below 7 days Delta refuses unless you turn off <code>retentionDurationCheck</code>, because running queries or streams may still need those files." : `Longer retention means more time travel and more storage paid for. ${v} days of old files are kept.` })),
     oneline: "VACUUM deletes old table files after a waiting period, which saves storage but ends time travel past that point.",
   };
 

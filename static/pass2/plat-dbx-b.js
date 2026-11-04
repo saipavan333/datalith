@@ -88,7 +88,7 @@
     const cx = 20 + cutoff * 14.6;
     b += `<rect x="20" y="40" width="${cx - 20}" height="26" style="fill:${C.bad}"/>` + `<rect x="${cx}" y="40" width="${460 - cx}" height="26" style="fill:${C.good}"/>`;
     b += t(Math.max(70, (20 + cx) / 2), 58, cutoff > 3 ? "closed: late rows dropped" : "", { size: 11, fill: C.badT });
-    b += t((cx + 460) / 2, 58, "still open", { size: 11.5, fill: C.goodT, bold: true });
+    if (460 - cx >= 70) b += t((cx + 460) / 2, 58, "still open", { size: 11.5, fill: C.goodT, bold: true });
     let kept = 0;
     late.forEach((m, i) => {
       const x = 20 + m * 14.6, ok = m >= cutoff; if (ok) kept++;
@@ -119,7 +119,7 @@
     },
     svg: () => svg(480, 222, wmFig(10).b, "Watermark of 10 minutes: events before 10:20 are too late"),
     caption: "Latest event 10:30, watermark 10 minutes: windows before 10:20 are closed, so the 10:12 and 10:18 stragglers miss.",
-    ix: el => slider(el, { label: "Watermark delay", min: 0, max: 25, step: 1, value: 10, fmt: v => v + " min" }, v => {
+    ix: el => slider(el, { label: "Watermark delay", min: 0, max: 25, step: 1, value: 2, fmt: v => v + " min" }, v => {
       const r = wmFig(v);
       return { svg: svg(480, 222, r.b, "Watermark effect on late events"), note: `${r.kept} of 4 late events land in a window. A longer delay catches more stragglers but keeps more windows in state and delays final results in append mode.` };
     }),
@@ -415,9 +415,9 @@
       ],
       breaks: "glasses are worn by choice. Filters and masks are attached to the table, so every query, notebook and dashboard gets them, whatever tool is used.",
     },
-    svg: () => svg(480, 230, fgFig(0), "Row filter and column mask applied for the analyst_in group"),
+    svg: () => svg(480, 254, fgFig(0), "Row filter and column mask applied for the analyst_in group"),
     caption: "analyst_in sees only Indian rows, with emails masked, from the same table.",
-    ix: el => choice(el, { label: "Query as group", options: FG.map(f => f[0]), value: 0 }, i => ({ svg: svg(480, 230, fgFig(i), "Rows and masking by group"), note: i === 2 ? "Admins pass both functions untouched: every row, full emails." : "The row filter keeps only this group's region; the column mask hides the email name part. Same <code>SELECT *</code>." })),
+    ix: el => choice(el, { label: "Query as group", options: FG.map(f => f[0]), value: 1 }, i => ({ svg: svg(480, 254, fgFig(i), "Rows and masking by group"), note: i === 2 ? "Admins pass both functions untouched: every row, full emails." : "The row filter keeps only this group's region; the column mask hides the email name part. Same <code>SELECT *</code>." })),
     oneline: "Row filters and column masks let one table show each group only the rows and values it's allowed to see.",
   };
 
@@ -594,7 +594,7 @@
     },
     svg: () => svg(480, 184, costFig(14).b, "Cluster with 2 hours of work and 14 idle hours"),
     caption: "Left on for 16 hours to do 2 hours of work: 88% of the bill is idle time.",
-    ix: el => slider(el, { label: "Idle hours before it stops", min: 0, max: 22, step: 1, value: 14, fmt: v => v + " h" }, v => {
+    ix: el => slider(el, { label: "Idle hours before it stops", min: 0, max: 22, step: 1, value: 1, fmt: v => v + " h" }, v => {
       const r = costFig(v);
       return { svg: svg(480, 184, r.b, "Idle time vs bill"), note: `${r.waste}% of what you pay is idle. An auto-termination of 30-60 minutes keeps this near zero for notebook clusters; job clusters end with the job.` };
     }),

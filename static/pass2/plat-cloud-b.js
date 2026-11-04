@@ -145,7 +145,7 @@
     },
     svg: () => svg(480, 256, SVL(4).b, "Bar chart: always-on server cost against serverless cost at 4 busy hours"),
     caption: "With 4 busy hours a day, paying per use is far cheaper than keeping a server on all day.",
-    ix: el => slider(el, { label: "Busy hours per day", min: 1, max: 24, value: 4, fmt: v => v + " h" }, v => {
+    ix: el => slider(el, { label: "Busy hours per day", min: 1, max: 24, value: 12, fmt: v => v + " h" }, v => {
       const r = SVL(v);
       const win = r.serverless < r.server ? "serverless is cheaper" : r.serverless === r.server ? "they cost the same" : "the server is cheaper";
       return { svg: svg(480, 256, r.b, "Server vs serverless cost"), note: `At <b>${v}</b> busy hours, ${win}. With these made-up prices (server 1 unit per hour, serverless 3 units per busy hour) the break-even is <b>8 hours</b>. Real prices differ, but the shape is always the same: idle time is what makes servers expensive.` };
@@ -692,7 +692,7 @@
     },
     svg: () => svg(480, 228, choose(0.15).b, "Bar chart of weighted platform scores with base weights"),
     caption: "With the lesson's base weights: BigQuery 4.05, Databricks 3.90, Snowflake 3.75.",
-    ix: el => slider(el, { label: "Weight on ML + unstructured data", min: 5, max: 45, step: 5, value: 15, fmt: v => v + "%" }, v => {
+    ix: el => slider(el, { label: "Weight on ML + unstructured data", min: 5, max: 45, step: 5, value: 35, fmt: v => v + "%" }, v => {
       const r = choose(v / 100);
       const win = r.tot.slice().sort((a, b) => b[1] - a[1])[0][0];
       return { svg: svg(480, 228, r.b, "Weighted platform scores"), note: `ML weight <b>${v}%</b>, the other six weights scaled to share the remaining ${100 - v}%. Winner: <b>${win}</b>. A lead of 0.15 can flip with one honest change in priorities, which is why weights are agreed before scoring.` };

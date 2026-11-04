@@ -81,7 +81,7 @@
     },
     svg: () => svg(480, 192, winFig(0), "Fixed 10-minute windows counting events"),
     caption: "Eleven events cut into three fixed 10-minute windows.",
-    ix: el => choice(el, { label: "Window type", options: WIN.map(w => w[0]), value: 0 }, i => ({ svg: svg(480, 192, winFig(i), "Window assignment"), note: WIN[i][1] })),
+    ix: el => choice(el, { label: "Window type", options: WIN.map(w => w[0]), value: 1 }, i => ({ svg: svg(480, 192, winFig(i), "Window assignment"), note: WIN[i][1] })),
     oneline: "Windows cut an endless stream into time slices so you can count it, and watermarks say when a slice is done.",
   };
 
@@ -552,7 +552,7 @@
     },
     svg: () => svg(480, 222, dsmFig(0), "Datastream merge mode producing one current row per key"),
     caption: "Merge mode: the UPDATE leaves one current row for customer 7.",
-    ix: el => choice(el, { label: "Write mode", options: DSM.map(d => d[0]), value: 0 }, i => ({ svg: svg(480, 222, dsmFig(i), "Datastream write mode"), note: DSM[i][2] })),
+    ix: el => choice(el, { label: "Write mode", options: DSM.map(d => d[0]), value: 1 }, i => ({ svg: svg(480, 222, dsmFig(i), "Datastream write mode"), note: DSM[i][2] })),
     oneline: "Datastream copies every database change into BigQuery, as a current table or as a full change history.",
   };
 
@@ -586,7 +586,7 @@
     },
     svg: () => svg(480, 192, dcuFig(12), "Default 12 vCPU batch costing 12 DCU per hour"),
     caption: "The lesson's default batch: 12 vCPU and 48 GiB = 12 DCU, $0.72 an hour on Standard.",
-    ix: el => slider(el, { label: "vCPUs (4 GiB each)", min: 4, max: 96, step: 4, value: 12, fmt: v => v + " vCPU" }, v => ({ svg: svg(480, 192, dcuFig(v), "DCU and hourly cost"), note: `${v} vCPU with ${v * 4} GiB is ${(v * 0.6 + v * 0.4).toFixed(1)} DCU. Premium is worth it only if a benchmark shows a big enough speed-up (the lesson's rule of thumb is more than 1.5×). List prices from the lesson; check your region.` })),
+    ix: el => slider(el, { label: "vCPUs (4 GiB each)", min: 4, max: 96, step: 4, value: 48, fmt: v => v + " vCPU" }, v => ({ svg: svg(480, 192, dcuFig(v), "DCU and hourly cost"), note: `${v} vCPU with ${v * 4} GiB is ${(v * 0.6 + v * 0.4).toFixed(1)} DCU. Premium is worth it only if a benchmark shows a big enough speed-up (the lesson's rule of thumb is more than 1.5×). List prices from the lesson; check your region.` })),
     oneline: "Serverless Spark bills by the computing units your job really uses, so you pay nothing between runs.",
   };
 

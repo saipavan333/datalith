@@ -19,7 +19,7 @@
   /* ---------------------------------------------------------------- gcp-overview */
   P["gcp-overview"] = {
     simple: [
-      "Google Cloud's data stack has one centre: **BigQuery**, a serverless warehouse. Most other services feed it or govern it.",
+      "Google Cloud's data stack has one centre: **BigQuery**, a serverless warehouse: Google runs the servers, you just send SQL. Most other services feed it or govern it.",
       "**Cloud Storage** (GCS) holds files. **Pub/Sub** carries events. **Dataflow** (Apache Beam) processes batch and streams. **Managed Service for Apache Spark** (formerly Dataproc) runs Spark. **Datastream** copies database changes.",
       "**Dataform** builds SQL models inside BigQuery, **Managed Service for Apache Airflow** (formerly Cloud Composer) orchestrates, and **Knowledge Catalog** (formerly Dataplex) governs.",
     ],
@@ -445,7 +445,7 @@
     },
     svg: () => svg(480, 200, archFig(100), "100 slots splitting a stage's work"),
     caption: "A stage's work is split across slots: twice the slots, roughly half the time, same slot-hours.",
-    ix: el => slider(el, { label: "Slots for this stage", min: 10, max: 500, step: 10, value: 100, fmt: v => v + " slots" }, v => ({ svg: svg(480, 200, archFig(v), "Slots vs stage time"), note: `${v} slots finish in about ${Math.ceil(2000 / v)} time units. On capacity pricing you pay slot-hours, so finishing sooner on more slots costs about the same; on-demand you pay bytes scanned, whatever the slots.` })),
+    ix: el => slider(el, { label: "Slots for this stage", min: 10, max: 500, step: 10, value: 20, fmt: v => v + " slots" }, v => ({ svg: svg(480, 200, archFig(v), "Slots vs stage time"), note: `${v} slots finish in about ${Math.ceil(2000 / v)} time units. On capacity pricing you pay slot-hours, so finishing sooner on more slots costs about the same; on-demand you pay bytes scanned, whatever the slots.` })),
     oneline: "BigQuery stores data in one place and borrows as many computers as a query needs to read it quickly.",
   };
 
@@ -600,7 +600,7 @@
     },
     svg: () => svg(480, 170, optFig(5), "Selecting 5 of 100 columns reads about 5% of column data"),
     caption: "Columnar storage means projecting 5 of 100 columns reads about 5% of the column data.",
-    ix: el => slider(el, { label: "Columns selected", min: 1, max: 100, step: 1, value: 5, fmt: v => v + " of 100" }, v => ({ svg: svg(480, 170, optFig(v), "Columns vs bytes"), note: v === 100 ? "<code>SELECT *</code> reads every column. Adding <code>LIMIT 10</code> doesn't change the bytes billed." : `${v} columns read about ${v}% of column data (assuming equal-sized columns). Use a dry run to see the real bytes.` })),
+    ix: el => slider(el, { label: "Columns selected", min: 1, max: 100, step: 1, value: 100, fmt: v => v + " of 100" }, v => ({ svg: svg(480, 170, optFig(v), "Columns vs bytes"), note: v === 100 ? "<code>SELECT *</code> reads every column. Adding <code>LIMIT 10</code> doesn't change the bytes billed." : `${v} columns read about ${v}% of column data (assuming equal-sized columns). Use a dry run to see the real bytes.` })),
     oneline: "In BigQuery, ask only for the columns and rows you need, because you pay for everything it reads.",
   };
 

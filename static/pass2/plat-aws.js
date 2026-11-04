@@ -18,7 +18,7 @@
     simple: [
       "AWS doesn't sell one data platform. It sells building blocks you put together.",
       "The common pattern is a **serverless lakehouse**. **S3** stores the files. The **Glue Data Catalog** lists the tables. **Athena** and **Redshift** run SQL. **Kinesis** brings in streams. **Lake Formation** decides who may read what.",
-      "Data usually flows through three zones: **raw** (as it arrived), **clean** (fixed and typed) and **curated** (ready for reports).",
+      "Data usually flows through three zones: **raw** (as it arrived), **clean** (fixed and typed) and **curated** (ready for reports). The picture below folds clean into curated to save space.",
     ],
     analogy: {
       text: "Think of building with LEGO instead of buying a finished toy.",
@@ -537,7 +537,7 @@
     },
     svg: () => svg(480, 204, perfFig(4), "Four prefixes giving four times the per-prefix request rate"),
     caption: "Four prefixes: four times the per-prefix limits.",
-    ix: el => slider(el, { label: "Number of prefixes", min: 1, max: 16, step: 1, value: 4, fmt: v => String(v) }, v => ({ svg: svg(480, 204, perfFig(v), "Prefixes vs request rate"), note: `Spreading keys over ${v} prefix${v > 1 ? "es" : ""} lifts the ceiling to about ${(5500 * v).toLocaleString()} reads a second. Date or hash parts early in the key do this naturally.` })),
+    ix: el => slider(el, { label: "Number of prefixes", min: 1, max: 16, step: 1, value: 1, fmt: v => String(v) }, v => ({ svg: svg(480, 204, perfFig(v), "Prefixes vs request rate"), note: `Spreading keys over ${v} prefix${v > 1 ? "es" : ""} lifts the ceiling to about ${(5500 * v).toLocaleString()} reads a second. Date or hash parts early in the key do this naturally.` })),
     oneline: "S3 gets faster the more you spread files across different key prefixes and split big uploads into parts.",
   };
 
@@ -775,7 +775,7 @@
     },
     svg: () => svg(480, 190, AE(3), "Query reading 3 of 30 Parquet columns"),
     caption: "Reading 3 of 30 columns scans about a tenth of the table.",
-    ix: el => slider(el, { label: "Columns in the SELECT", min: 1, max: 30, step: 1, value: 3, fmt: v => v + " of 30" }, v => ({ svg: svg(480, 190, AE(v), "Columns vs bytes scanned"), note: `${v} column${v > 1 ? "s" : ""} → about ${(2.0 * v / 30).toFixed(2)} TB scanned (equal-sized columns assumed). <code>SELECT *</code> reads all 2 TB. Add a partition filter and it drops again.` })),
+    ix: el => slider(el, { label: "Columns in the SELECT", min: 1, max: 30, step: 1, value: 30, fmt: v => v + " of 30" }, v => ({ svg: svg(480, 190, AE(v), "Columns vs bytes scanned"), note: `${v} column${v > 1 ? "s" : ""} → about ${(2.0 * v / 30).toFixed(2)} TB scanned (equal-sized columns assumed). <code>SELECT *</code> reads all 2 TB. Add a partition filter and it drops again.` })),
     oneline: "Athena charges by the data it reads, so naming only the columns you need makes queries cheaper and faster.",
   };
 })();
