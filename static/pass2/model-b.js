@@ -388,7 +388,7 @@
       slider(el, { label: "Detail rows in the fact (millions):", min: 10, max: 5000, step: 10, value: 2000, fmt: v => v.toLocaleString("en-US") + " M" }, m => {
         const detail = m * 1e6, agg = 10 * 365 * 3;
         const ratio = detail / agg;
-        const X = v => 24 + Math.log10(v) / 10 * 430;
+        const X = v => 24 + Math.log10(v) / 10 * 380;
         let b = t(240, 22, "Rows read for \"revenue by region, last 3 years\" (log scale)", { size: 12.5, fill: C.tx, bold: true });
         b += t(20, 58, "fact", { a: "start", size: 12.5, fill: C.badT, bold: true });
         b += `<rect x="70" y="44" width="${(X(detail) - 24).toFixed(1)}" height="22" rx="4" style="fill:${C.bad};stroke:${C.badS}"/>`;

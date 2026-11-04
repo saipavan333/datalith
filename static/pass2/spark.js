@@ -262,7 +262,7 @@
       return svg(480, 200, b, "Single machine versus scale-out scan time");
     },
     caption: "Past a few terabytes, one machine's scan takes hours; splitting across machines brings it back to minutes.",
-    ix: el => slider(el, { label: "Data size", min: 1, max: 5, value: 3, fmt: v => ["100 GB", "1 TB", "10 TB", "100 TB", "1 PB"][v - 1] }, v => ({ svg: P["bd-what-is-big-data"]._fig(v), note: v <= 2 ? "One good machine (or DuckDB on a laptop) handles this; a cluster adds cost and complexity." : "This is where scale-out pays: the work splits across machines that read in parallel." })),
+    ix: el => slider(el, { label: "Data size", min: 1, max: 5, value: 1, fmt: v => ["100 GB", "1 TB", "10 TB", "100 TB", "1 PB"][v - 1] }, v => ({ svg: P["bd-what-is-big-data"]._fig(v), note: v <= 2 ? "One good machine (or DuckDB on a laptop) handles this; a cluster adds cost and complexity." : "This is where scale-out pays: the work splits across machines that read in parallel." })),
     oneline: "Data is big when one machine can't keep up, so you spread it over many machines that work together.",
   };
 

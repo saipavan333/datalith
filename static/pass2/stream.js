@@ -167,8 +167,8 @@
     _fig: i => {
       const [n, order, crash, k] = DG[i];
       let b = t(240, 20, n + ": " + order, { bold: true, size: 13.5 });
-      const steps = i === 0 ? ["read event", "commit offset", "CRASH", "process"] : i === 1 ? ["read event", "process", "CRASH", "commit offset"] : ["read event", "process + commit (txn)", "CRASH", ""];
-      steps.forEach((s, j) => { if (!s) return; const x = 16 + j * 116; b += box(x, 42, 104, 44, s, null, s === "CRASH" ? "bad" : j === 3 ? "ghost" : "acc", { size: s.length > 14 ? 10 : 12 }); if (j < 3 && steps[j + 1]) b += arrow(x + 106, 64, x + 114, 64, { sw: 1.4 }); });
+      const steps = i === 0 ? ["read event", "commit offset", "CRASH", "process"] : i === 1 ? ["read event", "process", "CRASH", "commit offset"] : ["read event", "process + commit", "CRASH", ""];
+      steps.forEach((s, j) => { if (!s) return; const x = 16 + j * 116; b += box(x, 42, 104, 44, s, s === "process + commit" ? "one transaction" : null, s === "CRASH" ? "bad" : j === 3 ? "ghost" : "acc", { size: s.length > 14 ? 10 : 12 }); if (j < 3 && steps[j + 1]) b += arrow(x + 106, 64, x + 114, 64, { sw: 1.4 }); });
       b += box(16, 110, 448, 44, "after restart: " + crash, null, k, { size: 13 });
       b += table(60, 176, ["", "lost?", "duplicated?"], [[n, i === 0 ? "possible" : "no", i === 1 ? "possible" : "no"]], { cw: [140, 110, 110], rh: 28, size: 12.5, hl: { 0: k } });
       return svg(480, 248, b, "Effect of a crash under each delivery guarantee");
