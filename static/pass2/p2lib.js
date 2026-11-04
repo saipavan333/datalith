@@ -166,8 +166,101 @@ window.P2R = {
     return P.oneline ? `<div class="p2-oneline"><span class="p2-oneline-h">In one line</span> ${inl(P.oneline)}</div>` : "";
   },
   mount(P, root) {
-    if (!P || !P.ix) return;
-    const el = root.querySelector("#p2-ix");
+    if (!P) return;
+    const el = P.ix ? root.querySelector("#p2-ix") : null;
     if (el) P.ix(el);
+    const start = root.querySelector(".p2-start");
+    if (!start) return;
+    P2LEG.all(start);
+    // an interactive redraws its picture on every control change: re-check its labels
+    if (el && window.MutationObserver) {
+      let queued = false;
+      new MutationObserver(() => {
+        if (queued) return;
+        queued = true;
+        // next frame, or 100 ms if frames are throttled (a hidden tab or pane)
+        let done = false;
+        const go = () => { if (done) return; done = true; queued = false; P2LEG.all(el); };
+        requestAnimationFrame(go); setTimeout(go, 100);
+      }).observe(el, { childList: true, subtree: true, characterData: true });
+    }
   },
 };
+
+/* ---------- phone legibility (pass-2 review follow-up) ----------
+   A diagram drawn 480-640 units wide shrinks on a 390 px phone and its labels can fall
+   under 9 px. For each pass-2 SVG: if a label would render under FLOOR px, raise the small
+   labels to FLOOR in place, but only when that moves no label out of its box, past its
+   data-max width, onto another label or out of the picture. If it would, keep the drawing
+   as drawn and let it scroll sideways at the width where its smallest label is FLOOR px,
+   with a "swipe sideways" cue. Re-runs when an interactive redraws and on resize.
+   Same approach as the Gradient Descent course (gd-legible.js) and SparkQuest (widgets.js). */
+window.P2LEG = (function () {
+  const FLOOR = 9;
+  const restore = t => {
+    if (t.dataset.fs0 == null) return;
+    t.style.fontSize = t.dataset.fs0;
+    delete t.dataset.fs0;
+  };
+  const bb = e => { try { return e.getBBox(); } catch (x) { return { x: 0, y: 0, width: 0, height: 0 }; } };
+  const len = t => { try { return t.getComputedTextLength(); } catch (x) { return 0; } };
+  function legible(svg) {
+    const vb = svg.viewBox && svg.viewBox.baseVal;
+    if (!vb || !vb.width) return;
+    const texts = [...svg.querySelectorAll("text")].filter(t => t.textContent.trim());
+    texts.forEach(restore);
+    const p = svg.parentNode;
+    const wrap = p && p.classList && p.classList.contains("p2-scroll") ? p : null;
+    if (wrap) { svg.style.minWidth = ""; wrap.classList.remove("p2-scrolling"); wrap.removeAttribute("tabindex"); wrap.removeAttribute("role"); wrap.removeAttribute("aria-label"); }
+    const w = svg.getBoundingClientRect().width;
+    if (!w || !texts.length) return;
+    const need = FLOOR / (w / vb.width);
+    const fs = t => parseFloat(getComputedStyle(t).fontSize);
+    const small = texts.filter(t => fs(t) < need - 0.01);
+    if (!small.length) return;
+    const rects = [...svg.querySelectorAll("rect")].map(bb).filter(b => b.width > 4 && b.height > 4 && !(b.width >= vb.width - 1 && b.height >= vb.height - 1));
+    // "inside" keeps a 1.5-unit gap to the box edge, so a grown label never touches its border
+    const inside = (a, r) => a.x >= r.x + 1.5 && a.y >= r.y - 0.5 && a.x + a.width <= r.x + r.width - 1.5 && a.y + a.height <= r.y + r.height + 0.5;
+    const hit = (a, b) => Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 1;
+    // how far a label pokes out of the picture (0 when inside)
+    const over = b => Math.max(0, vb.x - b.x, b.x + b.width - vb.x - vb.width, vb.y - b.y, b.y + b.height - vb.y - vb.height);
+    const spills = (t, l) => t.dataset.max && l > Number(t.dataset.max) + 0.5;
+    const b0 = texts.map(bb), l0 = texts.map(len);
+    small.forEach(t => { t.dataset.fs0 = t.style.fontSize || ""; t.style.fontSize = need.toFixed(2) + "px"; });
+    const b1 = texts.map(bb), l1 = texts.map(len);
+    let bad = false;
+    for (let i = 0; i < texts.length && !bad; i++) {
+      if (over(b1[i]) > Math.max(over(b0[i]), 0.25) + 0.05) bad = true;
+      if (spills(texts[i], l1[i]) && !spills(texts[i], l0[i])) bad = true;
+      for (let k = 0; k < rects.length && !bad; k++) if (inside(b0[i], rects[k]) && !inside(b1[i], rects[k])) bad = true;
+      for (let j = i + 1; j < texts.length && !bad; j++) if (hit(b1[i], b1[j]) && !hit(b0[i], b0[j])) bad = true;
+    }
+    if (!bad) return;
+    // bigger labels would collide or spill: undo, and let the drawing scroll sideways instead
+    small.forEach(restore);
+    const minFs = Math.min(...texts.map(fs));
+    let box = wrap;
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "p2-scroll";
+      p.insertBefore(box, svg);
+      box.appendChild(svg);
+    }
+    box.classList.add("p2-scrolling");
+    box.setAttribute("tabindex", "0");
+    box.setAttribute("role", "region");
+    box.setAttribute("aria-label", "Diagram, scrolls sideways");
+    svg.style.minWidth = Math.ceil((vb.width * FLOOR) / minFs) + "px";
+  }
+  const all = scope => { if (scope) scope.querySelectorAll("svg.p2-svg[viewBox]").forEach(legible); };
+  let timer = 0;
+  const later = ms => { clearTimeout(timer); timer = setTimeout(() => all(document.querySelector(".p2-start")), ms); };
+  window.addEventListener("resize", () => later(150));
+  // label widths change when the web fonts (Inter, JetBrains Mono) arrive: re-check then,
+  // or a label grown against the fallback font's width can spill its box
+  if (document.fonts) {
+    document.fonts.addEventListener("loadingdone", () => later(30));
+    document.fonts.ready.then(() => later(30));
+  }
+  return { FLOOR, legible, all };
+})();

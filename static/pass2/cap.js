@@ -132,7 +132,7 @@
         if (j < 3) b += arrow(x + 98, 76, x + 110, 76, { sw: 1.3 });
       });
       if (st[2] === 3) { b += arrow(244, 100, 244, 128, { stroke: C.badS }); b += box(170, 130, 150, 30, "quarantine + alert", null, "bad", { size: 11.5 }); }
-      if (st[0] === 2) { b += t(68, 124, "attempt 1: timeout, wait 10 s", { size: 10.5, fill: C.warnT }); }
+      if (st[0] === 2) { b += t(20, 124, "attempt 1: timeout, wait 10 s", { a: "start", size: 10.5, fill: C.warnT }); }
       const yb = st[2] === 3 ? 186 : st[0] === 2 ? 148 : 132;
       b += t(240, yb, "config from env vars; secrets never in code", { size: 11, fill: C.dim });
       return svg(480, yb + 12, b, "Prefect flow tasks and outcomes");
