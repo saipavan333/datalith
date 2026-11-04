@@ -1,0 +1,17 @@
+1) three new policies land in staging
+   stream shows: [(101, Decimal('1200.00'), 'INSERT'), (102, Decimal('950.00'), 'INSERT'), (103, Decimal('3100.00'), 'INSERT')]
+   a plain SELECT on the stream twice -> still there: 3 rows
+2) task runs -> committed
+   target: [(101, Decimal('1200.00')), (102, Decimal('950.00')), (103, Decimal('3100.00'))]
+   stream now empty: []
+3) policy 102 re-priced twice and 103 cancelled before the next run
+   stream shows only the NET change per key: [(102, Decimal('1010.00'), 'UPDATE'), (103, None, 'DELETE')]
+4) task fails half-way -> rolled back (warehouse lost mid-run)
+   offset did not move, nothing lost: [(102, Decimal('1010.00'), 'UPDATE'), (103, None, 'DELETE')]
+5) task retries -> committed
+   target: [(101, Decimal('1200.00')), (102, Decimal('1010.00'))]
+
+What to look for:
+ - SELECT does not consume a stream; the committed DML does.
+ - Two updates to 102 collapse to one row: streams return net changes, not every event.
+ - A failed run rolls back MERGE and offset together, so the retry is exactly-once.

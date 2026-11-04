@@ -1,0 +1,20 @@
+Spark-style (late data after the watermark is dropped):
+  watermark  65 passed  60 -> emit window [0,60) = 19
+  t= 40 LATE beyond the limit -> dropped (amount 9)
+  watermark 155 passed 120 -> emit window [60,120) = 10
+  t= 70 LATE beyond the limit -> dropped (amount 6)
+  watermark 270 passed 180 -> emit window [120,180) = 8
+  watermark 270 passed 240 -> emit window [180,240) = 2
+  t= 10 LATE beyond the limit -> dropped (amount 99)
+
+Beam-style with allowed lateness = 60 s (late data re-fires the window):
+  watermark  65 passed  60 -> emit window [0,60) = 19
+  t= 40 LATE but within allowed lateness -> re-fire window [0,60) = 28
+  watermark 155 passed 120 -> emit window [60,120) = 10
+  t= 70 LATE but within allowed lateness -> re-fire window [60,120) = 16
+  watermark 270 passed 180 -> emit window [120,180) = 8
+  watermark 270 passed 240 -> emit window [180,240) = 2
+  t= 10 LATE beyond the limit -> dropped (amount 99)
+
+What to look for: t=50 is out of order but on time (the watermark had not passed 60 yet);
+t=40 and t=70 are late; Beam's allowed lateness keeps them, Spark drops them; t=10 is too late for both.

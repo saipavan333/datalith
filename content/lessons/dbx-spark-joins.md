@@ -52,7 +52,19 @@ df.write.bucketBy(256, "user_id").sortBy("user_id").saveAsTable("events_bucketed
 If a few **hot keys** hold most of the rows, their partition is huge and **one task runs far longer** than the rest (visible in the Spark UI as a long-tail task). Fixes:
 
 - **AQE skew join** (`spark.sql.adaptive.skewJoin.enabled=true`) — detects skewed partitions and **splits** them automatically. Try this first.
-- **Salting** — append a random suffix to the hot key on both sides (replicating the small side across salt values), spreading the heavy key across many partitions, then aggregate back.
+- **Salting** (only if AQE isn't enough) — give the **large, skewed side** a random salt `0..N-1`, **explode the smaller side** so every row appears once for each of the N salt values, then join on `(key, salt)`. Each hot key is now spread over N partitions and every salted row still finds its match. (A random salt on *both* sides would not match: the two random values rarely agree.)
+
+```python
+from pyspark.sql import functions as F
+N = 16
+big   = spark.table("gold.orders").withColumn("salt", (F.rand() * N).cast("int"))           # skewed side
+small = (spark.table("gold.customers")
+         .withColumn("salt", F.explode(F.array(*[F.lit(i) for i in range(N)]))))           # N copies
+joined = big.join(small, on=["customer_id", "salt"]).drop("salt")
+```
+
+  The small side grows N times, so keep N small (8-32) or salt only the known hot keys. On Databricks and Spark 3+, **AQE skew-join handling** (`spark.sql.adaptive.skewJoin.enabled`, on by default with AQE) splits skewed partitions automatically and often makes manual salting unnecessary: check the plan for a skew-join note first.
+- **Salting doesn't help a decomposable aggregation.** `groupBy(key).sum(x)` already does a partial (map-side) aggregation before the shuffle, so each task sends one partial sum per key and the hot key costs little. Salting matters for joins and for non-decomposable work (e.g. `collect_list`, exact distinct over a hot key).
 - **Broadcast** the small side (no shuffle → no skew) when applicable.
 
 A bigger cluster does **not** fix skew — the one hot partition still runs on one task.

@@ -24,7 +24,7 @@ The **SQL tab** shows the physical plan: look for unexpected **shuffles (Exchang
 
 **Fixes:**
 - **Enable AQE** — its **skew-join** optimization detects and **splits** oversized partitions automatically. This handles most skew with no code change.
-- **Salt** the hot key: add a random suffix to spread it across partitions, aggregate, then combine.
+- **Salt** a skewed **join**: random salt `0..N-1` on the large side, explode the small side across all N salt values, join on `(key, salt)` (pattern and code in *Join strategies & the shuffle*). Try AQE skew join (`spark.sql.adaptive.skewJoin.enabled`) first; it often makes salting unnecessary. Salting doesn't help a decomposable `groupBy(...).sum()`, because partial aggregation before the shuffle already absorbs the skew.
 - **Pre-aggregate** or filter the skewed value (e.g. handle `null` separately).
 - **Broadcast** the other side if it's small (avoids the shuffle entirely).
 

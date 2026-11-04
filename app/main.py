@@ -132,8 +132,10 @@ def assistant(req: AssistantRequest):
 # --------------------------- static frontend ---------------------------
 @app.get("/")
 def index():
+    # Serve the same root index.html the static site (run.py / Netlify) uses. It loads
+    # "static/..." assets and fetches "content/curriculum.json", both mounted below.
     return FileResponse(
-        STATIC / "index.html",
+        ROOT / "index.html",
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
 
@@ -144,4 +146,6 @@ def favicon():
     return FileResponse(STATIC / "favicon.svg", media_type="image/svg+xml")
 
 
+app.mount("/content", NoCacheStaticFiles(directory=CONTENT), name="content")
+app.mount("/static", NoCacheStaticFiles(directory=STATIC), name="static-assets")
 app.mount("/", NoCacheStaticFiles(directory=STATIC, html=True), name="static")

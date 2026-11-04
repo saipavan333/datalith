@@ -1,0 +1,9 @@
+group:claims-mh@acme.com    SELECT claim_id, state, amount      -> [(1, 'MH', 42000), (3, 'MH', 7800)]
+group:claims-mh@acme.com    SELECT claim_id, patient_name       -> DENIED: Access Denied on column patient_name (policy tag pii.high)
+group:audit@acme.com        SELECT claim_id, patient_name, amount -> [(1, 'Asha R', 42000), (2, 'Vikram S', 15500), (3, 'Neha P', 7800), (4, 'Arun K', 91000)]
+user:intern@acme.com        SELECT claim_id, amount             -> []
+user:contractor@acme.com    SELECT claim_id                     -> DENIED: no bigquery.jobs.create on the project
+
+What to look for: audit gets read via an ORG-level grant (inheritance); the MH team sees only MH rows;
+selecting a tagged column without Fine-Grained Reader fails; the intern has IAM read but matches no
+row policy, so they get an empty result, not an error.

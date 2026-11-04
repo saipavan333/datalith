@@ -103,3 +103,56 @@ A Bronze `events` table lands ~4,000 files/hour at 2–6 MB each; a dashboard fi
 5. You OPTIMIZE nightly but a `user_id` filter is still slow. Diagnose and fix.
 6. Configure a streaming Bronze table so it stays compact without a nightly job.
 7. How do you verify that clustering actually improved a specific query?
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+Twenty tiny lunchboxes each holding a bit of everything vs five big boxes sorted by food type. OPTIMIZE packs the small boxes into big ones; Z-ORDER (and liquid clustering) also sorts what goes in each box, so "give me all the apples" opens one or two boxes.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+pip install deltalake duckdb
+python labs/platforms/delta_log_lab.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+== 4. small files, then OPTIMIZE ZORDER BY (country) and data skipping ==
+  before: 22 files; WHERE country='IN' must open 22
+  OPTIMIZE: removed 22 files, added 5
+  after:  5 files; WHERE country='IN' must open 2  (min/max stats now narrow)
+```
+
+What to look for: 22 small files where every file spans every country become 5 files with narrow country ranges; a `country = 'IN'` filter opens 2 instead of 22. For new tables Databricks recommends liquid clustering, which keeps this state incrementally (see the liquid clustering lesson).
+
+**Needs your account (free trial/tier):** in Databricks Free Edition, write a table with many small appends, run `OPTIMIZE t ZORDER BY (country)` (or create it with `CLUSTER BY (country)` and run `OPTIMIZE t`), then compare files read in the query profile.
+
+## Exercises with solutions
+
+**Warm-up.** Why did OPTIMIZE produce 5 files and not 1?
+
+*Solution:* The lab set a tiny target file size so the toy table splits; on Databricks the target is far larger (about 1 GB by default for OPTIMIZE), which would have made 1 file here.
+
+**Transfer.** Partition by date and ZORDER by customer, or liquid cluster on both?
+
+*Solution:* For a new table, liquid clustering on (date, customer): no small-partition problems, incremental, keys can change; ZORDER can't be combined with liquid clustering.
+
+**Stretch.** A nightly OPTIMIZE ZORDER job costs more than the queries it speeds up. Fix?
+
+*Solution:* Switch the table to liquid clustering with predictive optimization, or optimize only recent partitions with a WHERE clause; measure files pruned on the top queries before and after.
+
+## Interview questions
+
+- **(Junior) What problem does OPTIMIZE solve?** Small files from frequent appends/streaming hurt read performance and metadata overhead; OPTIMIZE compacts them into larger files.
+- **(Mid) What does Z-ORDER do?** Co-locates rows with similar values of the chosen columns in the same files so min/max statistics allow data skipping on those columns.
+- **(Senior) When is liquid clustering preferred over Z-ORDER?** For new tables and changing access patterns: it's incremental, supports up to four keys of any cardinality, keys can change, and CLUSTER BY AUTO can pick them; ZORDER rewrites large data and is tied to a fixed layout.
+
+## Sources (checked 2026-11-03)
+
+- Delta protocol: https://github.com/delta-io/delta/blob/master/PROTOCOL.md
+- delta-rs Python package: https://delta-io.github.io/delta-rs/
+- Liquid clustering: https://docs.databricks.com/aws/en/delta/clustering
+- OPTIMIZE: https://docs.databricks.com/aws/en/sql/language-manual/delta-optimize

@@ -1,5 +1,7 @@
 # Snowpark, Iceberg, Dynamic Tables & Cortex — the modern platform
 
+**Name check (Nov 2026):** Snowflake now documents the SQL AI functions as **Cortex AI Functions**: `AI_COMPLETE`, `AI_CLASSIFY`, `AI_FILTER`, `AI_AGG`, `AI_SUMMARIZE` (Preview), `AI_SUMMARIZE_AGG`, `AI_EXTRACT`, `AI_SENTIMENT`, `AI_TRANSLATE`, `AI_EMBED`, `AI_PARSE_DOCUMENT`, `AI_TRANSCRIBE`, `AI_REDACT` and more. The older `SNOWFLAKE.CORTEX.COMPLETE/SUMMARIZE/SENTIMENT/...` functions are called *legacy*; Snowflake's migration guide maps each one (e.g. COMPLETE -> AI_COMPLETE, SENTIMENT -> AI_SENTIMENT, which returns category labels in an OBJECT instead of a -1..1 score) and says new development targets the AI_* functions. AI functions bill in AI Credits per million tokens. Sources: https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql and https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql-migrate-legacy-functions
+
 Snowflake stopped being "just a warehouse" years ago. This chapter covers the capabilities that turn it into a full data + AI platform — what each is, the real code, and when to reach for it.
 
 @@diagram:snow-modern
@@ -64,16 +66,16 @@ create dynamic table marts.region_rank          -- chained; refreshes in depende
 
 **Snowflake Cortex** brings ML and LLMs to SQL — no infrastructure:
 
-- **LLM functions:** `SNOWFLAKE.CORTEX.COMPLETE`, `SUMMARIZE`, `TRANSLATE`, `SENTIMENT`, `EXTRACT_ANSWER`.
+- **AI functions:** `AI_COMPLETE`, `AI_CLASSIFY`, `AI_FILTER`, `AI_AGG`, `AI_SUMMARIZE` (Preview), `AI_SUMMARIZE_AGG`, `AI_EXTRACT`, `AI_SENTIMENT`, `AI_TRANSLATE`, `AI_EMBED` (the legacy names were `SNOWFLAKE.CORTEX.COMPLETE`, `SUMMARIZE`, `TRANSLATE`, `SENTIMENT`, `EXTRACT_ANSWER`).
 - **ML functions:** `FORECAST`, `ANOMALY_DETECTION`, `CLASSIFICATION` — time-series and tabular ML from SQL.
 - **Cortex Analyst** — natural-language questions over your semantic model.
 - **Cortex Search** — retrieval/RAG over your text data.
 
 ```sql
 select review_id,
-       snowflake.cortex.sentiment(review_text)                       as sentiment,
-       snowflake.cortex.summarize(review_text)                       as summary,
-       snowflake.cortex.complete('mistral-large',
+       ai_sentiment(review_text):categories[0]:sentiment::string     as sentiment,  -- label, not a -1..1 score
+       ai_summarize(review_text)                                     as summary,    -- Preview
+       ai_complete('mistral-large',
          'Classify the issue: ' || review_text)                      as issue
 from support.reviews;
 ```

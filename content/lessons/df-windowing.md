@@ -69,3 +69,66 @@ A real-time metric counts events per **1-minute fixed window** by **event time**
 5. Explain the completeness vs latency trade-off and how Beam lets you control it.
 6. Design windowing/triggers for a dashboard wanting low-latency partials and eventually-correct totals with 10-min-late events.
 7. What goes wrong with processing-time aggregation or too-small allowed lateness?
+
+<!-- upgrade-2026-11 -->
+
+## School-kid picture
+
+Collecting homework by the hour on the school bus. You close the 8-9 am pile when you're fairly sure nobody's still running for the bus (the watermark). A kid who arrives a bit late can still add to the pile if the teacher allows a grace period (allowed lateness); one who shows up at lunch is too late.
+
+## Hands-on lab (runs locally, no account)
+
+```bash
+python labs/platforms/event_time_windows.py
+```
+
+Recorded output (2026-11-03):
+
+```text
+Spark-style (late data after the watermark is dropped):
+  watermark  65 passed  60 -> emit window [0,60) = 19
+  t= 40 LATE beyond the limit -> dropped (amount 9)
+  watermark 155 passed 120 -> emit window [60,120) = 10
+  t= 70 LATE beyond the limit -> dropped (amount 6)
+  watermark 270 passed 180 -> emit window [120,180) = 8
+  watermark 270 passed 240 -> emit window [180,240) = 2
+  t= 10 LATE beyond the limit -> dropped (amount 99)
+
+Beam-style with allowed lateness = 60 s (late data re-fires the window):
+  watermark  65 passed  60 -> emit window [0,60) = 19
+  t= 40 LATE but within allowed lateness -> re-fire window [0,60) = 28
+  watermark 155 passed 120 -> emit window [60,120) = 10
+  t= 70 LATE but within allowed lateness -> re-fire window [60,120) = 16
+  watermark 270 passed 180 -> emit window [120,180) = 8
+  watermark 270 passed 240 -> emit window [180,240) = 2
+  t= 10 LATE beyond the limit -> dropped (amount 99)
+```
+
+What to look for: t=50 arrives out of order but before the watermark passes 60, so it's on time; t=40 and t=70 arrive after their windows closed: Beam's allowed lateness re-fires the window with an updated sum, Spark-style processing drops them; t=10 is beyond both limits.
+
+**Needs your account (free trial/tier):** in a trial project, run the Dataflow template or a small Beam pipeline that reads a Pub/Sub topic, applies `beam.WindowInto(window.FixedWindows(60), allowed_lateness=60, trigger=AfterWatermark(late=AfterCount(1)), accumulation_mode=AccumulationMode.ACCUMULATING)` and writes to BigQuery; publish events with old timestamps and watch late panes arrive.
+
+## Exercises with solutions
+
+**Warm-up.** Change DELAY in the lab to 90 seconds. What happens to t=40?
+
+*Solution:* The watermark lags more, so the [0,60) window is still open when t=40 arrives: it's on time and the first result already includes it (results arrive later in exchange).
+
+**Transfer.** Accumulating or discarding panes for a dashboard of totals?
+
+*Solution:* Accumulating: each late firing carries the full updated total, so the sink can overwrite. Discarding emits only the delta, which suits sinks that add.
+
+**Stretch.** Design late-data handling for mobile events that can be hours late.
+
+*Solution:* Event-time windows with a modest watermark for timely results, allowed lateness of a few hours with accumulating late firings into an idempotent (keyed) sink, and a daily batch correction job for anything later, stored with an `is_late` flag.
+
+## Interview questions
+
+- **(Junior) Event time vs processing time?** Event time is when it happened (in the record); processing time is when the pipeline saw it. Windows on event time give correct results despite delays.
+- **(Mid) What is a watermark?** The system's estimate that no more data older than a timestamp will arrive; windows emit when the watermark passes their end.
+- **(Senior) How do triggers, allowed lateness and accumulation interact in Beam?** Triggers decide when to emit panes (early, on-time at the watermark, late); allowed lateness keeps window state for late data; accumulation mode decides whether each pane includes earlier data.
+
+## Sources (checked 2026-11-03)
+
+- Beam programming guide (watermarks, triggers): https://beam.apache.org/documentation/programming-guide/
+- Dataflow overview: https://cloud.google.com/dataflow/docs/overview

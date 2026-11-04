@@ -1,0 +1,11 @@
+Query: SELECT SUM(amount) FROM orders WHERE order_date BETWEEN '2026-03-01' AND '2026-03-07'
+
+natural load order           partitions=  98  scanned=  98  pruned=  0.0%  depth@2026-03-04=98
+clustered by order_date      partitions=  98  scanned=   3  pruned= 96.9%  depth@2026-03-04=1
+
+same answer both ways: 7658163.95 == 7658163.95 -> True
+
+What to look for:
+ - Random arrival order puts every date in almost every partition: nothing can be pruned.
+ - Sorted (clustered) data gives each partition a narrow date range, so ~97% are skipped.
+ - 'depth' is SYSTEM$CLUSTERING_DEPTH's idea: how many partitions overlap one value. Lower is better.

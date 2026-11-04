@@ -1,5 +1,7 @@
 # Lakeflow — ingestion, pipelines & jobs, hands-on
 
+**Name check (Nov 2026):** Delta Live Tables became *Lakeflow Declarative Pipelines* in June 2025 and is now documented as **Lakeflow Spark Declarative Pipelines** ("Lakeflow pipelines"), built on open-source Apache Spark Declarative Pipelines. New Python code uses `from pyspark import pipelines as dp` with `@dp.table`, `@dp.materialized_view`, `@dp.temporary_view` and `@dp.expect*`; old `import dlt` code still runs. APPLY CHANGES is now AUTO CDC. Sources: https://docs.databricks.com/aws/en/ldp/concepts/where-is-dlt and https://docs.databricks.com/aws/en/ldp/cdc
+
 Ingest, transform, and orchestrate with real code — the unified Databricks DE stack.
 
 @@diagram:dbx-lakeflow
@@ -29,38 +31,40 @@ You **declare** tables; Databricks builds the DAG, does incremental refresh, and
 ```sql
 create or refresh streaming table bronze_orders
   as select *, _metadata.file_path as src, current_timestamp() as ingested_at
-     from cloud_files('s3://acme-raw/orders/', 'json');
+     from stream read_files('s3://acme-raw/orders/', format => 'json');   -- older code: cloud_files(...)
 
 create or refresh streaming table silver_orders (
   constraint valid_amount expect (amount > 0)            on violation drop row,
   constraint has_id        expect (order_id is not null) on violation fail update
 )
   as select order_id, customer_id, amount, status
-     from stream(live.bronze_orders);
+     from stream(bronze_orders);            -- older code: stream(live.bronze_orders)
 
 create or refresh materialized view gold_daily_sales
   as select date(ingested_at) d, sum(amount) revenue
-     from live.silver_orders group by 1;
+     from silver_orders group by 1;
 ```
+
+The `LIVE.` prefix you see in older examples belongs to the legacy publishing mode; Databricks marks the LIVE virtual schema as deprecated, so new pipelines reference tables by name (source: https://docs.databricks.com/aws/en/ldp/live-schema).
 
 `drop row` quarantines bad rows; `fail update` stops the run on a critical violation; no `on violation` just **warns** and records the pass rate.
 
 ## 3. The same pipeline in Python
 
 ```python
-import dlt
+from pyspark import pipelines as dp   # older code: import dlt (still works)
 from pyspark.sql import functions as F
 
-@dlt.table
+@dp.table
 def bronze_orders():
     return (spark.readStream.format("cloudFiles")
             .option("cloudFiles.format","json").load("s3://acme-raw/orders/"))
 
-@dlt.table
-@dlt.expect_or_drop("valid_amount", "amount > 0")
-@dlt.expect_or_fail("has_id", "order_id IS NOT NULL")
+@dp.table
+@dp.expect_or_drop("valid_amount", "amount > 0")
+@dp.expect_or_fail("has_id", "order_id IS NOT NULL")
 def silver_orders():
-    return dlt.read_stream("bronze_orders").select("order_id","customer_id","amount","status")
+    return spark.readStream.table("bronze_orders").select("order_id","customer_id","amount","status")
 ```
 
 ## 4. Lakeflow Jobs — orchestration

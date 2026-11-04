@@ -1,0 +1,21 @@
+query: 'payment failed'
+   #7 d=0.465  payment failed with UPI but money debited
+   #1 d=0.500  card payment failed at checkout on mobile app
+   #3 d=1.000  delivery delayed, courier says address not found
+query: 'refund pending'
+   #8 d=0.465  return pickup did not happen, refund pending
+   #5 d=0.711  charged twice for the same order, need refund
+   #2 d=0.733  refund not received after returning the shoes
+query: 'money back for returned item'
+   #5 d=0.817  charged twice for the same order, need refund
+   #6 d=0.817  want to change delivery address for my order
+   #4 d=1.000  app crashes when I open the checkout page
+
+Equivalent on the platforms (needs your account):
+  BigQuery:  SELECT base.id, base.body, distance FROM VECTOR_SEARCH(TABLE support.tickets, 'emb',
+               (SELECT emb FROM support.queries), top_k => 3, distance_type => 'COSINE');
+  Snowflake: SELECT id, body, VECTOR_COSINE_SIMILARITY(emb, AI_EMBED('snowflake-arctic-embed-m-v1.5', :q)) s
+               FROM tickets ORDER BY s DESC LIMIT 3;   -- check AI_EMBED model names in your region
+  Databricks: create an AI Search index on the Delta table, then query it from SQL with vector_search()
+What to look for: lexical overlap works ('payment failed'), but 'money back for returned item' misses the refund
+tickets: a hashed bag of words has no meaning, a trained embedding model does. That gap is the whole point.

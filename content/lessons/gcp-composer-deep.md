@@ -1,5 +1,7 @@
 # Cloud Composer: managed Airflow — the complete guide
 
+**Name check (Nov 2026):** Cloud Composer is now **Managed Service for Apache Airflow** (announced 2026-04-15). Composer 3 is shown as *Managed Airflow (Gen 3)* and is the only generation with **Airflow 3** (GA 2026-04-15); Composer 1 (Legacy Gen 1) and Composer 2.0.x reached end of life on 2026-09-15. `gcloud composer` commands keep the old name. Sources: https://cloud.google.com/composer/docs/release-notes and https://cloud.google.com/composer/docs/composer-versioning-overview
+
 Cloud Composer is GCP's **managed Apache Airflow** — the orchestrator for complex, cross-system data pipelines, coordinating BigQuery, Dataflow, Dataproc, Dataform, and external systems via Python DAGs. **Cloud Workflows** is the lighter serverless alternative. This chapter covers the model and the Composer-vs-Workflows decision (GCP's analog of MWAA vs Step Functions).
 
 @@diagram:gcpd-composer

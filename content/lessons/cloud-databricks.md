@@ -1,5 +1,7 @@
 # The Databricks lakehouse platform
 
+**Name check (Nov 2026):** Delta Live Tables became *Lakeflow Declarative Pipelines* in June 2025 and is now documented as **Lakeflow Spark Declarative Pipelines** ("Lakeflow pipelines"), built on open-source Apache Spark Declarative Pipelines. New Python code uses `from pyspark import pipelines as dp` with `@dp.table`, `@dp.materialized_view`, `@dp.temporary_view` and `@dp.expect*`; old `import dlt` code still runs. APPLY CHANGES is now AUTO CDC. Sources: https://docs.databricks.com/aws/en/ldp/concepts/where-is-dlt and https://docs.databricks.com/aws/en/ldp/cdc
+
 Databricks, from the creators of Spark, packages everything in this course — Spark,
 Delta Lake, notebooks, orchestration, governance, BI — into one managed **lakehouse
 platform**. Here's the whole platform and how a real pipeline is built on it.
@@ -52,18 +54,18 @@ the managed way to do incremental file ingestion.
    .table("bronze.events"))
 ```
 
-## 6. Delta Live Tables (DLT) — declarative pipelines
+## 6. Lakeflow Spark Declarative Pipelines (formerly Delta Live Tables) — declarative pipelines
 
 With **DLT** you declare the tables you want and their dependencies (plus data-quality
 **expectations**), and Databricks manages the orchestration, incremental processing,
 and error handling for you — pipelines as declarations, not hand-wired tasks.
 
 ```python
-import dlt
-@dlt.table
-@dlt.expect_or_drop("valid_amount", "amount >= 0")
+from pyspark import pipelines as dp   # older code: import dlt (still works)
+@dp.table
+@dp.expect_or_drop("valid_amount", "amount >= 0")
 def silver_orders():
-    return dlt.read_stream("bronze_orders").where("status <> 'cancelled'")
+    return spark.readStream.table("bronze_orders").where("status <> 'cancelled'")
 ```
 
 ## 7. Medallion architecture — the recommended data layout

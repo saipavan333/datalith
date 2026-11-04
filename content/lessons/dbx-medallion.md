@@ -12,13 +12,13 @@ Bronze → Silver → Gold as one real pipeline, plus an honest "is Databricks r
 
 Never transform bronze; gate quality at the bronze→silver hop.
 
-## 2. The whole pipeline (Lakeflow Declarative Pipelines, SQL)
+## 2. The whole pipeline (Lakeflow Spark Declarative Pipelines, SQL)
 
 ```sql
 -- BRONZE: raw events, append-only, with metadata
 create or refresh streaming table bronze_events as
   select *, _metadata.file_path as src_file, current_timestamp() as ingested_at
-  from cloud_files('s3://acme-raw/events/', 'json');
+  from stream read_files('s3://acme-raw/events/', format => 'json');
 
 -- SILVER: parse, dedupe, validate (expectations gate quality)
 create or refresh streaming table silver_events (
@@ -30,13 +30,13 @@ create or refresh streaming table silver_events (
          cast(event_ts as timestamp) as event_ts
   from (
     select *, row_number() over (partition by event_id order by ingested_at desc) rn
-    from stream(live.bronze_events)
+    from stream(bronze_events)
   ) where rn = 1;                                   -- dedupe by event_id
 
 -- GOLD: business metrics for BI/ML
 create or refresh materialized view gold_dau as
   select date(event_ts) d, count(distinct user_id) as dau
-  from live.silver_events group by 1;
+  from silver_events group by 1;
 ```
 
 ## 3. Dedupe in streaming — two patterns

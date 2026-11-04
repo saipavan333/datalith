@@ -1,0 +1,20 @@
+BI warehouse, 96 refreshes/day x 20 s of work, size M
+  auto_suspend= 600s ->  66.13 credits/day  = $   5,952/month (Enterprise)
+  auto_suspend= 300s ->  34.13 credits/day  = $   3,072/month (Enterprise)
+  auto_suspend=  60s ->   8.53 credits/day  = $     768/month (Enterprise)
+  actual work is only 2.13 credits/day: the 60 s minimum + idle tail is the rest
+
+Gen1 vs Gen2 for a 2-hour nightly ELT on L (Gen2 must finish faster to pay off):
+  Gen2 1.00x faster -> Gen1 16.0 vs Gen2 21.6 credits  (Gen1 cheaper or equal)
+  Gen2 1.20x faster -> Gen1 16.0 vs Gen2 18.0 credits  (Gen1 cheaper or equal)
+  Gen2 1.35x faster -> Gen1 16.0 vs Gen2 16.0 credits  (Gen1 cheaper or equal)
+  Gen2 1.60x faster -> Gen1 16.0 vs Gen2 13.5 credits  (Gen2 cheaper)
+
+Cloud services adjustment (daily):
+  warehouses 200 cr, cloud services 12 cr -> billable cloud services 0.0 cr
+  warehouses 200 cr, cloud services 35 cr -> billable cloud services 15.0 cr
+
+What to look for:
+ - For bursty BI, auto-suspend is the biggest lever: 600 s -> 60 s cuts this bill ~8x.
+ - Gen2 costs 1.35x per hour, so it must run >1.35x faster to be cheaper. Measure, don't assume.
+ - Cloud services are free up to 10% of the day's warehouse credits; heavy metadata work breaks that.

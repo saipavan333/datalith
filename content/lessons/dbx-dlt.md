@@ -1,4 +1,6 @@
-# Lakeflow Declarative Pipelines (DLT) — the complete guide
+# Lakeflow Spark Declarative Pipelines (formerly DLT) — the complete guide
+
+**Name check (Nov 2026):** Delta Live Tables became *Lakeflow Declarative Pipelines* in June 2025 and is now documented as **Lakeflow Spark Declarative Pipelines** ("Lakeflow pipelines"), built on open-source Apache Spark Declarative Pipelines. New Python code uses `from pyspark import pipelines as dp` with `@dp.table`, `@dp.materialized_view`, `@dp.temporary_view` and `@dp.expect*`; old `import dlt` code still runs. APPLY CHANGES is now AUTO CDC. Sources: https://docs.databricks.com/aws/en/ldp/concepts/where-is-dlt and https://docs.databricks.com/aws/en/ldp/cdc
 
 Most ETL code is **plumbing**: orchestration, retries, scheduling, incremental bookkeeping, data-quality checks. **Lakeflow Declarative Pipelines** (formerly **Delta Live Tables / DLT**) lets you delete the plumbing — you **declare** your tables and quality rules, and the platform builds the dependency graph and runs, retries, scales, and monitors it. This chapter covers the declarative model, expectations, table types, and when to use it.
 
@@ -12,21 +14,21 @@ Most ETL code is **plumbing**: orchestration, retries, scheduling, incremental b
 ## 2. You declare tables
 
 ```python
-import dlt
+from pyspark import pipelines as dp   # older code: import dlt (still works)
 
-@dlt.table
+@dp.table
 def bronze_events():
     return (spark.readStream.format('cloudFiles')
             .option('cloudFiles.format','json').load('/raw/events'))
 
-@dlt.table
-@dlt.expect_or_drop('valid_amount', 'amount >= 0')
+@dp.table
+@dp.expect_or_drop('valid_amount', 'amount >= 0')
 def silver_events():
-    return dlt.read_stream('bronze_events').where('country IS NOT NULL')
+    return spark.readStream.table('bronze_events').where('country IS NOT NULL')
 
-@dlt.table
+@dp.materialized_view        # batch aggregate -> materialized view (older code used @dlt.table here)
 def gold_by_country():
-    return dlt.read('silver_events').groupBy('country').count()
+    return spark.read.table('silver_events').groupBy('country').count()
 ```
 
 You define **what each table is** (a query) and its **expectations**; you don't write orchestration, scheduling, or incremental logic.
@@ -38,9 +40,9 @@ Because `silver_events` reads `bronze_events` and `gold_by_country` reads `silve
 ## 4. Expectations — declarative data quality
 
 ```python
-@dlt.expect('non_negative', 'amount >= 0')              # WARN: keep rows, track metric
-@dlt.expect_or_drop('has_id', 'id IS NOT NULL')         # DROP failing rows
-@dlt.expect_or_fail('has_currency', 'currency IS NOT NULL')  # FAIL the update
+@dp.expect('non_negative', 'amount >= 0')              # WARN: keep rows, track metric
+@dp.expect_or_drop('has_id', 'id IS NOT NULL')         # DROP failing rows
+@dp.expect_or_fail('has_currency', 'currency IS NOT NULL')  # FAIL the update
 ```
 
 | Decorator | On violation |
@@ -84,7 +86,7 @@ Choose streaming tables for incremental flow, materialized views for derived/ser
 
 ## Scenario — a medallion pipeline in ~30 lines, fully managed
 
-A team rebuilds a brittle notebook+Airflow medallion pipeline as a **Lakeflow Declarative Pipeline**: `@dlt.table bronze_orders` ingests raw with **Auto Loader** (streaming table); `@dlt.table silver_orders` cleans and carries `@dlt.expect_or_drop('valid','id IS NOT NULL')` plus `@dlt.expect('non_negative','amount>=0')` (warn) and `@dlt.expect_or_fail('has_currency','currency IS NOT NULL')`; `@dlt.table gold_revenue` is a **materialized view** aggregating revenue. They write **no** orchestration: the platform infers **Bronze → Silver → Gold**, runs them **incrementally** in order, **retries** on failure, **autoscales**, and shows **row-level quality metrics** in the UI (how many rows dropped, violation rates). It's versioned in a **bundle** and promoted dev→prod via CI/CD. The pipeline shrank from hundreds of lines of plumbing to ~30 lines of **what** each table is and its **quality rules** — with better observability and recovery than the hand-built version. That's the declarative payoff.
+A team rebuilds a brittle notebook+Airflow medallion pipeline as a **Lakeflow Declarative Pipeline**: `@dp.table bronze_orders` ingests raw with **Auto Loader** (streaming table); `@dp.table silver_orders` cleans and carries `@dp.expect_or_drop('valid','id IS NOT NULL')` plus `@dp.expect('non_negative','amount>=0')` (warn) and `@dp.expect_or_fail('has_currency','currency IS NOT NULL')`; `@dp.materialized_view gold_revenue` aggregates revenue. They write **no** orchestration: the platform infers **Bronze → Silver → Gold**, runs them **incrementally** in order, **retries** on failure, **autoscales**, and shows **row-level quality metrics** in the UI (how many rows dropped, violation rates). It's versioned in a **bundle** and promoted dev→prod via CI/CD. The pipeline shrank from hundreds of lines of plumbing to ~30 lines of **what** each table is and its **quality rules** — with better observability and recovery than the hand-built version. That's the declarative payoff.
 
 ## Practice
 

@@ -1,0 +1,15 @@
+batch 1 processed: ['orders_0001.json', 'orders_0002.json']
+batch 2 (nothing new) processed: []
+batch 3 stopped: new columns ['coupon'] in orders_0003.json; schema updated, restart the stream
+schema now: ['order_id', 'amount', 'coupon']
+batch 3 restarted processed: ['orders_0003.json']
+
+bronze_orders:
+   (1, 10.5, None, 'orders_0001.json', None)
+   (2, 7.0, None, 'orders_0001.json', None)
+   (3, None, '{"amount": "12,40"}', 'orders_0002.json', None)
+   (4, 3.2, None, 'orders_0003.json', 'DIWALI10')
+checkpoint: [('orders_0001.json', 1), ('orders_0002.json', 1), ('orders_0003.json', 3)]
+
+What to look for: each file is ingested exactly once (batch 2 found nothing), a bad value goes to
+_rescued_data instead of vanishing, and a new column stops the stream once, then flows after restart.

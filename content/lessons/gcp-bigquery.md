@@ -57,7 +57,7 @@ SELECT customer_id, predicted_churned, predicted_churned_probs
 FROM ML.PREDICT(MODEL sales.churn, TABLE sales.current_customers);
 ```
 
-No data movement, no separate ML infra — train and serve where the data lives; graduate to **Vertex AI** for deep custom models.
+No data movement, no separate ML infra — train and serve where the data lives; graduate to **Gemini Enterprise Agent Platform (formerly Vertex AI, renamed 2026-04-22)** for deep custom models (source: https://cloud.google.com/gemini-enterprise-agent-platform/release-notes).
 
 ## Scenario — warehouse + lakehouse in one
 
@@ -68,4 +68,4 @@ Native `sales.*` tables hold curated marts for fast dashboards. Raw event histor
 1. Load a Parquet dataset from GCS into a native table, then write a date-filtered aggregate.
 2. Create a BigLake table over GCS and explain when you'd use it vs a native table.
 3. Describe how streaming data reaches BigQuery in the canonical pattern.
-4. Train a BQML logistic-regression model and predict on a table; say when you'd move to Vertex AI.
+4. Train a BQML logistic-regression model and predict on a table; say when you'd move to Agent Platform.
