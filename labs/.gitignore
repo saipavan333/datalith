@@ -1,0 +1,7 @@
+lake_lab/
+catalog_lab/
+*.duckdb
+__pycache__/
+dbt_lab/target/
+dbt_lab/logs/
+dbt_lab/.user.yml

@@ -3551,7 +3551,7 @@
        "title": "String functions & pattern matching",
        "minutes": 11,
        "summary": "Clean and parse text in SQL: concat, case, trim, substring, replace, position, split, padding, and regex — the toolkit for taming messy source data.",
-       "concept": "Source data is messy — stray spaces, mixed case, codes embedded in strings. SQL's string functions let you clean and parse it without leaving the database.\n\n### The everyday toolkit\n- **Concatenate:** `a || b` (standard) or `CONCAT(a, b)`. `CONCAT` treats NULL as ''; `||` propagates NULL.\n- **Case:** `UPPER(x)`, `LOWER(x)`. Lowercase before comparing for case-insensitive matches.\n- **Trim whitespace:** `TRIM(x)`, `LTRIM`, `RTRIM` — essential when joining on text keys that may have trailing spaces.\n- **Length:** `LENGTH(x)` (characters).\n- **Substring:** `SUBSTRING(x FROM 2 FOR 3)` / `SUBSTR(x, 2, 3)` — extract part of a string.\n- **Find:** `POSITION('-' IN x)` / `INSTR(x, '-')` — where a substring starts (0/NULL if absent).\n- **Replace:** `REPLACE(x, 'old', 'new')`.\n- **Pad:** `LPAD(x, 5, '0')` → zero-pad codes; `RPAD` on the right.\n- **Split:** `SPLIT_PART(x, '-', 2)` (Postgres) grabs the 2nd piece of a delimited string — great for parsing `2025-05-01` or `region-store-id` codes.\n\n### Pattern matching\n`LIKE` (`%`, `_`) handles simple patterns. For real parsing use **regular expressions**: Postgres `~` / `~*` (case-insensitive), `REGEXP_REPLACE(x, pattern, repl)`, `REGEXP_MATCHES`; MySQL/SQLite `REGEXP`. Regex extracts and validates — pulling an order number out of a log line, checking an email shape.\n\n### Casting\nText often needs converting: `CAST(x AS INTEGER)` or `x::INTEGER` (Postgres). Combine with `TRIM`/`REPLACE` to clean before casting (strip `$` and `,` from `'$1,299'` before `::NUMERIC`).\n\n### Why it matters for DE\nMost ingestion involves normalizing text keys (trim+lower), parsing composite codes (split/substring), and validating formats (regex) — doing it in SQL keeps the transformation set-based and close to the data.",
+       "concept": "Source data is messy — stray spaces, mixed case, codes embedded in strings. SQL's string functions let you clean and parse it without leaving the database.\n\n### The everyday toolkit\n- **Concatenate:** `a || b` (standard) or `CONCAT(a, b)`. `CONCAT` skips NULL in PostgreSQL and SQL Server but returns NULL in MySQL, Snowflake and BigQuery; `||` propagates NULL.\n- **Case:** `UPPER(x)`, `LOWER(x)`. Lowercase before comparing for case-insensitive matches.\n- **Trim whitespace:** `TRIM(x)`, `LTRIM`, `RTRIM` — essential when joining on text keys that may have trailing spaces.\n- **Length:** `LENGTH(x)` (characters).\n- **Substring:** `SUBSTRING(x FROM 2 FOR 3)` / `SUBSTR(x, 2, 3)` — extract part of a string.\n- **Find:** `POSITION('-' IN x)` / `INSTR(x, '-')` — where a substring starts (0/NULL if absent).\n- **Replace:** `REPLACE(x, 'old', 'new')`.\n- **Pad:** `LPAD(x, 5, '0')` → zero-pad codes; `RPAD` on the right.\n- **Split:** `SPLIT_PART(x, '-', 2)` (Postgres) grabs the 2nd piece of a delimited string — great for parsing `2025-05-01` or `region-store-id` codes.\n\n### Pattern matching\n`LIKE` (`%`, `_`) handles simple patterns. For real parsing use **regular expressions**: Postgres `~` / `~*` (case-insensitive), `REGEXP_REPLACE(x, pattern, repl)`, `REGEXP_MATCHES`; MySQL/SQLite `REGEXP`. Regex extracts and validates — pulling an order number out of a log line, checking an email shape.\n\n### Casting\nText often needs converting: `CAST(x AS INTEGER)` or `x::INTEGER` (Postgres). Combine with `TRIM`/`REPLACE` to clean before casting (strip `$` and `,` from `'$1,299'` before `::NUMERIC`).\n\n### Why it matters for DE\nMost ingestion involves normalizing text keys (trim+lower), parsing composite codes (split/substring), and validating formats (regex) — doing it in SQL keeps the transformation set-based and close to the data.",
        "example": "`SELECT UPPER(SUBSTR(name, 1, 1)) || LOWER(SUBSTR(name, 2)) AS proper FROM customers;` capitalizes the first letter and lowercases the rest — a title-case fix built from `SUBSTR`, `UPPER`/`LOWER`, and `||`.",
        "keypoints": [
         "Concatenate with || (NULL-propagating) or CONCAT (NULL→''); UPPER/LOWER for case-insensitive compares.",
@@ -3613,7 +3613,7 @@
         {
          "prompt": "Explain why `CONCAT(name, ' - ', country)` and `name || ' - ' || country` can differ when `country` is NULL.",
          "hint": "How does each treat NULL?",
-         "solution": "`||` **propagates NULL**: if `country` is NULL the whole expression is NULL. `CONCAT` treats NULL as an empty string, so you get `'Ava - '`. Choose based on whether a missing country should blank the field (CONCAT) or void the whole value (||) — or wrap with COALESCE."
+         "solution": "`||` **propagates NULL**: if `country` is NULL the whole expression is NULL. In PostgreSQL and SQL Server, `CONCAT` treats NULL as an empty string, so you get `'Ava - '`; in MySQL, Snowflake and BigQuery `CONCAT` returns NULL too (sources: each vendor's CONCAT docs). Choose based on whether a missing country should blank the field (CONCAT) or void the whole value (||) — or wrap with COALESCE."
         }
        ],
        "diagram": "string-funcs",
@@ -12625,14 +12625,14 @@
        "title": "Partitions & the shuffle",
        "minutes": 12,
        "summary": "Parallelism's unit and its biggest cost: how partitions drive parallel tasks, what triggers a shuffle, right-sizing partitions, repartition vs coalesce, and skew.",
-       "concept": "### Partitions = the unit of parallelism\nA DataFrame is split into **partitions**; Spark runs **one task per partition**, so with 200 partitions and 50 cores ~50 tasks run at once. Too few partitions → idle cores; too many tiny ones → scheduling overhead dominates. Aim for partitions of roughly **128–256 MB**.\n\n### The shuffle — the expensive operation\n**Narrow** ops (`filter`, `select`, `withColumn`) act within a partition — no movement. **Wide** ops (`groupBy`, `join`, `distinct`, `orderBy`) need rows with the same key together, so Spark **shuffles**: it redistributes data across the network by key, **writing to disk** on the way. Shuffle = network + disk + serialization, and it **dominates runtime**. The DAG splits into **stages** at each shuffle.\n\n### Reduce the shuffle\n- **Filter and select early** so less data is shuffled.\n- **Broadcast** a small table in a join to avoid shuffling the big one (next lesson).\n- Avoid needless re-grouping and repeated `distinct`/`orderBy`.\n\n### Right-size partitions\n- `spark.sql.shuffle.partitions` (default 200) sets the post-shuffle partition count — tune it to your data size (too high → tiny partitions; too low → huge ones).\n- `repartition(n)` does a **full shuffle** to increase/rebalance partitions; `coalesce(n)` **reduces** partitions **without** a full shuffle (great before writing fewer output files).\n\n### Skew — the silent killer\nA shuffle sends all rows for a key to one task. If one key is huge (a 'null' or a mega-customer), that **one task** does most of the work while others finish — 199 tasks done in seconds, 1 runs for an hour. Fixes: **salting** the hot key, or **Adaptive Query Execution** (AQE) which detects and splits skewed partitions automatically.\n\nDiagnose with the **Spark UI**: a stage with one long-running task = skew; lots of shuffle spill = undersized memory or oversized partitions.",
-       "example": "`big.join(other, 'customer_id')` shuffles both sides by `customer_id`. If one customer has 40% of the rows, that key's task runs far longer than the rest — classic skew. Salting (append a random suffix to the key, aggregate, then combine) spreads it across tasks.",
+       "concept": "### Partitions = the unit of parallelism\nA DataFrame is split into **partitions**; Spark runs **one task per partition**, so with 200 partitions and 50 cores ~50 tasks run at once. Too few partitions → idle cores; too many tiny ones → scheduling overhead dominates. Aim for partitions of roughly **128–256 MB**.\n\n### The shuffle — the expensive operation\n**Narrow** ops (`filter`, `select`, `withColumn`) act within a partition — no movement. **Wide** ops (`groupBy`, `join`, `distinct`, `orderBy`) need rows with the same key together, so Spark **shuffles**: it redistributes data across the network by key, **writing to disk** on the way. Shuffle = network + disk + serialization, and it **dominates runtime**. The DAG splits into **stages** at each shuffle.\n\n### Reduce the shuffle\n- **Filter and select early** so less data is shuffled.\n- **Broadcast** a small table in a join to avoid shuffling the big one (next lesson).\n- Avoid needless re-grouping and repeated `distinct`/`orderBy`.\n\n### Right-size partitions\n- `spark.sql.shuffle.partitions` (default 200) sets the post-shuffle partition count — tune it to your data size (too high → tiny partitions; too low → huge ones).\n- `repartition(n)` does a **full shuffle** to increase/rebalance partitions; `coalesce(n)` **reduces** partitions **without** a full shuffle (great before writing fewer output files).\n\n### Skew — the silent killer\nA shuffle sends all rows for a key to one task. If one key is huge (a 'null' or a mega-customer), that **one task** does most of the work while others finish — 199 tasks done in seconds, 1 runs for an hour. Where it actually bites: **joins** on the hot key and **non-decomposable** work (`collect_list`, exact percentiles, windows partitioned by the key). A plain `sum`/`count` groupBy is usually fine, because Spark aggregates partially on each map task and ships one row per key. Fixes: **AQE** splits skewed sort-merge join partitions automatically (on by default); **salting** by hand (random suffix on the big side's hot key, the small side's matching rows replicated once per suffix) where AQE doesn't apply.\n\nDiagnose with the **Spark UI**: a stage with one long-running task = skew; lots of shuffle spill = undersized memory or oversized partitions.",
+       "example": "`big.join(other, 'customer_id')` shuffles both sides by `customer_id`. If one customer has 40% of the rows, that key's task runs far longer than the rest — classic skew. AQE's skew join splits that partition automatically once it is >5x the median and >256 MB. If it doesn't apply, salt: add a random suffix 0–31 to the hot key on the big side and replicate the matching small-side rows once per suffix, so every salted key still finds its match. (A `sum` by customer_id wouldn't need any of this: partial aggregation ships one row per key per map task.)",
        "keypoints": [
         "Partitions are the unit of parallelism — one task per partition; aim ~128–256 MB each.",
         "Narrow ops stay in-partition; wide ops (groupBy/join/distinct/orderBy) trigger a shuffle (network+disk).",
         "The shuffle dominates runtime and splits the DAG into stages — reduce it by filtering early & broadcasting.",
         "Tune spark.sql.shuffle.partitions to data size; repartition() full-shuffles, coalesce() reduces without one.",
-        "Skew: one hot key overloads a single task — fix with salting or AQE skew handling.",
+        "Skew: one hot key overloads a single task in joins and non-decomposable aggregations (collect_list, percentiles, windows); sum/count groupBys are absorbed by partial aggregation. Fix joins with AQE skew join or salting (salt the big side, replicate the small side).",
         "Diagnose with the Spark UI: one long task = skew; heavy spill = memory/partition sizing."
        ],
        "diagram": "partitions-shuffle",
@@ -12670,6 +12670,28 @@
          ],
          "answer": 1,
          "explain": "Skew: a shuffle sends all rows for a key to one task, so a giant key makes one task do most of the work. Fix with salting or AQE skew splitting."
+        },
+        {
+         "q": "Your `groupBy(seller_id).agg(sum('amount'))` has one seller with 30% of rows. What happens to that seller's reducer?",
+         "options": [
+          "It gets 30% of all rows and runs for an hour, so salt it",
+          "It gets one partial row per map task, because Spark aggregates partially before the shuffle; no salting needed",
+          "AQE's skew join splits it automatically",
+          "It fails with an out-of-memory error"
+         ],
+         "answer": 1,
+         "explain": "For decomposable aggregates (sum, count, min, max, avg) Spark plans a partial HashAggregate on each map task, so only one row per key per map task is shuffled (the lab shows 1.2x skew instead of 87x). Salting would add a stage for nothing. AQE's skew join is for joins, not aggregations. OOM is a risk for collect_list on the hot key, not for sum."
+        },
+        {
+         "q": "A job shuffles 600 GB with the default spark.sql.shuffle.partitions. Roughly how big is each reduce partition?",
+         "options": [
+          "~128 MB",
+          "~3 GB",
+          "~64 MB because AQE resizes it",
+          "~600 MB"
+         ],
+         "answer": 1,
+         "explain": "600 GB / 200 = 3 GB per partition, which spills and risks OOM. AQE can coalesce small partitions but doesn't split a big non-skewed aggregation into more; you set a higher partition count (~4,800 for 128 MB)."
         }
        ],
        "exercises": [
@@ -12681,7 +12703,7 @@
         {
          "prompt": "A join on customer_id is slow with one task running far longer than the rest. Diagnose and give two fixes.",
          "hint": "Skew on a hot key.",
-         "solution": "It's **data skew**: one `customer_id` holds a huge share of rows, so its shuffle task does most of the work. Fixes: (1) **Salting** — append a random suffix to the hot key on both sides, aggregate the partials, then combine, spreading the key across tasks; (2) enable **AQE skew handling** (`spark.sql.adaptive.enabled` + skewJoin), which detects oversized partitions and splits them automatically. Filtering/broadcasting can also help if one side is small."
+         "solution": "It's **data skew**: one `customer_id` holds a huge share of rows, so its shuffle task does most of the work. Fixes: (1) **Salting**: on the big side, append a random suffix 0..N-1 to the hot key; on the small side, replicate that key's rows N times, once per suffix; join on (key, suffix), so the hot key is spread over N tasks and every row still finds its match; (2) enable **AQE skew handling** (`spark.sql.adaptive.enabled` + skewJoin), which detects oversized partitions and splits them automatically. Filtering/broadcasting can also help if one side is small."
         },
         {
          "prompt": "Explain why filtering before a groupBy is faster than after, in terms of the shuffle.",
@@ -13804,7 +13826,7 @@
        "title": "DAGs & orchestration with Airflow",
        "minutes": 11,
        "summary": "Why pipelines are modeled as DAGs, what an orchestrator gives you (scheduling, dependencies, retries, visibility), and the anatomy of an Airflow DAG.",
-       "concept": "A real pipeline is many **tasks** with **dependencies** (extract before transform before load, some in parallel). Orchestrators model this as a **DAG** and run it reliably.\n\n### Why a DAG?\nA **Directed Acyclic Graph**: tasks are nodes, dependencies are directed edges, and **acyclic** means no cycles — so there's always a valid execution order and no infinite loops. The DAG encodes *what depends on what*, so independent tasks run in **parallel** and dependents wait for their upstreams.\n\n```\nextract ─┬─> transform ──> load ──> notify\n         └─> validate ──┘\n```\n\n### What an orchestrator provides\nAn **orchestrator** (Airflow is the canonical one) gives you:\n\n- **Scheduling** — run on a cron/interval or trigger.\n- **Dependency management** — run tasks in DAG order, fan-out/fan-in.\n- **Retries & alerting** — auto-retry failed tasks (with backoff), notify on failure.\n- **Visibility** — a UI of runs, task states, logs, durations; re-run/backfill controls.\n- **Idempotent, parameterized runs** — each run is tied to a **logical date** so it can be re-run/backfilled deterministically.\n\n### Anatomy of an Airflow DAG\n```python\nfrom airflow import DAG\nfrom airflow.operators.python import PythonOperator\nimport pendulum\n\nwith DAG(\n    dag_id='daily_sales',\n    schedule='0 6 * * *',          # 6am daily\n    start_date=pendulum.datetime(2025, 1, 1),\n    catchup=False,\n    default_args={'retries': 2},\n) as dag:\n    extract  = PythonOperator(task_id='extract',  python_callable=do_extract)\n    transform= PythonOperator(task_id='transform',python_callable=do_transform)\n    load     = PythonOperator(task_id='load',     python_callable=do_load)\n    extract >> transform >> load    # set dependencies\n```\n**Operators** define *what a task does* (PythonOperator, BashOperator, SQL/transfer operators); `>>` sets dependencies. The **scheduler** parses DAGs, queues task instances by logical date, and an **executor** runs them on workers.\n\nAirflow is **code-as-pipelines** (Python), so DAGs are version-controlled, reviewed, and dynamic. It's the most widely-used orchestrator; alternatives (Dagster, Prefect) refine the model (a later lesson).",
+       "concept": "A real pipeline is many **tasks** with **dependencies** (extract before transform before load, some in parallel). Orchestrators model this as a **DAG** and run it reliably.\n\n### Why a DAG?\nA **Directed Acyclic Graph**: tasks are nodes, dependencies are directed edges, and **acyclic** means no cycles — so there's always a valid execution order and no infinite loops. The DAG encodes *what depends on what*, so independent tasks run in **parallel** and dependents wait for their upstreams.\n\n```\nextract ─┬─> transform ──> load ──> notify\n         └─> validate ──┘\n```\n\n### What an orchestrator provides\nAn **orchestrator** (Airflow is the canonical one) gives you:\n\n- **Scheduling** — run on a cron/interval or trigger.\n- **Dependency management** — run tasks in DAG order, fan-out/fan-in.\n- **Retries & alerting** — auto-retry failed tasks (with backoff), notify on failure.\n- **Visibility** — a UI of runs, task states, logs, durations; re-run/backfill controls.\n- **Idempotent, parameterized runs** — each run is tied to a **logical date** so it can be re-run/backfilled deterministically.\n\n### Anatomy of an Airflow DAG (Airflow 3 style)\n```python\nfrom airflow.sdk import dag, task   # Airflow 3 home for DAG authoring\nimport pendulum\n\n@dag(\n    schedule='0 6 * * *',          # 6am daily\n    start_date=pendulum.datetime(2026, 1, 1, tz='UTC'),\n    catchup=False,                  # the default since Airflow 3\n    default_args={'retries': 2},\n)\ndef daily_sales():\n    @task\n    def extract(): ...\n    @task\n    def transform(rows): ...\n    @task\n    def load(rows): ...\n    load(transform(extract()))      # dependencies follow the data\n\ndaily_sales()\n```\nIn Airflow 2 you wrote `from airflow import DAG` and `PythonOperator`; those paths are deprecated in Airflow 3, and classic operators now live in the `apache-airflow-providers-standard` package (`>>` still sets dependencies between operator tasks). Airflow 3 also removed SubDAGs and `execution_date` (use `logical_date`).\n\n**Operators** define *what a task does* (PythonOperator, BashOperator, SQL/transfer operators); `>>` sets dependencies. The **scheduler** parses DAGs, queues task instances by logical date, and an **executor** runs them on workers.\n\nAirflow is **code-as-pipelines** (Python), so DAGs are version-controlled, reviewed, and dynamic. It's the most widely-used orchestrator; alternatives (Dagster, Prefect) refine the model (a later lesson).",
        "example": "A daily sales DAG: `extract` fans out to `transform` and `validate`; `load` waits for both; `notify` runs last. If `transform` fails it retries twice, then alerts — and you can re-run just that task for a specific date from the UI.",
        "keypoints": [
         "Pipelines are DAGs: tasks (nodes) + dependencies (directed edges), acyclic so there's always a valid order.",
@@ -14404,6 +14426,87 @@
          "prompt": "Contrast batch and streaming ingestion, and what 'micro-batch CDC' offers.",
          "hint": "Scheduled vs continuous vs frequent small.",
          "solution": "**Batch** pulls on a schedule (hourly/daily) — simple and sufficient for most analytics, but data is as stale as the interval. **Streaming** ingests continuously (CDC into Kafka, event streams) for **low-latency** needs (real-time dashboards/features) but is more complex to operate. **Micro-batch CDC** is the practical middle: CDC captures changes from the log continuously, applied in **frequent small syncs** (e.g. every few minutes), so the warehouse feels **near-real-time** without full streaming complexity — a common modern default for replicating operational DBs."
+        }
+       ]
+      },
+      {
+       "id": "pipe-cdc",
+       "title": "Change Data Capture — log-based vs query-based, and Debezium",
+       "minutes": 22,
+       "summary": "How to copy every insert, update and delete out of a production database without hurting it: polling vs triggers vs reading the WAL/binlog, Debezium's event format, snapshots, and applying changes idempotently.",
+       "concept": "**Change Data Capture (CDC)** means copying the *changes* in a source database (inserts, updates, deletes) to somewhere else, continuously, instead of re-copying whole tables.\n\n### The analogy\nQuery-based CDC is walking the library shelves every hour and noting what you see. Log-based CDC is reading the librarian's checkout ledger, line by line. The shelf walk misses a book borrowed and returned between walks, and can't tell a thrown-away book from one you overlooked. The ledger misses nothing.\n\n### Three ways to capture changes\n- **Query-based (polling):** `SELECT ... WHERE updated_at > :watermark` on a schedule. Simple and needs no special rights, but it **cannot see hard deletes**, **collapses in-between states** (placed → paid → shipped arrives as just shipped), trusts the app to always bump `updated_at`, and puts scan load on production.\n- **Trigger-based:** triggers write every change into a changelog table. Catches everything, but adds write cost inside every production transaction.\n- **Log-based:** read the database's own **write-ahead log** (Postgres WAL via logical decoding and a replication slot; MySQL binlog in ROW format). Every committed change, in order, with almost no extra load. This is what **Debezium** does.\n\n### Debezium in one paragraph\nDebezium usually runs on **Kafka Connect**. It first takes a consistent **snapshot** of existing rows (events with `op=r`), then streams the log. Each event has `before`, `after`, `op` (`c` insert, `u` update, `d` delete, `t` truncate, `r` snapshot read) and `source` metadata such as the log position (LSN). Messages are keyed by primary key, so all changes to one row land in one Kafka partition, in order. After a delete it sends a **tombstone** (key with null value) so log compaction can drop the key.\n\n### Applying changes downstream\nLand raw events in an append-only bronze table, then `MERGE` into current-state silver: latest event per key, apply it **only if its LSN is newer than the stored row's, on every branch**, and turn `op='d'` into a **tombstone** (`is_deleted = true` plus the delete's LSN) rather than a hard `DELETE`. A hard delete forgets that the key was deleted, so re-running an older batch resurrects it. Tombstones plus the guard make duplicates and out-of-order replays harmless.\n\n### The production risk\nA Postgres replication slot **keeps WAL until the consumer confirms it**. If the connector is down, WAL piles up on the primary's disk. Alert on slot lag.",
+       "example": "Source: 40 Postgres shards, `orders` = 1.2B rows, ~25M changes/day (peak ~3,000/s).\n\nPolling every 15 min = 3,840 scans/day on production and still blind to deletes → rejected.\n\nDebezium (pgoutput, one slot per shard) → Kafka topic shop.public.orders, 12 partitions keyed by order_id\n  JSON events ~1 KB → ~25 GB/day; Avro + schema registry → ~5–8 GB/day\n  7-day retention × RF 3 on JSON ≈ 525 GB of Kafka disk\nSink: bronze append (every event) → silver MERGE (latest LSN per key, delete on op='d')\nAlert: replication-slot lag > 5 GB or > 15 min (a 6-hour outage at 3 GB/h WAL = 18 GB held per primary)",
+       "keypoints": [
+        "Query-based CDC polls with an updated_at watermark: easy, but misses hard deletes and in-between states, and loads the source.",
+        "Log-based CDC reads the WAL/binlog: every committed insert, update and delete in order, with little source load.",
+        "Debezium events carry before, after, op (c/u/d/r/t) and source position; messages are keyed by primary key.",
+        "A new connector snapshots existing rows first (op=r), then streams; incremental snapshots backfill big tables in chunks while streaming continues.",
+        "Apply downstream idempotently: latest change per key, an LSN guard on every MERGE branch, and deletes kept as tombstones so replays can't resurrect rows.",
+        "A Postgres replication slot retains WAL while the consumer is down: monitor slot lag or risk filling the primary's disk."
+       ],
+       "diagram": "cdc-log-vs-query",
+       "diagram_caption": "Polling reads the table's current state; log-based CDC reads the database's change log, so deletes and every intermediate state survive.",
+       "quiz": [
+        {
+         "q": "An order is created, paid and shipped between two 15-minute polls of `WHERE updated_at > :wm`. What does the warehouse get?",
+         "options": [
+          "Three rows, one per state",
+          "One row with status shipped",
+          "Nothing, because the row changed too often",
+          "One row with status placed"
+         ],
+         "answer": 1,
+         "explain": "Polling only sees the row as it is at poll time, so it copies the final state (shipped). Three rows would need the log. 'Nothing' is wrong: the row's updated_at is past the watermark. 'placed' is the oldest state, which the poll never saw."
+        },
+        {
+         "q": "Why can't plain query-based CDC capture a hard DELETE?",
+         "options": [
+          "DELETE doesn't change updated_at",
+          "A deleted row is no longer returned by any SELECT on the table",
+          "Warehouses can't apply deletes",
+          "Deletes are not written to the WAL"
+         ],
+         "answer": 1,
+         "explain": "The row is gone, so no query can return it. 'updated_at' is beside the point: there is no row to read the column from. Warehouses can apply deletes via MERGE. Deletes are absolutely in the WAL, which is why log-based CDC sees them."
+        },
+        {
+         "q": "Your Debezium connector on Postgres was stopped for a weekend. What's the main risk on the source?",
+         "options": [
+          "Lost changes: the WAL rotates and Debezium skips ahead",
+          "WAL piles up because the replication slot retains it, and the primary's disk can fill",
+          "The orders table gets locked",
+          "Nothing; CDC has no effect on the source"
+         ],
+         "answer": 1,
+         "explain": "A replication slot guarantees WAL is kept until the consumer confirms it, so nothing is lost, but WAL accumulates on the primary. No table locks are involved in streaming. And CDC clearly does affect the source through the slot."
+        },
+        {
+         "q": "The sink receives the same Debezium update event twice (at-least-once delivery). Which apply rule keeps the table correct?",
+         "options": [
+          "INSERT every event",
+          "MERGE on primary key, and only update when the event's LSN is newer than the stored LSN",
+          "Drop any event whose key was seen before",
+          "Apply events in random order to spread load"
+         ],
+         "answer": 1,
+         "explain": "Keyed upsert guarded by source position is idempotent: a duplicate or replay changes nothing. Blind INSERT creates duplicates. Dropping seen keys would drop every later real update. Random order breaks per-key ordering, so an old state could overwrite a new one."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "**Warm-up.** Your team polls `customers` every hour with `updated_at > :wm`. List three kinds of change this design can lose or get wrong, and one fix for each that doesn't require log-based CDC.",
+         "hint": "Think about deletes, fast changes, and who sets updated_at.",
+         "solution": "1. **Hard deletes**: ask the app team to soft-delete (`is_deleted`, `deleted_at`), or run a nightly key-compare between source and target. 2. **In-between states**: if history matters, add an app-side history/outbox table; polling alone can't recover lost states. 3. **Rows whose updated_at wasn't bumped** (bulk fix scripts, late commits): enforce `updated_at` with a DB trigger or default, and re-read an overlap window (`> :wm - interval '10 minutes'`) with an idempotent upsert so late commits are caught."
+        },
+        {
+         "prompt": "**Transfer.** Write the bronze → silver MERGE for a `payments` table fed by Debezium. Bronze columns: `payment_id, op, status, amount, lsn, ingest_ts`. Handle duplicates within a batch, deletes, and replays of older batches in any order.",
+         "hint": "ROW_NUMBER over payment_id ordered by lsn desc; keep deletes as tombstones; guard every branch with the lsn.",
+         "solution": "```sql\nMERGE INTO silver.payments t\nUSING (\n  SELECT * FROM (\n    SELECT *, ROW_NUMBER() OVER (PARTITION BY payment_id ORDER BY lsn DESC) rn\n    FROM bronze.payments_changes WHERE ingest_ts >= :batch_start\n  ) WHERE rn = 1\n) s\nON t.payment_id = s.payment_id\nWHEN MATCHED AND s.lsn > t.lsn THEN\n  UPDATE SET status = s.status, amount = s.amount, lsn = s.lsn, is_deleted = (s.op = 'd')\nWHEN NOT MATCHED THEN\n  INSERT (payment_id, status, amount, lsn, is_deleted)\n  VALUES (s.payment_id, s.status, s.amount, s.lsn, s.op = 'd');\n```\nConsumers read a view `WHERE NOT is_deleted`. Why each piece: `rn = 1` collapses several changes to one key in the batch to the latest. Every branch is guarded by `lsn`, so re-running this batch or an older one is a no-op. A delete becomes a tombstone that remembers its LSN; with a hard `DELETE`, re-running an older batch would hit `WHEN NOT MATCHED` and re-insert the payment (the lab's Part 2 shows exactly this)."
+        },
+        {
+         "prompt": "**Stretch.** Product wants a 1.5 TB `events_archive` table added to an existing Debezium connector that streams 20 other tables. A blocking snapshot would take ~14 hours. Design the backfill and the checks that prove it worked.",
+         "hint": "Incremental snapshots via a signal; then reconcile.",
+         "solution": "Add the table to the connector's include list, then send an `execute-snapshot` signal (signaling table or Kafka signal topic) of type incremental for just that table. Debezium reads it in primary-key chunks and interleaves the chunks with live streaming, de-duplicating chunk rows against live changes, so the other 20 tables keep flowing and nothing waits 14 hours. Size the sink and Kafka for the extra ~1.5 TB burst (raise partitions or sink tasks temporarily, check retention). Prove it: per-day row counts and a sum/hash of a few columns compared between source and silver, plus a sample of keys compared field by field; monitor slot lag during the run."
         }
        ]
       },
@@ -15522,20 +15625,20 @@
       {
        "id": "stream-kafka-internals",
        "title": "Kafka internals — partitions, consumer groups & offsets",
-       "minutes": 12,
+       "minutes": 20,
        "summary": "How Kafka scales and stays ordered/durable: topics split into partitions, keys for routing, brokers & replication, consumer groups for parallelism, and offsets for replay.",
-       "concept": "Kafka's power comes from a few internal mechanics. Understanding them explains ordering, scaling, and replay.\n\n### Topics → partitions (parallelism + ordering)\nA **topic** is split into **partitions** — each an independent ordered log. This is the unit of **parallelism** (more partitions = more throughput) and the unit of **ordering**: Kafka guarantees order **within a partition**, **not across** partitions. So 'global order' isn't guaranteed unless you have one partition (which doesn't scale).\n\n### Keys → partition routing\nA producer can give each event a **key**; Kafka hashes the key to choose a partition, so **all events with the same key go to the same partition** — and are therefore **ordered** relative to each other. Keying by `user_id` keeps each user's events in order while still spreading load across partitions. No key → round-robin (no per-key ordering).\n\n### Brokers & replication (durability)\nPartitions live on **brokers** (servers) and are **replicated** across them. One replica is the **leader** (handles reads/writes); **followers** copy it. The **in-sync replicas (ISR)** are the up-to-date copies; if the leader's broker dies, a follower is promoted — **no data loss**. `acks=all` makes a producer wait until replicas have the data (durability over latency).\n\n### Consumer groups (scaling consumers)\nConsumers reading a topic form a **consumer group**. Kafka assigns each **partition to exactly one consumer in the group**, so the group splits the work (parallelism) — add consumers (up to the partition count) to scale. **Different groups** each get the **full** stream (fan-out for independent uses). Reassignment when a consumer joins/leaves is a **rebalance**.\n\n### Offsets (position + replay)\nEach consumer tracks its **offset** — its position in each partition. **Committing** offsets records progress, so after a restart it resumes where it left off. Because offsets are just positions in a retained log, you can **reset** them to **replay** history or skip ahead. Offset handling is central to delivery guarantees (commit after processing = at-least-once).",
+       "concept": "Kafka's power comes from a few internal mechanics. Understanding them explains ordering, scaling, and replay.\n\n### Topics → partitions (parallelism + ordering)\nA **topic** is split into **partitions** — each an independent ordered log. This is the unit of **parallelism** (more partitions = more throughput) and the unit of **ordering**: Kafka guarantees order **within a partition**, **not across** partitions. So 'global order' isn't guaranteed unless you have one partition (which doesn't scale).\n\n### Keys → partition routing\nA producer can give each event a **key**; Kafka hashes the key to choose a partition, so **all events with the same key go to the same partition** — and are therefore **ordered** relative to each other. Keying by `user_id` keeps each user's events in order while still spreading load across partitions. No key → the producer fills one **sticky** partition per batch, then switches (since Kafka 2.4; older docs said round-robin). No per-key ordering either way. **Adding partitions later remaps most keys**, so size partition counts with headroom.\n\n### Brokers & replication (durability)\nPartitions live on **brokers** (servers) and are **replicated** across them. One replica is the **leader** (handles reads/writes); **followers** copy it. The **in-sync replicas (ISR)** are the up-to-date copies; if the leader's broker dies, an in-sync follower is promoted. `acks=all` (the producer default) waits for every replica **currently in the ISR**, but if the ISR has shrunk to the leader alone that is just one copy. Pair it with **`min.insync.replicas=2`** (broker default is 1) and replication factor 3 so no acknowledged write lives on a single disk. Consumers only see records below the **high watermark**, the offset every in-sync replica has.\n\n### Consumer groups (scaling consumers)\nConsumers reading a topic form a **consumer group**. Kafka assigns each **partition to exactly one consumer in the group**, so the group splits the work (parallelism) — add consumers (up to the partition count) to scale. **Different groups** each get the **full** stream (fan-out for independent uses). Reassignment when a consumer joins/leaves is a **rebalance**; Kafka 4.0 made the broker-driven, incremental protocol (KIP-848, `group.protocol=consumer`) GA. **Share groups** (production-ready in 4.2) let many consumers share one partition, queue-style.\n\n### Offsets (position + replay)\nEach consumer tracks its **offset** — its position in each partition. **Committing** offsets records progress, so after a restart it resumes where it left off. Because offsets are just positions in a retained log, you can **reset** them to **replay** history or skip ahead. Offset handling is central to delivery guarantees (commit after processing = at-least-once).\n\n### Cluster metadata: KRaft\nSince Kafka 4.0, ZooKeeper is gone: metadata lives in a Raft log on controller nodes (KRaft).",
        "example": "An `orders` topic with 12 partitions keyed by `customer_id`: each customer's orders stay ordered in one partition; a consumer group of 4 splits the 12 partitions (3 each) for parallelism; a separate analytics group reads all 12 independently; and resetting offsets to 0 replays every order.",
        "keypoints": [
         "A topic is split into partitions — the unit of parallelism; ordering is guaranteed within a partition, not across.",
-        "A producer key hashes to a partition, so same-key events share a partition and stay ordered (e.g. key by user_id).",
-        "Partitions live on brokers, replicated (leader + follower ISR); a follower is promoted on failure → no data loss (acks=all).",
-        "A consumer group assigns each partition to one consumer in the group → parallel consumption; add consumers to scale (≤ partitions).",
-        "Different consumer groups each receive the full stream (fan-out); joins/leaves trigger a rebalance.",
-        "Offsets track each consumer's position; commit to resume after restart, reset to replay history — central to delivery guarantees."
+        "A key is hashed (murmur2) to a partition, so same-key events stay ordered; no key → sticky batching, and adding partitions remaps most keys.",
+        "acks=all waits for the current ISR only; use min.insync.replicas=2 with RF 3 so an acknowledged write is never on one disk.",
+        "Consumers read only below the high watermark — the smallest log-end offset among in-sync replicas.",
+        "A consumer group gives each partition to one member (≤ partitions busy); committed offsets in __consumer_offsets let it resume or replay.",
+        "Kafka 4.x is KRaft-only (no ZooKeeper); KIP-848 rebalancing is GA; share groups add queue-style consumption."
        ],
-       "diagram": "consumer-groups",
-       "diagram_caption": "Partitions split a topic for parallelism; a consumer group shares them out (one partition per consumer); offsets mark position.",
+       "diagram": "kafka-partition-log",
+       "diagram_caption": "One partition: offsets in segment files, a consumer group's committed offset, and the high watermark set by the slowest in-sync replica.",
        "quiz": [
         {
          "q": "What does Kafka guarantee about message ordering?",
@@ -15569,6 +15672,28 @@
          ],
          "answer": 1,
          "explain": "Within a group, each partition is assigned to one consumer, so the 12 partitions split across the 4 consumers — adding consumers (up to 12) scales throughput."
+        },
+        {
+         "q": "Producer uses acks=all. The topic has RF 3 but both followers just dropped out of the ISR. min.insync.replicas is the default (1). The leader's disk then dies for good. What happened to the last writes?",
+         "options": [
+          "Safe: acks=all means three copies",
+          "Lost: acks=all only waited for the ISR, which was just the leader",
+          "Safe: Kafka refuses writes when followers lag",
+          "Lost only if enable.idempotence=false"
+         ],
+         "answer": 1,
+         "explain": "acks=all means 'all replicas currently in the ISR'. With the ISR down to the leader and min.insync.replicas=1, one copy was enough to acknowledge. Kafka only refuses such writes when min.insync.replicas is 2 or more. Idempotence prevents duplicates from retries; it doesn't add copies."
+        },
+        {
+         "q": "You grow a keyed topic from 12 to 16 partitions. What happens to per-key ordering?",
+         "options": [
+          "Nothing; keys stay on their partitions",
+          "Most keys now hash to a different partition, so old and new events for a key can be read out of order",
+          "Kafka rebalances old data into the new partitions",
+          "Ordering becomes global"
+         ],
+         "answer": 1,
+         "explain": "The partition is hash % count, so changing the count moves most keys (75% in the lab). Kafka does not move existing data, which is why old events stay behind on the old partition. Ordering is never global with more than one partition."
         }
        ],
        "exercises": [
@@ -15794,6 +15919,28 @@
          ],
          "answer": 1,
          "explain": "Backward compatibility means a new schema can read data written with the old schema, so consumers can be upgraded before producers without breaking."
+        },
+        {
+         "q": "Compatibility is BACKWARD (the default). A producer adds a required field `coupon` with no default. What happens at registration?",
+         "options": [
+          "Accepted: adding fields is always safe",
+          "Rejected: a reader with the new schema can't fill `coupon` for old records",
+          "Accepted, and old records get null",
+          "Rejected only under FORWARD"
+         ],
+         "answer": 1,
+         "explain": "BACKWARD means the new schema must read old data; with no default there is no value for old rows, so resolution fails (the lab shows SchemaResolutionError). Adding is safe only with a default. Avro doesn't silently invent nulls. Under FORWARD this particular change would actually pass."
+        },
+        {
+         "q": "Your topic keeps 30 days and consumers replay from the start after bugs. Which mode fits best?",
+         "options": [
+          "NONE",
+          "FORWARD",
+          "BACKWARD_TRANSITIVE",
+          "BACKWARD only against the last version"
+         ],
+         "answer": 2,
+         "explain": "Replays mean the current reader may meet any schema version still in retention, so check against all earlier versions. Plain BACKWARD only checks the previous version. FORWARD protects old readers, not replays. NONE has no gate."
         }
        ],
        "exercises": [
@@ -16609,7 +16756,7 @@
        "title": "Catalogs & the metastore",
        "minutes": 11,
        "summary": "The directory that lets engines find lakehouse tables and governs access: the metastore/catalog, from Hive Metastore to Glue, Unity Catalog, and Iceberg REST catalogs.",
-       "concept": "A lakehouse table is files + metadata in object storage — but how does an engine know the table `sales` **exists** and **where** its metadata lives? That's the **catalog** (a.k.a. metastore).\n\n### What a catalog does\nA **catalog** is the **directory of tables**. It maps a logical name (`db.sales`) to the table's **metadata location** (the `_delta_log`/Iceberg metadata pointer), and tracks databases, tables, schemas, and often **permissions and lineage**. When you run `SELECT * FROM sales`, the engine asks the catalog 'what/where is sales?' and then reads the table's metadata and files.\n\nTwo layers, don't confuse them: the **table format** (Delta/Iceberg) tracks a *single table's* state; the **catalog** tracks *which tables exist* and points to each one's metadata.\n\n### The options\n- **Hive Metastore (HMS)** — the original; still widely used as the catalog behind Spark/Trino (covered in the Spark track).\n- **AWS Glue Data Catalog** — managed, Hive-compatible, the default catalog on AWS.\n- **Unity Catalog** (Databricks) — adds **fine-grained governance** (table/column/row access control), **lineage**, and discovery across the lakehouse.\n- **Iceberg REST catalog / Polaris / Nessie** — modern, **engine-agnostic** catalogs for Iceberg; Nessie even adds **git-like branching** of data.\n\n### Why it matters\nThe catalog is the **single source of truth for what tables exist**, enabling: many engines to share the **same** tables (Spark, Trino, Snowflake all resolve `sales` identically), **governance** (one place for access control and auditing), **discovery** (browse the data estate), and **lineage**. A lakehouse without a good catalog is hard to govern and share.\n\n### The trend\nCatalogs are becoming the **governance hub** of the lakehouse — moving from a passive name→location map (Hive) to active **access control + lineage + discovery** (Unity Catalog) and **open, engine-neutral** REST catalogs so no single engine owns your tables.",
+       "concept": "A lakehouse table is files + metadata in object storage — but how does an engine know the table `sales` **exists** and **where** its metadata lives? That's the **catalog** (a.k.a. metastore).\n\n### What a catalog does\nA **catalog** is the **directory of tables**. It maps a logical name (`db.sales`) to the table's **metadata location** (the `_delta_log`/Iceberg metadata pointer), and tracks databases, tables, schemas, and often **permissions and lineage**. When you run `SELECT * FROM sales`, the engine asks the catalog 'what/where is sales?' and then reads the table's metadata and files.\n\nTwo layers, don't confuse them: the **table format** (Delta/Iceberg) tracks a *single table's* state; the **catalog** tracks *which tables exist* and points to each one's metadata.\n\n### The options\n- **Hive Metastore (HMS)** — the original; still widely used as the catalog behind Spark/Trino (covered in the Spark track).\n- **AWS Glue Data Catalog** — managed, Hive-compatible, the default catalog on AWS.\n- **Unity Catalog** (Databricks) — adds **fine-grained governance** (table/column/row access control), **lineage**, and discovery across the lakehouse.\n- **Iceberg REST catalog / Polaris / Nessie** — modern, **engine-agnostic** catalogs for Iceberg; Nessie even adds **git-like branching** of data.\n\n### Why it matters\nThe catalog is the **single source of truth for what tables exist**, enabling: many engines to share the **same** tables (Spark, Trino, Snowflake all resolve `sales` identically), **governance** (one place for access control and auditing), **discovery** (browse the data estate), and **lineage**. A lakehouse without a good catalog is hard to govern and share.\n\n### The trend\nCatalogs are becoming the **governance hub** of the lakehouse — moving from a passive name→location map (Hive) to active **access control + lineage + discovery** (Unity Catalog) and **open, engine-neutral** REST catalogs so no single engine owns your tables.\n\n### The job people forget: the commit point\nFor Iceberg, the catalog holds each table's **current metadata-file pointer**, and a commit is an atomic **compare-and-swap** of that pointer (old version → new version). If another writer swapped first, the commit is rejected; the writer refreshes, checks for conflicts and retries. Appends retry safely; two jobs rewriting the same files conflict. So: **one catalog per table, never two**, and treat the catalog as a tier-1 service on every job's write path.",
        "example": "`SELECT * FROM analytics.sales` → the engine asks the **catalog** (say Glue or Unity) for `analytics.sales`, gets the table's metadata pointer + schema (and checks the user's **permissions**), then reads the Iceberg/Delta metadata and Parquet files. Spark, Trino, and Snowflake all resolve the **same** table through that catalog.",
        "keypoints": [
         "A catalog is the directory of tables: it maps a table name → its metadata location and tracks DBs/schemas (+ perms/lineage).",
@@ -16617,7 +16764,8 @@
         "Options: Hive Metastore (original), AWS Glue (managed, Hive-compatible), Unity Catalog (governance+lineage), Iceberg REST/Nessie/Polaris.",
         "The catalog lets many engines share the SAME tables, resolving names identically.",
         "It's the place for governance (access control, auditing), discovery, and lineage.",
-        "Trend: catalogs becoming the governance hub — active access control + lineage + open, engine-neutral REST catalogs."
+        "Trend: catalogs becoming the governance hub — active access control + lineage + open, engine-neutral REST catalogs.",
+        "For Iceberg the catalog is the commit point: a commit is an atomic swap of the table's metadata pointer, retried on conflict."
        ],
        "diagram": "metastore",
        "diagram_caption": "The catalog maps table names to their metadata/location so many engines share the same governed tables.",
@@ -16654,6 +16802,17 @@
          ],
          "answer": 1,
          "explain": "Modern catalogs like Unity Catalog turn the passive name→location map into an active governance hub with access control, lineage, and discovery."
+        },
+        {
+         "q": "Two Spark jobs append to the same Iceberg table at the same moment. What normally happens?",
+         "options": [
+          "One job's rows are silently lost",
+          "The catalog accepts the first pointer swap; the second is rejected, refreshes, re-applies its append and retries",
+          "Both commits succeed and the table has two current versions",
+          "The table is locked until an admin intervenes"
+         ],
+         "answer": 1,
+         "explain": "Commits are optimistic: the catalog's compare-and-swap lets exactly one writer move the pointer from a given version. Appends don't conflict, so the loser rebases and retries (the lab shows this). Nothing is lost silently, a table never has two current versions, and Iceberg doesn't take table locks."
         }
        ],
        "exercises": [
@@ -16682,7 +16841,7 @@
       {
        "id": "lake-format-comparison",
        "title": "Delta vs Iceberg vs Hudi — compared",
-       "minutes": 11,
+       "minutes": 18,
        "summary": "How the three table formats differ in origin, design, and sweet spots — and why they're converging — so you can choose deliberately.",
        "concept": "All three are **table formats** solving the same core problem (ACID tables over open files). They differ in **origin, design, ecosystem, and sweet spot**.\n\n### Delta Lake (Databricks)\n- **Design:** a transaction log (`_delta_log`) of JSON commits + Parquet checkpoints.\n- **Strengths:** the **smoothest Spark/Databricks** experience; mature, simple, great tooling (OPTIMIZE, Z-order, liquid clustering, deletion vectors). Now **open** (Delta UniForm even exposes Iceberg-compatible metadata).\n- **Sweet spot:** Spark-centric / Databricks shops.\n\n### Apache Iceberg (Netflix)\n- **Design:** a metadata tree (metadata file → manifest list → manifests → data files); **snapshots** for time travel.\n- **Strengths:** strongly **engine-agnostic** (Spark, Trino, Flink, **Snowflake, BigQuery**, DuckDB all support it); **hidden partitioning** (you don't put partition columns in queries) and **partition evolution** (change partitioning without rewriting data); excellent at **huge scale**. Broadest industry momentum.\n- **Sweet spot:** multi-engine, open, large-scale platforms; the emerging **default**.\n\n### Apache Hudi (Uber)\n- **Design:** built for **streaming upserts** and incremental processing; offers **Copy-on-Write** (rewrite files on update — read-optimized) vs **Merge-on-Read** (write deltas, merge on read — write-optimized) table types.\n- **Strengths:** fast **upsert/CDC** ingestion and **incremental pulls**.\n- **Sweet spot:** high-frequency streaming/CDC upsert workloads.\n\n### Choosing\n- **Spark/Databricks** → **Delta**.\n- **Multi-engine / open / large analytics** → **Iceberg** (broadest support, momentum).\n- **Heavy streaming upserts** → **Hudi**.\n\n### The convergence\nThe formats are **converging**: all now do ACID, time travel, schema evolution; Delta UniForm and cross-format catalogs let engines read multiple formats. The **decision matters less over time** — pick by your **primary engine and ecosystem**, and don't agonize. Iceberg's vendor-neutral adoption (Snowflake, BigQuery, etc.) is making it the common denominator.",
        "example": "A Databricks-centric team picks **Delta** for the smoothest integration. A company wanting **Snowflake and Spark and Trino** to all query one copy picks **Iceberg** for its broad, engine-neutral support. A team doing high-rate CDC upserts leans **Hudi** (or Iceberg/Delta with MERGE).",
@@ -16729,6 +16888,17 @@
          ],
          "answer": 1,
          "explain": "Feature gaps are narrowing; pick by primary engine (Delta for Databricks, Iceberg for multi-engine, Hudi for streaming upserts), with Iceberg increasingly the neutral default."
+        },
+        {
+         "q": "You add a column to a 40 TB Iceberg table. How many data files are rewritten?",
+         "options": [
+          "All of them, to add the column",
+          "Only files in the latest partition",
+          "None: schema evolution writes a new metadata file; old files read the column as null",
+          "It depends on the file format"
+         ],
+         "answer": 2,
+         "explain": "Iceberg tracks columns by ID in metadata, so ADD COLUMN is metadata-only and old Parquet files simply lack it (read as null). The lab shows 0 files rewritten. Partition and file format don't change that."
         }
        ],
        "exercises": [
@@ -31588,6 +31758,17 @@
          ],
          "answer": 1,
          "explain": "The open lakehouse decouples storage from compute so multiple engines query one copy; you add a serving layer for fast BI without duplicating or locking in data."
+        },
+        {
+         "q": "Spark, Trino and Snowflake all need the same Iceberg tables. What is the single most important design decision?",
+         "options": [
+          "Use three catalogs, one per engine",
+          "One catalog as the source of truth that every engine commits and reads through",
+          "Copy the tables into each engine",
+          "Use Parquet without a table format"
+         ],
+         "answer": 1,
+         "explain": "The catalog holds the current-metadata pointer; two catalogs drift and fork history. Copies multiply cost and staleness. Plain Parquet gives up transactions and schema evolution."
         }
        ],
        "exercises": [
@@ -31595,6 +31776,11 @@
          "prompt": "Design a data platform for BI from an app OLTP DB, a SaaS source, and event logs. Walk the framework with trade-offs.",
          "hint": "Clarify → ingest(batch+CDC) → medallion lakehouse → serving → cross-cutting → trade-offs.",
          "solution": "**Clarify:** Goal = BI dashboards + ad-hoc analytics for analysts (SQL/BI); **latency** = hourly/daily is fine → **batch ELT**; **volume** = moderate (app DB + SaaS + logs); **constraints** = cloud, budget, PII governance. **Architecture (walk the lifecycle):** **Ingestion** — **CDC** the **OLTP** app DB (Datastream/Debezium) to capture changes without heavy source queries; **batch EL** the **SaaS** source (Fivetran/Airbyte); **Auto Loader/COPY** the **event logs** — all landing in **bronze**. **Storage** — a **medallion lakehouse** on **S3/GCS**: **bronze** (raw/immutable), **silver** (cleaned, deduped, conformed), **gold** (modeled **star schemas / marts / aggregates**), as **partitioned Parquet/Delta/Iceberg**. **Processing** — **dbt/SQL** (or Spark) builds bronze→silver→gold with **data tests**, orchestrated as a **DAG** (Airflow/Composer). **Serving** — analysts query **gold** via the **warehouse/lakehouse SQL engine** (BigQuery/Snowflake/Databricks SQL) + a **BI tool**; optional **reverse-ETL** and **ML** on the lake. **Cross-cutting** — **orchestration**, **governance** (Unity Catalog/Lake Formation/Dataplex for access, **PII**, lineage), **observability** (freshness/volume/quality/lineage + alerts), **cost** controls. **Scale & trade-offs:** the **lakehouse + elastic warehouse** scales to TBs; **partition/cluster** + columnar keep queries cheap. **Trade-offs to state:** chose **batch** (hourly) over **streaming** — **simpler/cheaper**, latency not needed (add a thin streaming path only if a real-time use case appears); used an **open lakehouse** queried by many engines (**one copy, no lock-in**) with a serving layer for fast BI; controlled **cost** via layout + right-sized compute; **CDC** keeps the OLTP source fresh without load. This **requirement-driven, framework-structured** design — with explicit trade-offs — is the canonical answer to the most common DE design prompt."
+        },
+        {
+         "prompt": "**Transfer.** Queries on a streaming-fed silver table got 5x slower over a month, with no data growth beyond normal. What do you check first and what do you schedule?",
+         "hint": "Count files and snapshots.",
+         "solution": "Check file counts per partition and the number of snapshots/manifests: frequent streaming commits create many small files and much metadata, which slows planning and reading. Schedule compaction (rewrite data files to ~256–512 MB), snapshot expiry, manifest rewrite and orphan-file cleanup; consider fewer, larger commits."
         }
        ]
       },
@@ -31686,6 +31872,17 @@
          ],
          "answer": 1,
          "explain": "Apply changes with a MERGE by PK (idempotent), partition by PK for ordering, and dedup to latest — so at-least-once delivery doesn't corrupt or double-apply."
+        },
+        {
+         "q": "Your CDC sink gets each event at least once. What makes the silver table correct anyway?",
+         "options": [
+          "Kafka exactly-once delivery to the lake",
+          "Keyed MERGE that applies an event only if its source LSN is newer than the stored row's (deletes kept as tombstones)",
+          "Appending every event to silver",
+          "Deduplicating by event timestamp"
+         ],
+         "answer": 1,
+         "explain": "Idempotent apply is the standard answer. Exactly-once inside Kafka doesn't cover the external sink. Appending creates duplicates. Timestamps can tie or go backwards; the log position is the true order."
         }
        ],
        "exercises": [
@@ -31693,6 +31890,11 @@
          "prompt": "Design CDC replication of a Postgres OLTP database into a Delta lakehouse table, fresh and low-impact. Cover capture, transport, apply, bootstrap, and the hard parts.",
          "hint": "WAL via Debezium → Kafka by PK → idempotent MERGE; snapshot+incremental; ordering/deletes/schema/idempotency.",
          "solution": "**Clarify:** replicate Postgres **orders** into a **Delta** mirror, **minutes-fresh**, **low source impact**, capturing **I/U/D**, **exactly-once** end state. **Capture:** use **log-based CDC** — **Debezium** (or **Datastream/DMS**) tails the Postgres **WAL**, emitting a change event per row mutation (with op type and PK). This has **low source impact** (reads the log, not the tables) and is **continuous/fresh**, unlike heavy `SELECT *` dumps (expensive, stale, **miss deletes**). **Transport:** publish change events to **Kafka**, **one topic per table**, **partitioned by primary key** (`order_id`) so all changes to a given row stay **ordered** (out-of-order apply would corrupt state). **Apply (sink):** a consumer (Spark/Flink `foreachBatch`) **reduces to the latest change per key** within each micro-batch (dedup), then runs an **idempotent MERGE** into the **Delta `orders`** mirror by `order_id`: `WHEN MATCHED AND op='D' THEN DELETE`, `WHEN MATCHED THEN UPDATE SET *`, `WHEN NOT MATCHED AND op<>'D' THEN INSERT *`. Because MERGE-by-PK is **idempotent**, **at-least-once** redelivery is **safe** (no double-apply) — exactly-once end state. **Bootstrap:** take an **initial snapshot** of existing rows (Debezium snapshot or a one-time load), then switch to **incremental** CDC. **Hard parts handled:** **idempotency** (MERGE + dedup), **per-key ordering** (PK partitioning), **deletes** (applied — a dump would miss them), **schema changes** (handle source DDL via schema evolution on the Delta table), and **late/duplicate** events (dedup + MERGE). **Downstream:** enable **Change Data Feed** on the mirror to propagate changes **incrementally** to Silver/Gold (no full re-scan). **Result:** a **fresh, exact, low-impact** replica. The strong answer emphasizes **log-based capture (low impact)** and the **idempotent, ordered MERGE** (the hard parts) — which is what separates a robust CDC design from a naive append."
+        },
+        {
+         "prompt": "**Transfer.** Add a 2 TB table to a live CDC pipeline without pausing the other tables. Outline the steps and the checks.",
+         "hint": "Incremental snapshot via signal.",
+         "solution": "Add the table to the connector's include list, trigger an incremental snapshot with a signal so Debezium reads it in chunks while streaming continues, size Kafka retention and sink throughput for the burst, then reconcile per-day counts and column checksums against the source and watch replication-slot lag throughout."
         }
        ]
       },
@@ -31742,6 +31944,76 @@
          "prompt": "Design a data quality & observability system for an analytics platform. Cover prevention (gates), detection (observability), process, and trade-offs.",
          "hint": "Expectations in pipelines (pass/quarantine/fail+alert); four signals + anomaly detection; SLAs/contracts; fail-vs-quarantine.",
          "solution": "**Clarify:** goal = **trustworthy** data; catch bad/missing/late/duplicated data **before** dashboards/ML; define **SLAs**, critical datasets, and on-call. **A) Prevention — quality gates in pipelines:** embed **declarative checks/expectations** at each stage (using **dbt tests / Great Expectations / Lakeflow/Glue expectations / Soda**): **freshness** (data arrived within SLA), **volume** (row/byte counts within expected bounds — anomaly = missing/dup), **schema** (expected columns/types — catch drift), and **quality rules** (**nulls, ranges, uniqueness, referential**: `id` unique+not-null, `amount ≥ 0`, `status` in a set). **On a check:** **pass → publish** to the next layer; **fail → quarantine** the offending rows to a side table (keep good rows flowing) **and alert**; for **critical invariants** (e.g. row-count collapse, a key invariant), **hard-fail the run** to stop bad data propagating. **B) Detection — observability:** continuously monitor the **four signals** (**freshness, volume, quality, lineage**) across **all** tables with **metrics**, **anomaly detection**, **dashboards/SLAs**, and **alerting** that **pages on-call before users notice** (tools: **Monte Carlo, Elementary, OpenLineage**, platform monitoring). **Lineage** powers **impact analysis** (what breaks downstream) and **root-cause** (what fed a wrong number). **C) Process/culture:** **data SLAs/SLOs**, **data contracts** (producers commit to schema/quality), **incident response** (runbooks, **blameless post-mortems**), and **ownership** — treat **data as a product**. **Trade-offs:** **fail vs quarantine** — hard-fail **critical** invariants, **quarantine + alert** the rest to keep pipelines flowing (choose per dataset); **coverage vs noise** — enough checks to catch real issues without **alert fatigue** (start from recommended rules + known invariants, tune thresholds); **prevention + detection** — gates stop bad data, observability catches what slips through, and you need **both**. This design keeps data **trustworthy** end to end — the strong answer to 'how do you ensure data quality and know when data is wrong?'"
+        }
+       ]
+      },
+      {
+       "id": "sd-design-platform",
+       "title": "Design: a whole data platform at real scale (30M users)",
+       "minutes": 25,
+       "summary": "The senior design question end to end: scope, capacity math, CDC + clickstream into Kafka, an Iceberg/Delta lakehouse with one catalog, dbt + orchestration, serving, and the failure table.",
+       "concept": "A platform design answer has five parts, in this order.\n\n### The analogy\nA city water system: rivers and wells (sources), a reservoir that absorbs floods (Kafka), raw → filtered → drinking water (bronze → silver → gold), and inspectors with pipe maps (catalog, contracts, quality checks). You measure the evening-peak flow before you size a single pipe.\n\n### 1. Scope\nConsumers and their freshness (dashboards hourly, fraud in seconds, finance daily and exact), sources, user scale, constraints (PII deletion, retention, team size).\n\n### 2. Size it\n6B events/day x 140 B + 400M CDC changes x 600 B ≈ **1.1 TB/day**, ~50 MB/s at a 4x peak. Kafka with 7 days x RF3 at ~3x producer compression ≈ 7.6 TB. Bronze ≈ 24 TB for 90 days. Naive 1-minute streaming commits create ~130x more files than needed, so **compaction is a requirement**. Saying \"this is moderate scale; the hard part is correctness\" is a senior signal.\n\n### 3. Design the layers\nDebezium CDC per shard and a clickstream collector into Kafka (Avro + registry); managed EL for SaaS. One catalog over an open table format; bronze append-only, silver merged with an LSN guard, gold dimensional with a semantic layer. Streaming land + hourly compaction, silver merges every 10–15 min, dbt for gold, asset-aware orchestration. Serve BI, ML features (offline + online) and reverse ETL.\n\n### 4. Name what breaks first\nHot keys, replication-slot lag, small files, unannounced schema changes, late events, deletion requests, cost creep — each with a concrete mitigation.\n\n### 5. Sequence the build\nWith 8 engineers: CDC + bronze/silver for orders and payments, then the finance mart, then clickstream.",
+       "example": "Inputs: 30M users x ~200 events/day = 6B events (140 B) + 40 Postgres shards, 400M changes/day (600 B)\nRaw: 0.84 TB + 0.24 TB ≈ 1.1 TB/day; avg 12.5 MB/s, peak ~50 MB/s (~300k events/s)\nKafka: 1.1 TB / 3 (producer compression) x 7 days x RF3 ≈ 7.6 TB → plan ~10 TB; 48 partitions (10 for throughput, rest for consumers + growth)\nBronze: 0.27 TB/day → 24 TB over 90 days; ~530 files/day at 512 MB vs 69,120 from naive 1-min commits\nFreshness plan: bronze ~1 min, silver 10–15 min, gold hourly, finance mart daily after reconciliation",
+       "keypoints": [
+        "Scope consumers, freshness, sources, scale and constraints before drawing anything.",
+        "Do the capacity math out loud: bytes/day, peak MB/s, Kafka disk with retention x RF, lake storage, file counts.",
+        "CDC and clickstream into Kafka (keyed, schema-registered); managed EL for SaaS sources.",
+        "One catalog over an open table format; bronze append-only, silver merged idempotently, gold dimensional + semantic layer.",
+        "Streaming writes need scheduled compaction; small files appear in the arithmetic before production.",
+        "Close with the failure table and a build sequence that matches the team size."
+       ],
+       "diagram": "platform-at-scale",
+       "diagram_caption": "Sources → Kafka → bronze/silver/gold lakehouse → BI, ML features and reverse ETL, with governance across everything.",
+       "quiz": [
+        {
+         "q": "Your arithmetic gives ~1.1 TB/day and ~50 MB/s peak. What should drive most of your design time?",
+         "options": [
+          "Raw throughput: add brokers and executors",
+          "Correctness and operations: CDC merges, late data, deletes, schema changes, compaction",
+          "Choosing the fastest file format",
+          "Real-time everything"
+         ],
+         "answer": 1,
+         "explain": "At this scale a modest cluster handles the bytes. What goes wrong is correctness and operations. File format choice matters less than compaction and layout. 'Real-time everything' raises cost without a consumer asking for it."
+        },
+        {
+         "q": "48 streaming writers commit to a bronze table every minute. Roughly how many files per day before compaction?",
+         "options": [
+          "~530",
+          "~1,440",
+          "~69,000",
+          "~48"
+         ],
+         "answer": 2,
+         "explain": "1,440 commits/day x 48 files = 69,120. ~530 is what the same bytes need at 512 MB files; 1,440 assumes one file per commit; 48 is per commit. That gap is why compaction is part of the design."
+        },
+        {
+         "q": "Why put Kafka between Debezium and the lakehouse instead of writing CDC straight into tables?",
+         "options": [
+          "Kafka makes CDC exactly-once end to end",
+          "Buffering for spikes and sink outages, replay, and fan-out to other consumers like fraud",
+          "Debezium can't write anywhere else",
+          "It removes the need for a silver merge"
+         ],
+         "answer": 1,
+         "explain": "The reservoir role: absorb bursts, survive sink downtime without holding WAL on the source, replay after bugs, and let several consumers read the same changes. It doesn't make the sink exactly-once (the merge does), Debezium Server can target other sinks, and you still merge in silver."
+        }
+       ],
+       "exercises": [
+        {
+         "prompt": "**Warm-up.** Rerun the lab's arithmetic by hand for 60M users (same events per user). What are raw TB/day, peak MB/s and Kafka disk?",
+         "hint": "Only clickstream doubles; CDC stays the same unless shards grow.",
+         "solution": "Clickstream 12B x 140 B = 1.68 TB, CDC 0.24 TB → 1.92 TB/day. Average 1.92e12 / 86,400 ≈ 22 MB/s; peak x4 ≈ 89 MB/s. Kafka: 1.92 / 3 x 7 x 3 ≈ 13.4 TB, ~17.5 TB with 30% headroom. Note what didn't change: the silver merge design and the CDC path."
+        },
+        {
+         "prompt": "**Transfer.** Finance says yesterday's revenue changed after they closed the books. Using the failure table, list the two most likely causes in this design and the fix for each.",
+         "hint": "Late events and CDC updates both rewrite yesterday.",
+         "solution": "1. Late-arriving clickstream/mobile events landing in yesterday's event-time partition (microbatch lookback reprocessed it) → publish a 'final after T+2' rule and build the finance mart from a closed, versioned snapshot (time travel / tagged snapshot). 2. CDC updates to old orders (refunds, status corrections) merged into silver → model refunds as separate dated facts instead of updating the original order's revenue, so closed periods don't move."
+        },
+        {
+         "prompt": "**Stretch.** A deletion request arrives for one user. Their events are in 90 days of bronze clickstream (24 TB). Design deletion so it finishes within 30 days without rewriting all 24 TB each time.",
+         "hint": "Tokenize identity; keep PII in one small keyed table; batch deletes.",
+         "solution": "Don't store raw identifiers in event tables: replace user_id with a token at the collector and keep the token→person mapping (and PII) in a small vault table. A deletion removes the mapping row (crypto-shredding if values are encrypted per user), which makes events anonymous immediately. For tables that must physically drop the rows, batch requests weekly and run row-level deletes (merge-on-read delete files or deletion vectors) only on partitions that contain those tokens, then compact and expire old snapshots so the bytes are really gone. Record each request's completion for audit."
         }
        ]
       },

@@ -15,7 +15,13 @@ python -m pip install dbt-core dbt-snowflake     # or dbt-bigquery / dbt-redshif
 dbt --version          # confirm it installed
 ```
 
-For local practice with zero cloud setup, `dbt-duckdb` runs entirely on your laptop. dbt **Core v2 (Fusion)** ships as a fast Rust engine; the commands below are identical.
+For local practice with zero cloud setup, `dbt-duckdb` runs entirely on your laptop. Two different things are now called "dbt v2", so be precise:
+
+- **The default `dbt` install** (`pip install dbt`, brew, winget or the install script) gives you dbt v2, free to use under dbt Labs' **dbt v2 licence agreement** (linked from the install page as the Fusion engine licence). It is not Apache 2.0.
+- **dbt OSS v2** (`dbt-oss`) is the **Apache 2.0** open-source runtime behind it. It is a separate install that **cannot share a Python environment** with `dbt`, and dbt Labs announced it as **alpha** on 1 June 2026.
+- **dbt Core 1.x** (`dbt-core` + an adapter such as `dbt-duckdb`, 1.12.6 as of Nov 2026) is still published and is what this course's lab uses.
+
+The commands below are the same on all three. Check that your adapter supports v2 before switching. Sources: https://docs.getdbt.com/docs/local/install-dbt and https://docs.getdbt.com/blog/dbt-core-v2-is-here
 
 ## 2. Create a project
 
@@ -155,8 +161,8 @@ create or replace view analytics.dbt_yourname.stg_customers as (
 ## 7. dbt Core vs dbt Cloud — what you actually get
 
 - **dbt Core**: the `dbt` CLI above. Free, Apache-2.0. You bring your own scheduler (Airflow/Dagster/cron) and CI.
-- **dbt Cloud**: a hosted IDE in the browser, a built-in scheduler with logs, CI that runs on every PR, hosted docs, and an API/Semantic Layer. You pay per developer seat for convenience.
-- **Fusion engine (Core v2, 2026)**: a Rust rewrite — much faster parsing/compilation, real **SQL comprehension** (it understands your SQL, catching errors before you run), and **column-level lineage** built in.
+- **dbt Cloud** (dbt's docs now call it the **dbt platform**): a hosted IDE in the browser, a built-in scheduler with logs, CI that runs on every PR, hosted docs, and an API/Semantic Layer. You pay per developer seat for convenience.
+- **dbt v2 / Fusion (2026)**: dbt Labs rebuilt dbt in Rust. The default `dbt` install is v2 under dbt Labs' licence; the Apache-2.0 open-source runtime (`dbt-oss`, alpha) is a separate install built from the same foundations, and Fusion adds extra capabilities on top. Main gains: much faster parsing and compilation and real **SQL comprehension** (it parses your SQL and catches errors before you run). Source: https://docs.getdbt.com/blog/dbt-core-v2-is-here
 
 ## Scenario — a brand-new analytics project, day one
 

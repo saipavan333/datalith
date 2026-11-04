@@ -251,14 +251,15 @@ async function renderLesson(id) {
   const idx = LESSONS.findIndex(x => x.id === id);
   const prev = LESSONS[idx - 1], next = LESSONS[idx + 1];
   const isDone = progress.has(id);
+  const P2 = window.P2R ? P2R.get(id) : null;   // pass-2 "easier + visual" layer (static/pass2/)
 
   let html = `
     <article class="lesson">
       <div class="crumbs">${l._track.icon} <b>${l._track.title}</b> · ${l._module.title} · ${l.minutes || 8} min read</div>
       <h1>${l.title}</h1>
       <p class="lesson-summary">${l.summary || ""}</p>
-
-      <div class="section-label">The idea, in plain English</div>
+      ${P2 ? P2R.top(P2, renderMarkdown, mdInline) : ""}
+      <div class="section-label">${P2 ? "Going deeper: how it really works" : "The idea, in plain English"}</div>
       <div class="prose">${renderMarkdown(l.concept || "")}</div>`;
 
   if (l.diagram && window.DIAGRAMS && DIAGRAMS[l.diagram]) html += `
@@ -300,6 +301,8 @@ async function renderLesson(id) {
 
   html += `<div id="interview"></div>`;
 
+  if (P2) html += P2R.bottom(P2, mdInline);
+
   html += `
       <div class="lesson-footer">
         <button class="btn ${isDone ? "good" : "primary"}" id="complete">${isDone ? "✓ Completed — click to undo" : "Mark as complete"}</button>
@@ -322,12 +325,13 @@ async function renderLesson(id) {
   $("#prev")?.addEventListener("click", () => location.hash = `#/lesson/${prev.id}`);
   $("#nextl")?.addEventListener("click", () => location.hash = `#/lesson/${next.id}`);
   if (l.quiz) renderQuiz(l.quiz, $("#quiz-area"));
+  if (P2) { try { P2R.mount(P2, $("#content")); } catch (e) { console.error("pass2 interactive failed", e); } }
 
   // optional deep-dive markdown
   try {
     const _dr = await fetch(`content/lessons/${id}.md`);
     const deep = { markdown: _dr.ok ? await _dr.text() : "" };
-    if (deep.markdown) $("#deep").innerHTML = `<div class="section-label">Go deeper</div><div class="prose">${renderMarkdown(deep.markdown)}</div>`;
+    if (deep.markdown) $("#deep").innerHTML = `<div class="section-label">${P2 ? "Deep-dive tutorial" : "Go deeper"}</div><div class="prose">${renderMarkdown(deep.markdown)}</div>`;
   } catch {}
 
   $("#cheat")?.addEventListener("click", () => location.hash = `#/cheat/${l._track.id}`);
@@ -386,11 +390,24 @@ function renderCheatsheet(trackId) {
   }).catch(() => { $("#cs-body").innerHTML = "<p>Cheat sheet unavailable.</p>"; });
 }
 
+/* Deterministic option order per question: seeded by the question text, so the order is stable
+   across reloads (and for every learner) but the correct answer isn't always in the same slot.
+   Buttons keep their ORIGINAL index in data-oi, so q.answer still maps to the right option. */
+function quizOrder(q) {
+  let h = 2166136261;                                   // FNV-1a hash of the question text
+  for (const ch of q.q) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const idx = q.options.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {            // Fisher-Yates with an LCG seeded by h
+    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
+    const j = (h >>> 16) % (i + 1); [idx[i], idx[j]] = [idx[j], idx[i]];   // high bits: better spread
+  }
+  return idx;
+}
 function renderQuiz(quiz, mount) {
   mount.innerHTML = quiz.map((q, qi) => `
     <div class="quiz" data-qi="${qi}">
       <div class="quiz-q">${qi + 1}. ${mdInline(q.q)}</div>
-      ${q.options.map((o, oi) => `<button class="quiz-opt" data-oi="${oi}">${mdInline(o)}</button>`).join("")}
+      ${quizOrder(q).map(oi => `<button class="quiz-opt" data-oi="${oi}">${mdInline(q.options[oi])}</button>`).join("")}
       <div class="quiz-explain"></div>
     </div>`).join("");
   $$(".quiz", mount).forEach((qEl, qi) => {
@@ -404,7 +421,7 @@ function renderQuiz(quiz, mount) {
         expl.className = "quiz-explain ok show"; expl.innerHTML = "✓ Correct. " + mdInline(q.explain || "");
       } else {
         opt.classList.add("wrong");
-        $$(".quiz-opt", qEl)[q.answer].classList.add("correct");
+        $(`.quiz-opt[data-oi="${q.answer}"]`, qEl).classList.add("correct");
         expl.className = "quiz-explain no show"; expl.innerHTML = "Not quite. " + mdInline(q.explain || "");
       }
     }));

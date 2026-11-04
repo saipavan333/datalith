@@ -16,9 +16,10 @@ serialization, disk spill, and network I/O, and creates a stage boundary. Reduce
 small joins, pick good partition keys.
 
 **Q — How do you handle data skew?**
-One hot key dominates a partition → a straggler task. Fixes: **salting** (append a random suffix to the hot key to
-spread it, then aggregate in two passes), **AQE skew-join** handling (`spark.sql.adaptive.skewJoin.enabled`), or
-**broadcast** the other side if small. Detect via the Spark UI (one task far slower / larger).
+One hot key dominates a partition → a straggler task, in **joins** and non-decomposable work (`collect_list`,
+percentiles, windows); a `sum`/`count` groupBy is usually absorbed by partial aggregation, so check the plan first.
+Fixes: **broadcast** the other side if small; **AQE skew-join** handling (`spark.sql.adaptive.skewJoin.enabled`,
+on by default); **salting** (random suffix on the big side's hot key, small side's rows replicated per suffix). Detect via the Spark UI (one task far slower / larger).
 
 **Q — Join strategies?**
 - **Broadcast hash join** — ship the small side to every executor; no shuffle of the big side. Use when the small side

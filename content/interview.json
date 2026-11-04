@@ -2729,6 +2729,12 @@
    "level": "Medium",
    "q": "What triggers a shuffle, and how do you reduce shuffles?",
    "a": "Wide operations: joins, groupBy/aggregations, distinct, repartition, and window functions. Reduce them by filtering/aggregating early (less data to shuffle), broadcasting small tables (avoid shuffling both sides), pre-partitioning by the join key, and avoiding unnecessary repartitions. Fewer/smaller shuffles = faster jobs."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "How do you choose spark.sql.shuffle.partitions for a large job, and what does AQE change?",
+   "a": "Estimate shuffle bytes (from the Spark UI's shuffle write or input size after projection/filter) and aim for ~100-200 MB per reduce partition, so 600 GB → ~4,800. The default 200 suits ~25 GB. With AQE on (default), Spark can coalesce small partitions after the map stage (by default only to a 1 MB minimum because parallelismFirst=true; set it false on busy clusters to honour the 64 MB advisory size) and split skewed join partitions. A common pattern is to set a generous partition count and let AQE coalesce."
   }
  ],
  "bd-dataframes-sql": [
@@ -3249,6 +3255,18 @@
    "level": "Medium",
    "q": "Why might a team move off Airflow?",
    "a": "Pain points: awkward testing/local dev, clunky dynamic pipelines, the confusing logical-date model, and being task- (not data-) centric so lineage/observability are bolted on. Teams move to Dagster (asset-based, typed, testable) or Prefect (Pythonic, dynamic) for better developer experience and data-awareness. Airflow still dominates by ubiquity."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "A source re-sends last Tuesday's file. How does an asset-based orchestrator handle it differently from a task-based one?",
+   "a": "Task-based: you identify every DAG that consumed the file (directly or indirectly) and clear Tuesday's runs, relying on tribal knowledge of lineage. Asset-based: the updated upstream partition makes every downstream asset partition for Tuesday stale; you materialize the stale set, and blocking asset checks stop bad data reaching marts. The key is that the orchestrator records which upstream versions each partition was built from."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "What changed for DAG authors in Airflow 3?",
+   "a": "Authoring imports moved to airflow.sdk (DAG, dag, task) with old paths deprecated; classic operators moved to the standard provider; task code can't use the metadata DB directly (Task SDK + API server); SubDAGs and execution_date were removed (use TaskGroups and logical_date); catchup defaults to False; Datasets became Assets for data-aware scheduling."
   }
  ],
  "pipe-testing": [
@@ -3389,6 +3407,24 @@
    "level": "Medium",
    "q": "How does Kafka guarantee ordering, and what's the catch?",
    "a": "Ordering is guaranteed only WITHIN a partition (appended and read in order); across partitions there's no global order. So for ordered per-entity processing (per user), partition by that key (same key → same partition → ordered). The catch: the partition key determines both ordering and load distribution."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "What do acks=all and min.insync.replicas each guarantee, and how do you configure a topic so an acknowledged write can't be lost to one broker failure?",
+   "a": "acks=all makes the leader wait for every replica currently in the ISR before acknowledging. If the ISR has shrunk to just the leader, that's one copy. min.insync.replicas sets the minimum ISR size for an acks=all write to succeed; below it the producer gets NotEnoughReplicas. Use replication factor 3, min.insync.replicas=2, acks=all, unclean leader election disabled, and spread replicas across racks/zones. You lose write availability when two replicas are down, which is the intended trade."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "What is the high watermark and why can't consumers read past it?",
+   "a": "It's the smallest log-end offset among in-sync replicas: every in-sync copy has all records below it. Consumers only fetch below it so they never read a record that could vanish if the leader fails and a follower without that record takes over. Records between the HW and the leader's log end become visible as followers catch up."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Kafka 4.x removed ZooKeeper. What replaced it and what does that change operationally?",
+   "a": "KRaft: cluster metadata is an internal Raft-replicated log managed by controller nodes (process.roles=controller, or combined broker,controller on small clusters). One system to secure, monitor and upgrade instead of two; faster controller failover and metadata propagation, which supports more partitions per cluster. Migrating an old cluster means moving to KRaft on a 3.x release before upgrading to 4.x."
   }
  ],
  "stream-lambda-kappa": [
@@ -3449,6 +3485,18 @@
    "level": "Medium",
    "q": "How do producers and consumers use the registry?",
    "a": "The producer serializes a record, registers/looks up its schema in the registry (getting a schema ID), and writes the ID + payload (not the full schema) — compact. The consumer reads the ID, fetches the schema (cached), and deserializes. The registry checks compatibility on registration, preventing breaking changes from reaching the topic."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "Explain BACKWARD vs FORWARD compatibility and which side you deploy first.",
+   "a": "BACKWARD: the new schema can read data written with the old one, so deploy consumers first; safe changes are deleting fields and adding fields with defaults. FORWARD: the old schema can read data written with the new one, so deploy producers first; safe changes are adding fields and deleting fields that had defaults. FULL is both. Transitive variants check against all previous versions, which matters when consumers replay long-retention topics."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "What is a data contract and how do you enforce one?",
+   "a": "A versioned agreement owned by the producer covering schema, semantics (units, allowed values, grain), quality rules, freshness/SLA and ownership/change process. Enforce it in producer CI (registry compatibility check and schema diff on every PR), at ingestion (validate, quarantine failures, alert the owner), and in the warehouse (dbt model contracts and tests). Breaking changes go through versioning and a dual-write migration window."
   }
  ],
  "stream-joins": [
@@ -3655,6 +3703,12 @@
    "level": "Medium",
    "q": "Why is a shared catalog important for interoperability?",
    "a": "Because the lakehouse promise is open: store data once, query with many engines. A shared catalog lets Spark, Trino, Flink, and warehouses all see the same table definitions over the same files — no copying or per-engine metadata. It's what prevents data silos and lock-in in a multi-engine architecture."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Why is pointing two catalogs at the same Iceberg table dangerous?",
+   "a": "Each catalog keeps its own idea of the current metadata file. A writer committing through catalog A moves A's pointer; catalog B still points to the old version, so readers through B see stale data and writers through B can commit on top of an old base, effectively forking or overwriting history. Use one catalog as the source of truth for each table, and give other engines read access through it or via federation."
   }
  ],
  "lake-format-comparison": [
@@ -3675,6 +3729,18 @@
    "level": "Medium",
    "q": "Copy-on-write vs merge-on-read?",
    "a": "Copy-on-write (CoW) rewrites affected data files on each update — slower writes, fast reads (clean files). Merge-on-read (MoR) writes deltas/delete files and merges at read time — fast writes (good for frequent upserts/streaming), slower reads until compaction. Choose CoW for read-heavy, MoR for write/upsert-heavy."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "Walk me through what happens on disk when you commit an append to an Iceberg table, and compare it with Delta.",
+   "a": "Iceberg: the writer writes new Parquet data files, a manifest listing them with column stats, a new manifest list for the snapshot, and a new table metadata file that adds the snapshot. Then it asks the catalog to atomically swap the table's pointer from the old metadata file to the new one; if the pointer moved meanwhile, it refreshes and retries. Delta: the writer writes data files, then tries to create the next numbered JSON file in _delta_log with add actions (and metaData/protocol if they changed). Creating version N+1 must be mutually exclusive; the loser re-reads and checks conflicts. Both are optimistic concurrency; Iceberg's commit point is the catalog, Delta's is the log file."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Copy-on-write vs merge-on-read: when do you choose each?",
+   "a": "Copy-on-write rewrites affected files on every update: reads are fast and simple, writes are expensive (write amplification), good for tables updated rarely or in big batches. Merge-on-read writes changes as delete files, deletion vectors or log files and merges at read time: cheap frequent writes and fresher data, but reads slow down until compaction runs. CDC upserts every few minutes favour merge-on-read plus scheduled compaction; a daily-rebuilt reporting table favours copy-on-write."
   }
  ],
  "lake-streaming-ingest": [
@@ -6037,6 +6103,88 @@
    "level": "Easy",
    "q": "What is polyglot persistence?",
    "a": "Using multiple datastore types together, each for its strength — for example an RDBMS as the system of record, Redis for caching, and a search or graph store for specific access patterns — rather than forcing one database to do everything."
+  }
+ ],
+ "pipe-cdc": [
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "Why would you choose log-based CDC over polling with an updated_at column?",
+   "a": "Polling only sees current rows, so it misses hard deletes, collapses intermediate states between polls, depends on every writer bumping updated_at, and adds scan load to production. Log-based CDC reads the WAL/binlog, so it gets every committed insert, update and delete in order with little source load. The costs are replication privileges, a streaming stack (Kafka Connect + Debezium is typical), schema-change handling, and monitoring replication-slot lag."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "How do you get exactly-once results from a CDC pipeline when Kafka delivery is at-least-once?",
+   "a": "Don't chase exactly-once delivery; make the apply idempotent. Keep the primary key and the source position (LSN or binlog offset) on every event, land events append-only in bronze, then MERGE into silver taking the latest event per key and only applying events newer than the stored position, on every branch. Deletes become tombstones (is_deleted plus the delete's LSN), not hard deletes: a hard delete forgets the key, and a replayed older batch would re-insert it. Duplicates and replays in any order then change nothing. Verify with periodic count/checksum reconciliation against the source."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "Your Postgres primary's disk alert fires at 3am and the cause is pg_wal. What happened and what do you do?",
+   "a": "Most likely an inactive or lagging logical replication slot, often a stopped Debezium connector: the slot retains WAL until the consumer confirms it. Check pg_replication_slots for the slot's restart_lsn lag. Restart or fix the connector so it catches up; if it can't recover in time and the disk will fill, dropping the slot frees WAL but means you must re-snapshot that connector. Afterwards: alert on slot lag in bytes and minutes, and consider the database's max_slot_wal_keep_size setting as a safety cap, accepting that hitting it invalidates the slot."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Design CDC for 40 database shards into a lakehouse with a 15-minute freshness SLA.",
+   "a": "One Debezium connector (or task) per shard on Kafka Connect, a topic per table with the shard id in the key or as a column, keyed by primary key so per-row order holds. Avro/Protobuf with a schema registry and a compatibility rule. A streaming job lands every event into bronze Iceberg/Delta (append, partitioned by ingest date), and a micro-batch every 5–10 minutes MERGEs into silver with an LSN guard on every branch, keeping deletes as tombstones. Monitor connector status, slot lag per shard, consumer lag, and freshness of silver. Backfill new tables with incremental snapshots. Reconcile daily counts per shard."
+  }
+ ],
+ "sd-design-platform": [
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Design the data platform for a 30M-user marketplace. Walk me through it.",
+   "a": "Scope consumers and freshness (BI hourly, fraud seconds, finance daily and exact), sources (40 Postgres shards, clickstream, SaaS) and constraints (PII deletion, retention, team of 8). Size it: ~1.1 TB/day raw, ~50 MB/s peak, ~7.6 TB Kafka with 7d RF3, ~24 TB bronze for 90 days. Design: Debezium CDC and a clickstream collector into Kafka with Avro and a registry; managed EL for SaaS; one catalog over Iceberg/Delta; bronze append-only, silver merged with an LSN guard every 10–15 minutes, gold dimensional via dbt with a semantic layer; asset-aware orchestration; serving to BI, ML features and reverse ETL. Then the failure table (hot keys, slot lag, small files, schema changes, late data, deletion, cost) and a build sequence starting with orders and payments for finance."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "What breaks first in a streaming-fed lakehouse and how do you prevent it?",
+   "a": "Small files and metadata growth from frequent commits (slower planning and reads) → compaction, snapshot expiry, manifest rewrite, fewer larger commits. Next: schema changes from producers (registry gate in CI, contracts, quarantine), CDC source issues (replication-slot lag alerts and WAL caps), and late data changing closed periods (event-time partitioning, lookback windows, closed snapshots for finance)."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "How do you handle right-to-erasure requests in an append-only lake?",
+   "a": "Design for it: tokenize identifiers at ingestion and keep PII in a small keyed vault table, so deleting the mapping (or the per-user key, crypto-shredding) anonymizes history at once. Where rows must physically go, batch requests and run targeted row-level deletes on affected partitions, then compact and expire snapshots so old files are removed, and log completion for audit."
+  }
+ ],
+ "sd-design-cdc": [
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "Design CDC from 40 Postgres shards into a lakehouse with 15-minute freshness.",
+   "a": "Debezium per shard on Kafka Connect (pgoutput, one slot each), topics keyed by primary key, Avro + registry. Land every event append-only in bronze; MERGE into silver every 5–10 minutes taking the latest event per key and applying only newer LSNs on every branch; deletes become tombstones (is_deleted + LSN) so replays can't resurrect rows. Monitor connector health, slot lag, consumer lag and silver freshness; backfill new tables with incremental snapshots; reconcile counts daily."
+  }
+ ],
+ "sd-design-lakehouse": [
+  {
+   "company": "Common DE loop",
+   "level": "Senior",
+   "q": "Bronze, silver, gold: what goes in each and what guarantees does each give?",
+   "a": "Bronze: raw, append-only, as received (events, CDC envelopes), partitioned by ingest date; guarantee: nothing lost, replayable. Silver: cleaned, typed, deduplicated, CDC merged to current state, conformed keys; guarantee: one correct row per entity/event. Gold: business-level facts, dimensions and metrics for consumers; guarantee: tested, documented, contract-backed. Rebuild silver from bronze and gold from silver when logic changes."
+  }
+ ],
+ "pipe-dbt-materializations": [
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "Which dbt incremental strategy would you pick for a 2-billion-row event table with late-arriving events, and why?",
+   "a": "Usually merge on a unique event_id with a lookback window, or microbatch (dbt 1.9+) on event_time with batch_size='day' and lookback of a few batches. Microbatch makes each day its own query, so a failed day retries alone and backfills are one command (--event-time-start/--event-time-end). Append is only safe if events are never re-sent or corrected. insert_overwrite of daily partitions is a good fit on BigQuery/Spark."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Hard",
+   "q": "An order was hard-deleted in the source, but it still shows in your incremental fct_orders. Why, and how do you fix it?",
+   "a": "Incremental models only process rows the SELECT returns; a hard-deleted row is never selected again, so no strategy removes it. Fixes: have the source soft-delete (is_deleted) and filter or merge on it; ingest via CDC so deletes arrive as events; or periodically full-refresh / reconcile keys against the source. A snapshot with hard_deletes: invalidate records the deletion in history."
+  },
+  {
+   "company": "Common DE loop",
+   "level": "Medium",
+   "q": "With the timestamp strategy, what does dbt put in dbt_valid_to when a row changes?",
+   "a": "The new version's updated_at value, so the old row is valid until the moment the change happened in the source. It is not the time the snapshot job ran. Current rows have NULL (or the value set by dbt_valid_to_current). Only hard deletes with hard_deletes: invalidate use the snapshot run time, because the source has no timestamp for a deletion."
   }
  ]
 }

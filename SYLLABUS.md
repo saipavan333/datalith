@@ -1,6 +1,6 @@
 # Datalith — Full Syllabus
 
-_28 tracks · 148 modules · 546 lessons · 472 deep-dive tutorials · 1601 practice problems · 1389 quiz questions · 506 lessons with diagrams_
+_28 tracks · 148 modules · 548 lessons · 478 deep-dive tutorials · 1609 practice problems · 1406 quiz questions · 508 lessons with diagrams_
 
 
 Every lesson has a plain-English concept, a worked example, key points, a quiz, and practice problems with full solutions (SQL lessons include a live in-browser SQL playground). Lessons marked 🖼 include a diagram; lessons marked 📖 have a deep-dive tutorial under `content/lessons/`.
@@ -399,7 +399,7 @@ _23 lessons — Process data too big for one machine. (Hands-on Spark coding liv
 
 
 ## 11. 🔧 Pipelines & Orchestration
-_20 lessons — Turn one-off scripts into reliable, scheduled pipelines with Airflow-style DAGs._
+_21 lessons — Turn one-off scripts into reliable, scheduled pipelines with Airflow-style DAGs._
 
 ### Building reliable pipelines
 
@@ -419,6 +419,7 @@ _20 lessons — Turn one-off scripts into reliable, scheduled pipelines with Air
 - **Airflow in depth — operators, sensors, XComs & executors** (13 min · 4 practice) 🖼 📖 — Under Airflow's hood: the scheduler/executor/metadata-DB architecture, operators & the TaskFlow API, sensors, XComs, hooks/connections, executor types, and the best practices that keep DAGs healthy.
 - **dbt & analytics engineering** (13 min · 4 practice) 🖼 📖 — The transform layer of the modern stack: models & ref() lineage, sources, materializations, tests, docs, snapshots and macros — bringing software engineering to SQL transformations.
 - **Ingestion & EL tools — Fivetran, Airbyte & CDC** (11 min · 4 practice) 🖼 — Getting data in: managed connectors (Fivetran/Airbyte), log-based Change Data Capture, batch vs streaming ingestion, and the build-vs-buy trade-off.
+- **Change Data Capture — log-based vs query-based, and Debezium** (22 min · 3 practice) 🖼 📖 — How to copy every insert, update and delete out of a production database without hurting it: polling vs triggers vs reading the WAL/binlog, Debezium's event format, snapshots, and applying changes idempotently.
 - **Enterprise ETL & DataStage — parallel jobs and modernization** (14 min · 3 practice) 🖼 📖 — How enterprise ETL tools like IBM DataStage build parallel, visual data pipelines — the stages, the parallelism, and how teams modernize them to Spark/dbt.
 - **Reverse ETL & data activation** (9 min · 3 practice) 🖼 — Pushing modeled warehouse data back into operational tools (CRM, ads, Slack) so business teams act on it — the warehouse as the source of truth for operations too.
 
@@ -432,7 +433,7 @@ _20 lessons — Turn one-off scripts into reliable, scheduled pipelines with Air
 
 ### Orchestration choices & testing
 
-- **Beyond Airflow — Dagster, Prefect & asset-based orchestration** (10 min · 3 practice) 🖼 — The next-generation orchestrators and the shift from task-centric to asset-centric thinking: Dagster's software-defined assets, Prefect's dynamic flows, and when each fits.
+- **Beyond Airflow — Dagster, Prefect & asset-based orchestration** (10 min · 3 practice) 🖼 📖 — The next-generation orchestrators and the shift from task-centric to asset-centric thinking: Dagster's software-defined assets, Prefect's dynamic flows, and when each fits.
 - **Testing data pipelines** (11 min · 4 practice) 🖼 — How to trust a pipeline before and after it runs: unit tests for transform logic, data tests/assertions, schema tests, end-to-end checks, data diffs, and CI for data.
 
 ### Interview prep
@@ -456,10 +457,10 @@ _13 lessons — Process data the moment it arrives — Kafka, event time, and ex
 
 ### Streaming platforms & patterns
 
-- **Kafka internals — partitions, consumer groups & offsets** (12 min · 4 practice) 🖼 📖 — How Kafka scales and stays ordered/durable: topics split into partitions, keys for routing, brokers & replication, consumer groups for parallelism, and offsets for replay.
+- **Kafka internals — partitions, consumer groups & offsets** (20 min · 4 practice) 🖼 📖 — How Kafka scales and stays ordered/durable: topics split into partitions, keys for routing, brokers & replication, consumer groups for parallelism, and offsets for replay.
 - **Lambda vs Kappa architecture** (10 min · 4 practice) 🖼 — Two ways to combine real-time and historical processing: Lambda's parallel batch + speed layers vs Kappa's single streaming pipeline with replay — and why the field trends toward Kappa.
 - **Stateful stream processing** (11 min · 4 practice) 🖼 📖 — Why many streaming operations must remember the past, where that state lives, how it's kept fault-tolerant with checkpoints, and how to keep it from growing forever.
-- **Schema registry & evolution** (10 min · 4 practice) 🖼 — How streaming systems keep producers and consumers compatible as event formats change: serialization formats, a central schema registry, and compatibility rules.
+- **Schema registry & evolution** (10 min · 4 practice) 🖼 📖 — How streaming systems keep producers and consumers compatible as event formats change: serialization formats, a central schema registry, and compatibility rules.
 
 ### Advanced streaming
 
@@ -489,8 +490,8 @@ _13 lessons — Reliable, database-like tables on cheap storage — Delta Lake a
 ### Lakehouse engineering
 
 - **Partitioning & Z-ordering — data layout for speed** (11 min · 4 practice) 🖼 — How the physical arrangement of files makes lakehouse queries fast or slow: partitioning for pruning, Z-ordering/clustering for file skipping, right file sizes, and avoiding over-partitioning.
-- **Catalogs & the metastore** (11 min · 4 practice) 🖼 — The directory that lets engines find lakehouse tables and governs access: the metastore/catalog, from Hive Metastore to Glue, Unity Catalog, and Iceberg REST catalogs.
-- **Delta vs Iceberg vs Hudi — compared** (11 min · 4 practice) 🖼 — How the three table formats differ in origin, design, and sweet spots — and why they're converging — so you can choose deliberately.
+- **Catalogs & the metastore** (11 min · 4 practice) 🖼 📖 — The directory that lets engines find lakehouse tables and governs access: the metastore/catalog, from Hive Metastore to Glue, Unity Catalog, and Iceberg REST catalogs.
+- **Delta vs Iceberg vs Hudi — compared** (18 min · 4 practice) 🖼 📖 — How the three table formats differ in origin, design, and sweet spots — and why they're converging — so you can choose deliberately.
 - **Streaming & CDC into the lakehouse** (11 min · 4 practice) 🖼 — Continuously landing events and database changes into lakehouse tables: streaming writes, MERGE-based CDC, the small-files problem, exactly-once via the log, and auto-compaction.
 - **Maintaining lakehouse tables — OPTIMIZE, VACUUM & the log** (11 min · 4 practice) 🖼 — Keeping lakehouse tables fast and lean: compaction (OPTIMIZE/Z-order), VACUUM to reclaim storage (and its time-travel trade-off), and log/metadata upkeep.
 
@@ -936,7 +937,7 @@ _11 lessons — Build with the 2026 agentic stack — MCP, A2A, LangGraph/CrewAI
 
 
 ## 24. 🎯 System Design & Interview Mastery
-_19 lessons — Put it all together: design end-to-end pipelines and ace the senior interview._
+_20 lessons — Put it all together: design end-to-end pipelines and ace the senior interview._
 
 ### Designing & interviewing
 
@@ -965,10 +966,11 @@ _19 lessons — Put it all together: design end-to-end pipelines and ace the sen
 
 ### DE system-design case studies
 
-- **Design a data warehouse / lakehouse platform** (13 min · 1 practice) 🖼 📖 — The most common DE design: clarify the requirements (BI/analytics, hourly-fresh, moderate-to-large volume), then build sources → ingestion (batch + CDC) → a medallion lakehouse (bronze→silver→gold, Delta/Iceberg) → warehouse/serving → BI/ML, with orchestration, governance, and observability — and state the batch-vs-streaming and one-copy-many-engines trade-offs.
+- **Design a data warehouse / lakehouse platform** (13 min · 2 practice) 🖼 📖 — The most common DE design: clarify the requirements (BI/analytics, hourly-fresh, moderate-to-large volume), then build sources → ingestion (batch + CDC) → a medallion lakehouse (bronze→silver→gold, Delta/Iceberg) → warehouse/serving → BI/ML, with orchestration, governance, and observability — and state the batch-vs-streaming and one-copy-many-engines trade-offs.
 - **Design a real-time metrics pipeline** (12 min · 1 practice) 🖼 📖 — When low latency IS required: events → a durable log (Kafka/Pub/Sub) → a stream processor doing event-time windowed aggregation (with watermarks and exactly-once) → a fast serving store (OLAP/Redis) → dashboards, plus a lake archive for replay/history (Kappa) — designed for the streaming concerns: windows, watermarks, idempotency, and backpressure.
-- **Design a CDC ingestion system** (12 min · 1 practice) 🖼 📖 — To replicate an operational database into the lake/warehouse without heavy queries: read the DB's transaction log (CDC via Debezium/Datastream) → stream change events through Kafka → apply them with an idempotent MERGE (upsert by primary key) into a mirror table — with an initial snapshot then incremental, per-key ordering, delete/schema-change handling, and exactly-once via dedup.
+- **Design a CDC ingestion system** (12 min · 2 practice) 🖼 📖 — To replicate an operational database into the lake/warehouse without heavy queries: read the DB's transaction log (CDC via Debezium/Datastream) → stream change events through Kafka → apply them with an idempotent MERGE (upsert by primary key) into a mirror table — with an initial snapshot then incremental, per-key ordering, delete/schema-change handling, and exactly-once via dedup.
 - **Design a data quality & observability system** (11 min · 1 practice) 🖼 📖 — To keep data trustworthy: embed quality gates (rules/expectations on freshness, volume, schema, nulls/ranges/uniqueness) into pipelines — pass → publish, fail → quarantine + alert — and track the four observability signals (freshness, volume, quality, lineage) with metrics, SLAs, and on-call alerting, treating data as a product.
+- **Design: a whole data platform at real scale (30M users)** (25 min · 3 practice) 🖼 📖 — The senior design question end to end: scope, capacity math, CDC + clickstream into Kafka, an Iceberg/Delta lakehouse with one catalog, dbt + orchestration, serving, and the failure table.
 - **Worked example — event tracking & recommendations** (12 min · 4 practice) 🖼 — A capstone design tying batch, streaming, storage, ML, and serving together: an event-tracking pipeline feeding a recommendation system.
 
 ### Interview prep

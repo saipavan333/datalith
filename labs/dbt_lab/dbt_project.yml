@@ -1,0 +1,6 @@
+name: shop
+version: "1.0"
+profile: shop
+model-paths: ["models"]
+snapshot-paths: ["snapshots"]
+seed-paths: ["seeds"]

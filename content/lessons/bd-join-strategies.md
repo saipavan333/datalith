@@ -39,8 +39,10 @@ manual join tuning.
 
 ## 5. Join skew and the grain trap
 
-- **Skew:** a hot key (one customer with 40% of rows) overloads a single task. Fix with **salting** (add
-  a random suffix to the key on both sides, join, then re-aggregate) or AQE skew handling.
+- **Skew:** a hot key (one customer with 40% of rows) overloads a single task. AQE's skew join (on by
+  default) splits a skewed sort-merge join partition automatically. If it doesn't apply, **salt**: add a
+  random suffix 0..N-1 to the hot key on the **big** side, **replicate** the small side's rows for that
+  key N times (one per suffix), and join on key + suffix. Random suffixes on both sides would not match.
 - **Grain / fan-out:** joining a **non-unique** key **multiplies rows** — so a later `sum` double-counts.
   Aggregate to the right grain *before* summing money.
 
